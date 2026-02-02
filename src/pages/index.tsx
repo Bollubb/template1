@@ -97,6 +97,8 @@ export default function Home() {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [query, setQuery] = useState("");
   const [categoria, setCategoria] = useState("Tutte");
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
 
   useEffect(() => {
     (async () => {
@@ -111,6 +113,28 @@ export default function Home() {
       }
     })();
   }, []);
+// Carica preferiti da localStorage (una sola volta)
+useEffect(() => {
+  try {
+    const raw = localStorage.getItem("nd_favorites");
+    const arr = raw ? (JSON.parse(raw) as string[]) : [];
+    setFavorites(new Set(arr));
+  } catch (e) {
+    console.error("Errore lettura preferiti", e);
+  }
+}, []);
+
+// Salva preferiti in localStorage (ogni volta che cambiano)
+useEffect(() => {
+  try {
+    localStorage.setItem(
+      "nd_favorites",
+      JSON.stringify(Array.from(favorites))
+    );
+  } catch (e) {
+    console.error("Errore salvataggio preferiti", e);
+  }
+}, [favorites]);
 
   const categorie = useMemo(() => {
     const set = new Set<string>();
