@@ -723,10 +723,9 @@ return (
 
   )}
 </section>
-      <div style={{ height: 800 }} />
           </div>
   </main>
 );
 
 
-}
+
