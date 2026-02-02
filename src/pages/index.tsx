@@ -99,6 +99,8 @@ export default function Home() {
   const [categoria, setCategoria] = useState("Tutte");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const favoritesCount = favorites.size;
+
 useEffect(() => {
   if (onlyFavorites && favorites.size === 0) {
     setOnlyFavorites(false);
@@ -147,7 +149,6 @@ useEffect(() => {
       const c = safe(i.categoria).trim();
       if (c) set.add(c);
     });
-    const favoritesCount = favorites.size;
     return ["Tutte", ...Array.from(set).sort()];
   }, [items]);
 
