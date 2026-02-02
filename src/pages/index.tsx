@@ -43,7 +43,16 @@ function parseCSV(csvText: string): ContentItem[] {
 function safe(v: any) {
   return typeof v === "string" ? v : "";
 }
-
+function categoryColor(cat: string) {
+  const c = (cat || "").toLowerCase().trim();
+  if (c.includes("ecg")) return "rgba(91,217,255,0.22)";
+  if (c.includes("emergen")) return "rgba(255,120,180,0.18)";
+  if (c.includes("farm")) return "rgba(165,110,255,0.18)";
+  if (c.includes("proced")) return "rgba(0,255,180,0.14)";
+  if (c.includes("check")) return "rgba(255,210,100,0.16)";
+  if (c.includes("carte")) return "rgba(255,255,255,0.10)";
+  return "rgba(255,255,255,0.10)";
+}
 // Hack: typescript non conosce lengthPure, lo facciamo noi
 declare global {
   interface String {
@@ -96,8 +105,11 @@ export default function Home() {
 
 return (
   <main
-    style={{
-      maxWidth: 1080,
+    style={{ 
+      background: "radial-gradient(900px 450px at 20% 0%, rgba(91,217,255,0.16), transparent 60%), radial-gradient(900px 450px at 85% 10%, rgba(165,110,255,0.14), transparent 60%), radial-gradient(900px 450px at 50% 100%, rgba(0,255,180,0.10), transparent 55%)",
+minHeight: "100vh",
+borderRadius: 24,
+ maxWidth: 1080,
       margin: "0 auto",
       padding: "28px 16px 48px",
       fontFamily:
@@ -106,7 +118,17 @@ return (
   >
   <header style={{ marginBottom: 18 }}>
   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-    <h1 style={{ margin: 0, letterSpacing: -0.3 }}>NurseDiary</h1>
+    <h1
+  style={{
+    margin: 0,
+    letterSpacing: -0.3,
+    background: "linear-gradient(90deg, rgba(91,217,255,1), rgba(165,110,255,1))",
+    WebkitBackgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+  }}
+>
+  NurseDiary
+</h1>
     <p style={{ margin: 0, opacity: 0.75, lineHeight: 1.35 }}>
       Biblioteca rapida di contenuti infermieristici. Cerca per titolo/tag e filtra per categoria.
     </p>
@@ -147,9 +169,20 @@ return (
     </div>
 
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4, opacity: 0.75, fontSize: 12 }}>
-      <span style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)" }}>
-        {filtered.length} mostrati / {items.length} totali
-      </span>
+      <span
+  style={{
+    fontSize: 12,
+    padding: "4px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: categoryColor(safe(i.categoria)),
+    opacity: 0.95,
+    whiteSpace: "nowrap",
+  }}
+>
+  {safe(i.categoria)}
+</span>
+
     </div>
   </div>
 </header>
