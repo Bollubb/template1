@@ -123,14 +123,15 @@ borderRadius: 24,
     src="/logo.png"
     alt="NurseDiary"
     style={{
-      width: 42,
-      height: 42,
-      borderRadius: 12,
-      objectFit: "contain",
-      background: "rgba(255,255,255,0.06)",
-      padding: 6,
-      border: "1px solid rgba(255,255,255,0.14)",
-    }}
+  width: 64,
+  height: 64,
+  borderRadius: "50%",   // 🔵 TONDO
+  objectFit: "contain",
+  background: "rgba(255,255,255,0.08)",
+  padding: 8,
+  border: "1px solid rgba(255,255,255,0.18)",
+}}
+
   />
   <h1
     style={{
