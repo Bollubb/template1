@@ -155,7 +155,15 @@ useEffect(() => {
       return catOk && qOk;
     });
   }, [items, query, categoria]);
-
+function toggleFavorite(id: string) {
+  setFavorites((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
+}
+  
 return (
   <main
 
@@ -385,12 +393,37 @@ return (
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-            <Link
-              href={`/c/${encodeURIComponent(safe(i.id))}`}
-              style={{ textDecoration: "none", color: "inherit" }}
-            >
-              <h2 style={{ marginTop: 0, marginBottom: 0 }}>{safe(i.titolo)}</h2>
-            </Link>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+  <Link
+    href={`/c/${encodeURIComponent(safe(i.id))}`}
+    style={{ textDecoration: "none", color: "inherit" }}
+  >
+    <h2 style={{ marginTop: 0, marginBottom: 0 }}>{safe(i.titolo)}</h2>
+  </Link>
+
+  <button
+    type="button"
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFavorite(safe(i.id));
+    }}
+    aria-label={favorites.has(safe(i.id)) ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+    title={favorites.has(safe(i.id)) ? "Preferito" : "Aggiungi ai preferiti"}
+    style={{
+      border: "1px solid rgba(255,255,255,0.18)",
+      background: "rgba(0,0,0,0.18)",
+      borderRadius: 999,
+      padding: "2px 8px",
+      cursor: "pointer",
+      lineHeight: 1.2,
+      opacity: favorites.has(safe(i.id)) ? 1 : 0.75,
+    }}
+  >
+    {favorites.has(safe(i.id)) ? "★" : "☆"}
+  </button>
+</div>
+
 
             <span style={{ fontSize: 12, opacity: 0.6 }}>{safe(i.categoria)}</span>
           </div>
