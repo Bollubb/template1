@@ -99,7 +99,11 @@ export default function Home() {
   const [categoria, setCategoria] = useState("Tutte");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [onlyFavorites, setOnlyFavorites] = useState(false);
-
+useEffect(() => {
+  if (onlyFavorites && favorites.size === 0) {
+    setOnlyFavorites(false);
+  }
+}, [onlyFavorites, favorites]);
 
   useEffect(() => {
     (async () => {
@@ -143,6 +147,7 @@ useEffect(() => {
       const c = safe(i.categoria).trim();
       if (c) set.add(c);
     });
+    const favoritesCount = favorites.size;
     return ["Tutte", ...Array.from(set).sort()];
   }, [items]);
 
@@ -310,26 +315,35 @@ return (
       </select>
       <button
   type="button"
-  onClick={() => setOnlyFavorites((v) => !v)}
+  disabled={favoritesCount === 0}
+  onClick={() => {
+    if (favoritesCount === 0) return;
+    setOnlyFavorites((v) => !v);
+  }}
   aria-pressed={onlyFavorites}
-  title="Mostra solo preferiti"
+  title={favoritesCount === 0 ? "Nessun preferito salvato" : "Mostra solo preferiti"}
   style={{
     padding: "12px 14px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,0.18)",
-    background: onlyFavorites
-      ? "rgba(255,215,0,0.25)"
-      : "rgba(0,0,0,0.18)",
-    cursor: "pointer",
+    background:
+      favoritesCount === 0
+        ? "rgba(0,0,0,0.10)"
+        : onlyFavorites
+        ? "rgba(255,215,0,0.25)"
+        : "rgba(0,0,0,0.18)",
+    cursor: favoritesCount === 0 ? "not-allowed" : "pointer",
     display: "flex",
     alignItems: "center",
     gap: 6,
     fontSize: 13,
     whiteSpace: "nowrap",
+    opacity: favoritesCount === 0 ? 0.5 : 1,
   }}
 >
-  ⭐ Preferiti
+  ⭐ Preferiti ({favoritesCount})
 </button>
+
     </div>
 
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4, opacity: 0.75, fontSize: 12 }}>
