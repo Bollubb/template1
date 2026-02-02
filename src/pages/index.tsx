@@ -211,19 +211,42 @@ return (
     </p>
 
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Cerca (es. ECG, PEA, accesso venoso...)"
-        style={{
-          flex: "1 1 280px",
-          padding: "12px 12px",
-          borderRadius: 14,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(0,0,0,0.18)",
-          outline: "none",
-        }}
-      />
+      <div style={{ position: "relative", flex: "1 1 280px" }}>
+  <input
+    value={query}
+    onChange={(e) => setQuery(e.target.value)}
+    placeholder="Cerca (es. ECG, PEA, accesso venoso...)"
+    style={{
+      width: "100%",
+      padding: "12px 36px 12px 12px",
+      borderRadius: 14,
+      border: "1px solid rgba(255,255,255,0.14)",
+      background: "rgba(0,0,0,0.18)",
+      outline: "none",
+    }}
+  />
+
+  {query && (
+    <button
+      onClick={() => setQuery("")}
+      aria-label="Cancella ricerca"
+      style={{
+        position: "absolute",
+        right: 10,
+        top: "50%",
+        transform: "translateY(-50%)",
+        background: "transparent",
+        border: "none",
+        color: "rgba(255,255,255,0.6)",
+        fontSize: 16,
+        cursor: "pointer",
+      }}
+    >
+      ✕
+    </button>
+  )}
+</div>
+
 
       <select
         value={categoria}
