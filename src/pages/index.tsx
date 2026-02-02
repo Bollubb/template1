@@ -104,14 +104,56 @@ return (
         'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
     }}
   >
-    <header style={{ marginBottom: 18 }}>
-      <h1 style={{ margin: 0 }}>NurseDiary</h1>
-      <p style={{ opacity: 0.7 }}>
-        Biblioteca rapida di contenuti infermieristici
-      </p>
-    </header>
+  <header style={{ marginBottom: 18 }}>
+  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <h1 style={{ margin: 0, letterSpacing: -0.3 }}>NurseDiary</h1>
+    <p style={{ margin: 0, opacity: 0.75, lineHeight: 1.35 }}>
+      Biblioteca rapida di contenuti infermieristici. Cerca per titolo/tag e filtra per categoria.
+    </p>
 
-    <section
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Cerca (es. ECG, PEA, accesso venoso...)"
+        style={{
+          flex: "1 1 280px",
+          padding: "12px 12px",
+          borderRadius: 14,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(0,0,0,0.18)",
+          outline: "none",
+        }}
+      />
+
+      <select
+        value={categoria}
+        onChange={(e) => setCategoria(e.target.value)}
+        style={{
+          padding: "12px 12px",
+          borderRadius: 14,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(0,0,0,0.18)",
+          outline: "none",
+          minWidth: 160,
+        }}
+      >
+        {categorie.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4, opacity: 0.75, fontSize: 12 }}>
+      <span style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)" }}>
+        {filtered.length} mostrati / {items.length} totali
+      </span>
+    </div>
+  </div>
+</header>
+ <section
       style={{
         display: "grid",
         gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
@@ -122,13 +164,23 @@ return (
         <article
           key={safe(i.id)}
           style={{
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 18,
-            padding: 16,
-            background: "rgba(255,255,255,0.04)",
-          }}
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 18,
+  padding: 16,
+  background: "rgba(255,255,255,0.04)",
+  boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
+}}
         >
-          <h2 style={{ marginTop: 0 }}>{safe(i.titolo)}</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+  <h2 style={{ marginTop: 0, marginBottom: 0 }}>{safe(i.titolo)}</h2>
+  {safe(i.premium).toUpperCase() === "TRUE" && (
+    <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.18)" }}>
+      Premium 🔒
+    </span>
+  )}
+</div>
+<div style={{ height: 8 }} />
+
           <p style={{ opacity: 0.8 }}>{safe(i.descrizione)}</p>
 
           {safe(i.link) && (
