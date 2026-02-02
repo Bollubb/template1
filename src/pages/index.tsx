@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+
 
 type ContentItem = {
   id: string;
@@ -220,7 +222,9 @@ borderRadius: 24,
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
   <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+<Link href={`/c/${encodeURIComponent(safe(i.id))}`} style={{ textDecoration: "none", color: "inherit" }}>
   <h2 style={{ marginTop: 0, marginBottom: 0 }}>{safe(i.titolo)}</h2>
+</Link>
   <span style={{ fontSize: 12, opacity: 0.6 }}>
     {safe(i.categoria)}
   </span>
@@ -255,25 +259,19 @@ borderRadius: 24,
       </span>
     ))}
 </div>
-          {safe(i.link) && (
-            <a
-              href={safe(i.link)}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: "inline-block",
-                marginTop: 8,
-                padding: "6px 10px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.25)",
-background: "rgba(255,255,255,0.06)",
-
-                textDecoration: "none",
-              }}
-            >
-              Apri contenuto
-            </a>
-          )}
+          <Link
+  href={`/c/${encodeURIComponent(safe(i.id))}`}
+  style={{
+    display: "inline-block",
+    marginTop: 8,
+    padding: "8px 10px",
+    borderRadius: 12,
+    border: "1px solid rgba(255,255,255,0.18)",
+    textDecoration: "none",
+  }}
+>
+  Apri contenuto
+</Link>
         </article>
       ))}
     </section>
