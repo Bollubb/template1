@@ -118,20 +118,19 @@ borderRadius: 24,
   >
   <header style={{ marginBottom: 18 }}>
   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
   <img
     src="/logo.png"
     alt="NurseDiary"
     style={{
-  width: 64,
-  height: 64,
-  borderRadius: "50%",   // 🔵 TONDO
-  objectFit: "contain",
-  background: "rgba(255,255,255,0.08)",
-  padding: 8,
-  border: "1px solid rgba(255,255,255,0.18)",
+  width: 84,
+  height: 84,
+  borderRadius: "50%",
+  objectFit: "cover",
+  background: "rgba(255,255,255,0.10)",
+  padding: 6,
+  border: "1px solid rgba(255,255,255,0.22)",
 }}
-
   />
   <h1
     style={{
@@ -140,6 +139,7 @@ borderRadius: 24,
       background: "linear-gradient(90deg, rgba(91,217,255,1), rgba(165,110,255,1))",
       WebkitBackgroundClip: "text",
       WebkitTextFillColor: "transparent",
+      boxShadow: "0 8px 30px rgba(91,217,255,0.25)",
     }}
   >
     NurseDiary
