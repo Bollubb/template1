@@ -165,7 +165,19 @@ return (
     />
     <div style={{ position: "relative", zIndex: 1 }}>
 
-  <header style={{ marginBottom: 18 }}>
+ <header
+  style={{
+    position: "sticky",
+    top: 0,
+    zIndex: 20,
+    marginBottom: 18,
+    paddingTop: 8,
+    paddingBottom: 12,
+    background: "rgba(10,12,18,0.55)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
+  }}
+>
   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
   <img
@@ -250,13 +262,14 @@ return (
     </div>
   </div>
 </header>
- <section
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-        gap: 14,
-      }}
-    >
+<section
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 14,
+    paddingTop: 10
+  }}
+>
       {filtered.map((i) => (
         <article key={safe(i.id)}
           style={{
