@@ -95,12 +95,129 @@ export default function Home() {
   }, [items, query, categoria]);
 
   return (
-    <main style={{ maxWidth: 980, margin: "0 auto", padding: 16, fontFamily: "system-ui" }}>
-      <header style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, margin: 0 }}>NurseDiary</h1>
-        <p style={{ margin: 0, opacity: 0.75 }}>
-          Biblioteca rapida di contenuti (test). Ricerca per titolo/tag e filtra per categoria.
-        </p>
+<main
+  style={{
+    maxWidth: 1080,
+    margin: "0 auto",
+    padding: "28px 16px 48px",
+    fontFamily:
+      'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
+  }}
+>
+
+     <header style={{ marginBottom: 18 }}>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      flexWrap: "wrap",
+      marginBottom: 12,
+    }}
+  >
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 12,
+            background:
+              "linear-gradient(135deg, rgba(91,217,255,0.35), rgba(165,110,255,0.35))",
+            border: "1px solid rgba(255,255,255,0.12)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          }}
+        />
+        <h1 style={{ fontSize: 30, margin: 0, letterSpacing: -0.4 }}>NurseDiary</h1>
+      </div>
+
+      <p style={{ margin: 0, opacity: 0.78, lineHeight: 1.35, maxWidth: 760 }}>
+        Biblioteca rapida di contenuti infermieristici. Cerca per titolo/tag e filtra per categoria.
+      </p>
+    </div>
+
+    <div
+      style={{
+        display: "flex",
+        gap: 8,
+        alignItems: "center",
+        flexWrap: "wrap",
+        opacity: 0.85,
+        fontSize: 12,
+      }}
+    >
+      <span
+        style={{
+          padding: "6px 10px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.04)",
+        }}
+      >
+        {items.length} contenuti
+      </span>
+      <span
+        style={{
+          padding: "6px 10px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.04)",
+        }}
+      >
+        Salvabili • Condivisibili
+      </span>
+    </div>
+  </div>
+
+  <div
+    style={{
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      alignItems: "center",
+      padding: 12,
+      borderRadius: 18,
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: "rgba(255,255,255,0.04)",
+      boxShadow: "0 18px 50px rgba(0,0,0,0.25)",
+    }}
+  >
+    <input
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+      placeholder="Cerca (es. ECG, PEA, accesso venoso...)"
+      style={{
+        flex: "1 1 280px",
+        padding: "12px 12px",
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.14)",
+        background: "rgba(0,0,0,0.18)",
+        outline: "none",
+      }}
+    />
+
+    <select
+      value={categoria}
+      onChange={(e) => setCategoria(e.target.value)}
+      style={{
+        padding: "12px 12px",
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.14)",
+        background: "rgba(0,0,0,0.18)",
+        outline: "none",
+        minWidth: 160,
+      }}
+    >
+      {categorie.map((c) => (
+        <option key={c} value={c}>
+          {c}
+        </option>
+      ))}
+    </select>
+  </div>
+</header>
+
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
           <input
@@ -152,11 +269,14 @@ export default function Home() {
             <article
               key={safe(i.id)}
               style={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 16,
-                padding: 14,
-                background: "rgba(255,255,255,0.04)",
-              }}
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 18,
+  padding: 16,
+  background: "rgba(255,255,255,0.04)",
+  boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
+  backdropFilter: "blur(10px)",
+}}
+
             >
               <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
                 <h2 style={{ fontSize: 16, margin: 0 }}>{safe(i.titolo) || "Senza titolo"}</h2>
