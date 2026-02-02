@@ -16,16 +16,56 @@ function safe(v: any) {
   return typeof v === "string" ? v : "";
 }
 
-function parseCSV(text: string): Item[] {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+function splitCSVLine(line: string) {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+
+    if (ch === '"') {
+      // gestisce "" come virgolette escape
+      if (inQuotes && line[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (ch === "," && !inQuotes) {
+      out.push(cur);
+      cur = "";
+      continue;
+    }
+
+    cur += ch;
+  }
+
+  out.push(cur);
+  return out.map((s) => s.trim());
+}
+
+function parseCSV(csvText: string) {
+  const lines = csvText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
   if (lines.length < 2) return [];
 
-  const headers = lines[0].split(",").map((h) => h.trim());
-  return lines.slice(1).map((row) => {
-    const cols = row.split(",").map((c) => c.trim());
+  const headers = splitCSVLine(lines[0]).map((h) => h.trim());
+  const rows = lines.slice(1);
+
+  return rows.map((row) => {
+    const cols = splitCSVLine(row);
     const obj: any = {};
-    headers.forEach((h, idx) => (obj[h] = cols[idx] ?? ""));
-    return obj as Item;
+    headers.forEach((h, idx) => {
+      obj[h] = cols[idx] ?? "";
+    });
+    return obj;
   });
 }
 
