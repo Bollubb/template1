@@ -180,7 +180,6 @@ borderRadius: 24,
     whiteSpace: "nowrap",
   }}
 >
-  {safe(i.categoria)}
 </span>
 
     </div>
@@ -194,8 +193,7 @@ borderRadius: 24,
       }}
     >
       {filtered.map((i) => (
-        <article
-          key={safe(i.id)}
+        <article key={safe(i.id)}
           style={{
   border: "1px solid rgba(255,255,255,0.12)",
   borderRadius: 18,
