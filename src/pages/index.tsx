@@ -175,7 +175,7 @@ borderRadius: 24,
     padding: "4px 10px",
     borderRadius: 999,
     border: "1px solid rgba(255,255,255,0.14)",
-    background: categoryColor(safe(i.categoria)),
+   background: "rgba(255,255,255,0.10)",
     opacity: 0.95,
     whiteSpace: "nowrap",
   }}
