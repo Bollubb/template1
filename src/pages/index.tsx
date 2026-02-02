@@ -175,8 +175,8 @@ async function handleShare() {
     e.stopPropagation();
     handleShare();
   }}
-  aria-label="Condividi"
-  title="Condividi"
+  aria-label={copied ? "Link copiato" : "Condividi"}
+  title={copied ? "Link copiato ✓" : "Condividi"}
   style={{
     border: "1px solid rgba(255,255,255,0.18)",
     background: "rgba(0,0,0,0.18)",
@@ -184,10 +184,10 @@ async function handleShare() {
     padding: "2px 8px",
     cursor: "pointer",
     lineHeight: 1.2,
-    opacity: 0.85,
+    opacity: copied ? 1 : 0.85,
   }}
 >
-  {copied ? "Copiato ✓" : "Condividi"}
+  {copied ? "✓" : "🔗"}
 </button>
           </div>
 
@@ -300,6 +300,19 @@ export default function Home() {
       console.error("Errore salvataggio preferiti", e);
     }
   }, [favorites]);
+  
+  useEffect(() => {
+  // se sto filtrando per categoria, lascio stare.
+  // se torno su "Tutte", non tocco nulla.
+  // Se cambio categoria mentre sono in onlyFavorites, tengo onlyFavorites,
+  // ma resetto la query per evitare combinazioni troppo restrittive.
+  // (se non lo vuoi, dimmelo e lo togliamo)
+  if (onlyFavorites && query.length > 0) {
+    setQuery("");
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [categoria]);
+
 
   function toggleFavorite(id: string) {
     setFavorites((prev) => {
@@ -474,10 +487,11 @@ export default function Home() {
                   background: "rgba(0,0,0,0.18)",
                   outline: "none",
                   minWidth: 160,
+                  color: "white",
                 }}
               >
                 {categorie.map((c) => (
-                  <option key={c} value={c}>
+<option key={c} value={c} style={{ color: "black" }}>
                     {c}
                   </option>
                 ))}
