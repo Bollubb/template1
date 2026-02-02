@@ -166,6 +166,15 @@ useEffect(() => {
     return catOk && qOk && favOk;
   });
 }, [items, query, categoria, onlyFavorites, favorites]);
+  
+  const favoriteItems = useMemo(() => {
+  return filtered.filter((i) => favorites.has(safe(i.id)));
+}, [filtered, favorites]);
+
+const otherItems = useMemo(() => {
+  return filtered.filter((i) => !favorites.has(safe(i.id)));
+}, [filtered, favorites]);
+
 function toggleFavorite(id: string) {
   setFavorites((prev) => {
     const next = new Set(prev);
@@ -415,7 +424,169 @@ return (
       </button>
     </div>
   ) : (
-    filtered.map((i) => (
+    <>
+  {favoriteItems.length > 0 && (
+    <div style={{ gridColumn: "1 / -1", marginBottom: 6 }}>
+      <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
+        ⭐ Preferiti
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 14,
+          marginBottom: 14,
+        }}
+      >
+    <>
+  {favoriteItems.length > 0 && (
+    <div style={{ gridColumn: "1 / -1", marginBottom: 6 }}>
+      <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
+        ⭐ Preferiti
+      </div>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 14,
+          marginBottom: 14,
+        }}
+      >
+        {favoriteItems.map((i) => (
+          <article
+            key={safe(i.id)}
+            style={{
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: 18,
+              padding: 16,
+              background: "rgba(255,255,255,0.04)",
+              boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 10,
+                alignItems: "baseline",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Link
+                    href={`/c/${encodeURIComponent(safe(i.id))}`}
+                    style={{ textDecoration: "none", color: "inherit" }}
+                  >
+                    <h2 style={{ marginTop: 0, marginBottom: 0 }}>
+                      {safe(i.titolo)}
+                    </h2>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleFavorite(safe(i.id));
+                    }}
+                    aria-label={
+                      favorites.has(safe(i.id))
+                        ? "Rimuovi dai preferiti"
+                        : "Aggiungi ai preferiti"
+                    }
+                    title={favorites.has(safe(i.id)) ? "Preferito" : "Aggiungi ai preferiti"}
+                    style={{
+                      border: "1px solid rgba(255,255,255,0.18)",
+                      background: "rgba(0,0,0,0.18)",
+                      borderRadius: 999,
+                      padding: "2px 8px",
+                      cursor: "pointer",
+                      lineHeight: 1.2,
+                      opacity: favorites.has(safe(i.id)) ? 1 : 0.75,
+                    }}
+                  >
+                    {favorites.has(safe(i.id)) ? "★" : "☆"}
+                  </button>
+                </div>
+
+                <span style={{ fontSize: 12, opacity: 0.6 }}>
+                  {safe(i.categoria)}
+                </span>
+              </div>
+
+              {safe(i.premium).toUpperCase() === "TRUE" && (
+                <span
+                  style={{
+                    fontSize: 12,
+                    padding: "4px 8px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.18)",
+                  }}
+                >
+                  Premium 🔒
+                </span>
+              )}
+            </div>
+
+            <div style={{ height: 8 }} />
+
+            <p style={{ opacity: 0.8, lineHeight: 1.4 }}>
+              {safe(i.descrizione)}
+            </p>
+
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+              {safe(i.tag)
+                .split(",")
+                .map((t) => t.trim())
+                .filter(Boolean)
+                .map((t) => (
+                  <span
+                    key={t}
+                    style={{
+                      fontSize: 12,
+                      padding: "4px 8px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      opacity: 0.8,
+                    }}
+                  >
+                    {t}
+                  </span>
+                ))}
+            </div>
+
+            <Link
+              href={`/c/${encodeURIComponent(safe(i.id))}`}
+              style={{
+                display: "inline-block",
+                marginTop: 8,
+                padding: "8px 10px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                textDecoration: "none",
+              }}
+            >
+              Apri contenuto
+            </Link>
+          </article>
+        ))}
+      </div>
+
+      <div
+        style={{
+          height: 1,
+          background: "rgba(255,255,255,0.10)",
+          borderRadius: 999,
+          marginBottom: 14,
+        }}
+      />
+    </div>
+  )}
+
+  {otherItems.length > 0 ? (
+    otherItems.map((i) => (
       <article
         key={safe(i.id)}
         style={{
@@ -436,38 +607,45 @@ return (
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-  <Link
-    href={`/c/${encodeURIComponent(safe(i.id))}`}
-    style={{ textDecoration: "none", color: "inherit" }}
-  >
-    <h2 style={{ marginTop: 0, marginBottom: 0 }}>{safe(i.titolo)}</h2>
-  </Link>
+              <Link
+                href={`/c/${encodeURIComponent(safe(i.id))}`}
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                <h2 style={{ marginTop: 0, marginBottom: 0 }}>
+                  {safe(i.titolo)}
+                </h2>
+              </Link>
 
-  <button
-    type="button"
-    onClick={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleFavorite(safe(i.id));
-    }}
-    aria-label={favorites.has(safe(i.id)) ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
-    title={favorites.has(safe(i.id)) ? "Preferito" : "Aggiungi ai preferiti"}
-    style={{
-      border: "1px solid rgba(255,255,255,0.18)",
-      background: "rgba(0,0,0,0.18)",
-      borderRadius: 999,
-      padding: "2px 8px",
-      cursor: "pointer",
-      lineHeight: 1.2,
-      opacity: favorites.has(safe(i.id)) ? 1 : 0.75,
-    }}
-  >
-    {favorites.has(safe(i.id)) ? "★" : "☆"}
-  </button>
-</div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleFavorite(safe(i.id));
+                }}
+                aria-label={
+                  favorites.has(safe(i.id))
+                    ? "Rimuovi dai preferiti"
+                    : "Aggiungi ai preferiti"
+                }
+                title={favorites.has(safe(i.id)) ? "Preferito" : "Aggiungi ai preferiti"}
+                style={{
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(0,0,0,0.18)",
+                  borderRadius: 999,
+                  padding: "2px 8px",
+                  cursor: "pointer",
+                  lineHeight: 1.2,
+                  opacity: favorites.has(safe(i.id)) ? 1 : 0.75,
+                }}
+              >
+                {favorites.has(safe(i.id)) ? "★" : "☆"}
+              </button>
+            </div>
 
-
-            <span style={{ fontSize: 12, opacity: 0.6 }}>{safe(i.categoria)}</span>
+            <span style={{ fontSize: 12, opacity: 0.6 }}>
+              {safe(i.categoria)}
+            </span>
           </div>
 
           {safe(i.premium).toUpperCase() === "TRUE" && (
@@ -486,7 +664,9 @@ return (
 
         <div style={{ height: 8 }} />
 
-        <p style={{ opacity: 0.8, lineHeight: 1.4 }}>{safe(i.descrizione)}</p>
+        <p style={{ opacity: 0.8, lineHeight: 1.4 }}>
+          {safe(i.descrizione)}
+        </p>
 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
           {safe(i.tag)
@@ -524,6 +704,23 @@ return (
         </Link>
       </article>
     ))
+  ) : (
+    <div
+      style={{
+        gridColumn: "1 / -1",
+        opacity: 0.8,
+        fontSize: 12,
+        padding: 12,
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.04)",
+      }}
+    >
+      Nessun altro contenuto oltre ai preferiti.
+    </div>
+  )}
+</>
+
   )}
 </section>
       <div style={{ height: 800 }} />
