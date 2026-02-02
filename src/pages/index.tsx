@@ -134,11 +134,14 @@ export default function Home() {
 
 return (
   <main
-  style={{
+
+ style={{
     backgroundImage: "url('/background-main.png')",
     backgroundSize: "cover",
     backgroundPosition: "center",
     backgroundRepeat: "no-repeat",
+    position: "relative",
+    overflow: "hidden",
     minHeight: "100vh",
     borderRadius: 24,
     maxWidth: 1080,
@@ -148,6 +151,19 @@ return (
       "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
   }}
 >
+    {/* overlay per leggibilità */}
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background:
+          "linear-gradient(180deg, rgba(10,12,18,0.72), rgba(10,12,18,0.55))",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        pointerEvents: "none",
+      }}
+    />
+    <div style={{ position: "relative", zIndex: 1 }}>
 
   <header style={{ marginBottom: 18 }}>
   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -306,6 +322,7 @@ return (
         </article>
       ))}
     </section>
+          </div>
   </main>
 );
 
