@@ -146,18 +146,20 @@ useEffect(() => {
     return ["Tutte", ...Array.from(set).sort()];
   }, [items]);
 
-  const filtered = useMemo(() => {
+ const filtered = useMemo(() => {
+  const q = query.trim().toLowerCase();
+
   return items.filter((i) => {
-  const catOk = categoria === "Tutte" || safe(i.categoria) === categoria;
+    const catOk = categoria === "Tutte" || safe(i.categoria) === categoria;
 
-  const favOk = !onlyFavorites || favorites.has(safe(i.id));
+    const favOk = !onlyFavorites || favorites.has(safe(i.id));
 
-  const hay =
-    `${safe(i.titolo)} ${safe(i.descrizione)} ${safe(i.tag)} ${safe(i.tipo)}`.toLowerCase();
-  const qOk = !q || hay.includes(q);
+    const hay = `${safe(i.titolo)} ${safe(i.descrizione)} ${safe(i.tag)} ${safe(i.tipo)}`.toLowerCase();
+    const qOk = !q || hay.includes(q);
 
-  return catOk && qOk && favOk;
-});
+    return catOk && qOk && favOk;
+  });
+}, [items, query, categoria, onlyFavorites, favorites]);
 function toggleFavorite(id: string) {
   setFavorites((prev) => {
     const next = new Set(prev);
