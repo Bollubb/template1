@@ -98,6 +98,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [categoria, setCategoria] = useState("Tutte");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
 
 
   useEffect(() => {
@@ -146,15 +147,17 @@ useEffect(() => {
   }, [items]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return items.filter((i) => {
-      const catOk = categoria === "Tutte" || safe(i.categoria) === categoria;
-      const hay =
-        `${safe(i.titolo)} ${safe(i.descrizione)} ${safe(i.tag)} ${safe(i.tipo)}`.toLowerCase();
-      const qOk = !q || hay.includes(q);
-      return catOk && qOk;
-    });
-  }, [items, query, categoria]);
+  return items.filter((i) => {
+  const catOk = categoria === "Tutte" || safe(i.categoria) === categoria;
+
+  const favOk = !onlyFavorites || favorites.has(safe(i.id));
+
+  const hay =
+    `${safe(i.titolo)} ${safe(i.descrizione)} ${safe(i.tag)} ${safe(i.tipo)}`.toLowerCase();
+  const qOk = !q || hay.includes(q);
+
+  return catOk && qOk && favOk;
+});
 function toggleFavorite(id: string) {
   setFavorites((prev) => {
     const next = new Set(prev);
@@ -303,6 +306,28 @@ return (
           </option>
         ))}
       </select>
+      <button
+  type="button"
+  onClick={() => setOnlyFavorites((v) => !v)}
+  aria-pressed={onlyFavorites}
+  title="Mostra solo preferiti"
+  style={{
+    padding: "12px 14px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: onlyFavorites
+      ? "rgba(255,215,0,0.25)"
+      : "rgba(0,0,0,0.18)",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    fontSize: 13,
+    whiteSpace: "nowrap",
+  }}
+>
+  ⭐ Preferiti
+</button>
     </div>
 
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4, opacity: 0.75, fontSize: 12 }}>
