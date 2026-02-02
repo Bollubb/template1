@@ -134,17 +134,21 @@ export default function Home() {
 
 return (
   <main
-    style={{ 
-      background: "radial-gradient(900px 450px at 20% 0%, rgba(91,217,255,0.16), transparent 60%), radial-gradient(900px 450px at 85% 10%, rgba(165,110,255,0.14), transparent 60%), radial-gradient(900px 450px at 50% 100%, rgba(0,255,180,0.10), transparent 55%)",
-minHeight: "100vh",
-borderRadius: 24,
- maxWidth: 1080,
-      margin: "0 auto",
-      padding: "28px 16px 48px",
-      fontFamily:
-        'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
-    }}
-  >
+  style={{
+    backgroundImage: "url('/background-main.png')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    minHeight: "100vh",
+    borderRadius: 24,
+    maxWidth: 1080,
+    margin: "0 auto",
+    padding: "28px 16px 48px",
+    fontFamily:
+      "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+  }}
+>
+
   <header style={{ marginBottom: 18 }}>
   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
     <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
