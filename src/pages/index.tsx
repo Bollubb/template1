@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-
 type ContentItem = {
   id: string;
   titolo: string;
@@ -24,7 +23,6 @@ function splitCSVLine(line: string) {
     const ch = line[i];
 
     if (ch === '"') {
-      // gestisce "" come virgolette escape
       if (inQuotes && line[i + 1] === '"') {
         cur += '"';
         i++;
@@ -68,30 +66,129 @@ function parseCSV(csvText: string) {
   });
 }
 
-// Piccolo helper per evitare crash se mancano campi
 function safe(v: any) {
   return typeof v === "string" ? v : "";
 }
-function categoryColor(cat: string) {
-  const c = (cat || "").toLowerCase().trim();
-  if (c.includes("ecg")) return "rgba(91,217,255,0.22)";
-  if (c.includes("emergen")) return "rgba(255,120,180,0.18)";
-  if (c.includes("farm")) return "rgba(165,110,255,0.18)";
-  if (c.includes("proced")) return "rgba(0,255,180,0.14)";
-  if (c.includes("check")) return "rgba(255,210,100,0.16)";
-  if (c.includes("carte")) return "rgba(255,255,255,0.10)";
-  return "rgba(255,255,255,0.10)";
+
+function ContentCard({
+  item,
+  isFavorite,
+  onToggleFavorite,
+}: {
+  item: ContentItem;
+  isFavorite: boolean;
+  onToggleFavorite: (id: string) => void;
+}) {
+  const id = safe(item.id);
+
+  return (
+    <article
+      style={{
+        border: "1px solid rgba(255,255,255,0.12)",
+        borderRadius: 18,
+        padding: 16,
+        background: "rgba(255,255,255,0.04)",
+        boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 10,
+          alignItems: "baseline",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Link
+              href={`/c/${encodeURIComponent(id)}`}
+              style={{ textDecoration: "none", color: "inherit" }}
+            >
+              <h2 style={{ marginTop: 0, marginBottom: 0 }}>{safe(item.titolo)}</h2>
+            </Link>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleFavorite(id);
+              }}
+              aria-label={isFavorite ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+              title={isFavorite ? "Preferito" : "Aggiungi ai preferiti"}
+              style={{
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(0,0,0,0.18)",
+                borderRadius: 999,
+                padding: "2px 8px",
+                cursor: "pointer",
+                lineHeight: 1.2,
+                opacity: isFavorite ? 1 : 0.75,
+              }}
+            >
+              {isFavorite ? "★" : "☆"}
+            </button>
+          </div>
+
+          <span style={{ fontSize: 12, opacity: 0.6 }}>{safe(item.categoria)}</span>
+        </div>
+
+        {safe(item.premium).toUpperCase() === "TRUE" && (
+          <span
+            style={{
+              fontSize: 12,
+              padding: "4px 8px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.18)",
+            }}
+          >
+            Premium 🔒
+          </span>
+        )}
+      </div>
+
+      <div style={{ height: 8 }} />
+
+      <p style={{ opacity: 0.8, lineHeight: 1.4 }}>{safe(item.descrizione)}</p>
+
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+        {safe(item.tag)
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean)
+          .map((t) => (
+            <span
+              key={t}
+              style={{
+                fontSize: 12,
+                padding: "4px 8px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.14)",
+                opacity: 0.8,
+              }}
+            >
+              {t}
+            </span>
+          ))}
+      </div>
+
+      <Link
+        href={`/c/${encodeURIComponent(id)}`}
+        style={{
+          display: "inline-block",
+          marginTop: 8,
+          padding: "8px 10px",
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.18)",
+          textDecoration: "none",
+        }}
+      >
+        Apri contenuto
+      </Link>
+    </article>
+  );
 }
-// Hack: typescript non conosce lengthPure, lo facciamo noi
-declare global {
-  interface String {
-    lengthPure(): number;
-  }
-}
-// @ts-ignore
-String.prototype.lengthPure = function () {
-  return String(this).trim().length;
-};
 
 export default function Home() {
   const [items, setItems] = useState<ContentItem[]>([]);
@@ -99,20 +196,23 @@ export default function Home() {
   const [categoria, setCategoria] = useState("Tutte");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+
   const favoritesCount = favorites.size;
 
-useEffect(() => {
-  if (onlyFavorites && favorites.size === 0) {
-    setOnlyFavorites(false);
-  }
-}, [onlyFavorites, favorites]);
+  // Se sei in "solo preferiti" e diventano 0, esci automaticamente
+  useEffect(() => {
+    if (onlyFavorites && favorites.size === 0) {
+      setOnlyFavorites(false);
+    }
+  }, [onlyFavorites, favorites]);
 
+  // Carica CSV contenuti
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch("/contenuti.csv", { cache: "no-store" });
         const text = await res.text();
-        const parsed = parseCSV(text);
+        const parsed = parseCSV(text) as ContentItem[];
         setItems(parsed);
       } catch (e) {
         console.error(e);
@@ -120,28 +220,35 @@ useEffect(() => {
       }
     })();
   }, []);
-// Carica preferiti da localStorage (una sola volta)
-useEffect(() => {
-  try {
-    const raw = localStorage.getItem("nd_favorites");
-    const arr = raw ? (JSON.parse(raw) as string[]) : [];
-    setFavorites(new Set(arr));
-  } catch (e) {
-    console.error("Errore lettura preferiti", e);
-  }
-}, []);
 
-// Salva preferiti in localStorage (ogni volta che cambiano)
-useEffect(() => {
-  try {
-    localStorage.setItem(
-      "nd_favorites",
-      JSON.stringify(Array.from(favorites))
-    );
-  } catch (e) {
-    console.error("Errore salvataggio preferiti", e);
+  // Carica preferiti da localStorage (una sola volta)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("nd_favorites");
+      const arr = raw ? (JSON.parse(raw) as string[]) : [];
+      setFavorites(new Set(arr));
+    } catch (e) {
+      console.error("Errore lettura preferiti", e);
+    }
+  }, []);
+
+  // Salva preferiti in localStorage (ogni volta che cambiano)
+  useEffect(() => {
+    try {
+      localStorage.setItem("nd_favorites", JSON.stringify(Array.from(favorites)));
+    } catch (e) {
+      console.error("Errore salvataggio preferiti", e);
+    }
+  }, [favorites]);
+
+  function toggleFavorite(id: string) {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
-}, [favorites]);
 
   const categorie = useMemo(() => {
     const set = new Set<string>();
@@ -152,580 +259,318 @@ useEffect(() => {
     return ["Tutte", ...Array.from(set).sort()];
   }, [items]);
 
- const filtered = useMemo(() => {
-  const q = query.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
 
-  return items.filter((i) => {
-    const catOk = categoria === "Tutte" || safe(i.categoria) === categoria;
+    return items.filter((i) => {
+      const catOk = categoria === "Tutte" || safe(i.categoria) === categoria;
+      const favOk = !onlyFavorites || favorites.has(safe(i.id));
 
-    const favOk = !onlyFavorites || favorites.has(safe(i.id));
+      const hay = `${safe(i.titolo)} ${safe(i.descrizione)} ${safe(i.tag)} ${safe(i.tipo)}`.toLowerCase();
+      const qOk = !q || hay.includes(q);
 
-    const hay = `${safe(i.titolo)} ${safe(i.descrizione)} ${safe(i.tag)} ${safe(i.tipo)}`.toLowerCase();
-    const qOk = !q || hay.includes(q);
+      return catOk && qOk && favOk;
+    });
+  }, [items, query, categoria, onlyFavorites, favorites]);
 
-    return catOk && qOk && favOk;
-  });
-}, [items, query, categoria, onlyFavorites, favorites]);
-  
   const favoriteItems = useMemo(() => {
-  return filtered.filter((i) => favorites.has(safe(i.id)));
-}, [filtered, favorites]);
+    return filtered.filter((i) => favorites.has(safe(i.id)));
+  }, [filtered, favorites]);
 
-const otherItems = useMemo(() => {
-  return filtered.filter((i) => !favorites.has(safe(i.id)));
-}, [filtered, favorites]);
+  const otherItems = useMemo(() => {
+    return filtered.filter((i) => !favorites.has(safe(i.id)));
+  }, [filtered, favorites]);
 
-function toggleFavorite(id: string) {
-  setFavorites((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
-}
-  
-return (
-  <main
-
- style={{
-    backgroundImage: "url('/background-main.png')",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
-    position: "relative",
-    overflow: "hidden",
-    minHeight: "100vh",
-    borderRadius: 24,
-    maxWidth: 1080,
-    margin: "0 auto",
-    padding: "28px 16px 48px",
-    fontFamily:
-      "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-  }}
->
-    {/* overlay per leggibilità */}
-    <div
+  return (
+    <main
       style={{
-        position: "absolute",
-        inset: 0,
-        background:
-          "linear-gradient(180deg, rgba(10,12,18,0.72), rgba(10,12,18,0.55))",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        pointerEvents: "none",
-      }}
-    />
-    <div style={{ position: "relative", zIndex: 1 }}>
-
- <header
-  style={{
-    position: "sticky",
-    top: 0,
-    zIndex: 20,
-    marginBottom: 18,
-    paddingTop: 8,
-    paddingBottom: 12,
-    background: "rgba(10,12,18,0.55)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-  }}
->
-  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-  <img
-    src="/logo.png"
-    alt="NurseDiary"
-    style={{
-  width: 84,
-  height: 84,
-  borderRadius: "50%",
-  objectFit: "cover",
-  background: "rgba(255,255,255,0.10)",
-  padding: 6,
-  border: "1px solid rgba(255,255,255,0.22)",
-}}
-  />
-  <h1
-    style={{
-      margin: 0,
-      letterSpacing: -0.3,
-      background: "linear-gradient(90deg, rgba(91,217,255,1), rgba(165,110,255,1))",
-      WebkitBackgroundClip: "text",
-      WebkitTextFillColor: "transparent",
-      boxShadow: "0 8px 30px rgba(91,217,255,0.25)",
-    }}
-  >
-    NurseDiary
-  </h1>
-</div>
-    <p style={{ margin: 0, opacity: 0.75, lineHeight: 1.35 }}>
-      Biblioteca rapida di contenuti infermieristici. Cerca per titolo/tag e filtra per categoria.
-    </p>
-
-    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
-      <div style={{ position: "relative", flex: "1 1 280px" }}>
-  <input
-    type="search"
-  inputMode="search"
-  enterKeyHint="search"
-  autoComplete="off"
-  spellCheck={false}
-    value={query}
-    onChange={(e) => setQuery(e.target.value)}
-    placeholder="Cerca (es. ECG, PEA, accesso venoso...)"
-    style={{
-      width: "100%",
-      padding: "12px 36px 12px 12px",
-      borderRadius: 14,
-      border: "1px solid rgba(255,255,255,0.14)",
-      background: "rgba(0,0,0,0.18)",
-      outline: "none",
-    }}
-  />
-
-  {query && (
-    <button
-      onClick={() => setQuery("")}
-      aria-label="Cancella ricerca"
-      style={{
-        position: "absolute",
-        right: 10,
-        top: "50%",
-        transform: "translateY(-50%)",
-        background: "transparent",
-        border: "none",
-        color: "rgba(255,255,255,0.6)",
-        fontSize: 16,
-        cursor: "pointer",
+        backgroundImage: "url('/background-main.png')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        position: "relative",
+        overflow: "hidden",
+        minHeight: "100vh",
+        borderRadius: 24,
+        maxWidth: 1080,
+        margin: "0 auto",
+        padding: "28px 16px 48px",
+        fontFamily:
+          "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
       }}
     >
-      ✕
-    </button>
-  )}
-</div>
-
-
-      <select
-        value={categoria}
-        onChange={(e) => setCategoria(e.target.value)}
-        style={{
-          padding: "12px 12px",
-          borderRadius: 14,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(0,0,0,0.18)",
-          outline: "none",
-          minWidth: 160,
-        }}
-      >
-        {categorie.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-      <button
-  type="button"
-  disabled={favoritesCount === 0}
-  onClick={() => {
-    if (favoritesCount === 0) return;
-    setOnlyFavorites((v) => !v);
-  }}
-  aria-pressed={onlyFavorites}
-  title={favoritesCount === 0 ? "Nessun preferito salvato" : "Mostra solo preferiti"}
-  style={{
-    padding: "12px 14px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.18)",
-    background:
-      favoritesCount === 0
-        ? "rgba(0,0,0,0.10)"
-        : onlyFavorites
-        ? "rgba(255,215,0,0.25)"
-        : "rgba(0,0,0,0.18)",
-    cursor: favoritesCount === 0 ? "not-allowed" : "pointer",
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    fontSize: 13,
-    whiteSpace: "nowrap",
-    opacity: favoritesCount === 0 ? 0.5 : 1,
-  }}
->
-  ⭐ Preferiti ({favoritesCount})
-</button>
-
-    </div>
-
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4, opacity: 0.75, fontSize: 12 }}>
-      <span
-  style={{
-    fontSize: 12,
-    padding: "4px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.14)",
-   background: "rgba(255,255,255,0.10)",
-    opacity: 0.95,
-    whiteSpace: "nowrap",
-  }}
->
-</span>
-
-    </div>
-  </div>
-</header>
-<section
-  style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: 14,
-    paddingTop: 10,
-  }}
->
-  {filtered.length === 0 ? (
-    <div
-      style={{
-        gridColumn: "1 / -1",
-        border: "1px solid rgba(255,255,255,0.12)",
-        borderRadius: 18,
-        padding: 16,
-        background: "rgba(255,255,255,0.04)",
-        opacity: 0.9,
-      }}
-    >
-      <div style={{ fontSize: 14, marginBottom: 8 }}>
-        Nessun contenuto trovato.
-      </div>
-
+      {/* overlay per leggibilità */}
       <div
         style={{
-          fontSize: 12,
-          opacity: 0.8,
-          marginBottom: 12,
-          lineHeight: 1.4,
-        }}
-      >
-        Prova a cambiare categoria o usa parole più generiche (es. “ECG”, “shock”, “accesso”).
-      </div>
-
-      <button
-        onClick={() => {
-          setQuery("");
-          setCategoria("Tutte");
-        }}
-        style={{
-          padding: "8px 10px",
-          borderRadius: 12,
-          border: "1px solid rgba(255,255,255,0.18)",
-          background: "rgba(0,0,0,0.18)",
-          cursor: "pointer",
-        }}
-      >
-        Reset filtri
-      </button>
-    </div>
-  ) : (
-    <>
-  {favoriteItems.length > 0 && (
-    <div style={{ gridColumn: "1 / -1", marginBottom: 6 }}>
-      <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
-        ⭐ Preferiti
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-          gap: 14,
-          marginBottom: 14,
-        }}
-      >
-    <>
-  {favoriteItems.length > 0 && (
-    <div style={{ gridColumn: "1 / -1", marginBottom: 6 }}>
-      <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>
-        ⭐ Preferiti
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-          gap: 14,
-          marginBottom: 14,
-        }}
-      >
-        {favoriteItems.map((i) => (
-          <article
-            key={safe(i.id)}
-            style={{
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 18,
-              padding: 16,
-              background: "rgba(255,255,255,0.04)",
-              boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 10,
-                alignItems: "baseline",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Link
-                    href={`/c/${encodeURIComponent(safe(i.id))}`}
-                    style={{ textDecoration: "none", color: "inherit" }}
-                  >
-                    <h2 style={{ marginTop: 0, marginBottom: 0 }}>
-                      {safe(i.titolo)}
-                    </h2>
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toggleFavorite(safe(i.id));
-                    }}
-                    aria-label={
-                      favorites.has(safe(i.id))
-                        ? "Rimuovi dai preferiti"
-                        : "Aggiungi ai preferiti"
-                    }
-                    title={favorites.has(safe(i.id)) ? "Preferito" : "Aggiungi ai preferiti"}
-                    style={{
-                      border: "1px solid rgba(255,255,255,0.18)",
-                      background: "rgba(0,0,0,0.18)",
-                      borderRadius: 999,
-                      padding: "2px 8px",
-                      cursor: "pointer",
-                      lineHeight: 1.2,
-                      opacity: favorites.has(safe(i.id)) ? 1 : 0.75,
-                    }}
-                  >
-                    {favorites.has(safe(i.id)) ? "★" : "☆"}
-                  </button>
-                </div>
-
-                <span style={{ fontSize: 12, opacity: 0.6 }}>
-                  {safe(i.categoria)}
-                </span>
-              </div>
-
-              {safe(i.premium).toUpperCase() === "TRUE" && (
-                <span
-                  style={{
-                    fontSize: 12,
-                    padding: "4px 8px",
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.18)",
-                  }}
-                >
-                  Premium 🔒
-                </span>
-              )}
-            </div>
-
-            <div style={{ height: 8 }} />
-
-            <p style={{ opacity: 0.8, lineHeight: 1.4 }}>
-              {safe(i.descrizione)}
-            </p>
-
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-              {safe(i.tag)
-                .split(",")
-                .map((t) => t.trim())
-                .filter(Boolean)
-                .map((t) => (
-                  <span
-                    key={t}
-                    style={{
-                      fontSize: 12,
-                      padding: "4px 8px",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      opacity: 0.8,
-                    }}
-                  >
-                    {t}
-                  </span>
-                ))}
-            </div>
-
-            <Link
-              href={`/c/${encodeURIComponent(safe(i.id))}`}
-              style={{
-                display: "inline-block",
-                marginTop: 8,
-                padding: "8px 10px",
-                borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.18)",
-                textDecoration: "none",
-              }}
-            >
-              Apri contenuto
-            </Link>
-          </article>
-        ))}
-      </div>
-
-      <div
-        style={{
-          height: 1,
-          background: "rgba(255,255,255,0.10)",
-          borderRadius: 999,
-          marginBottom: 14,
+          position: "absolute",
+          inset: 0,
+          background:
+            "linear-gradient(180deg, rgba(10,12,18,0.72), rgba(10,12,18,0.55))",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          pointerEvents: "none",
         }}
       />
-    </div>
-  )}
 
-  {otherItems.length > 0 ? (
-    otherItems.map((i) => (
-      <article
-        key={safe(i.id)}
-        style={{
-          border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 18,
-          padding: 16,
-          background: "rgba(255,255,255,0.04)",
-          boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
-        }}
-      >
-        <div
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <header
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 10,
-            alignItems: "baseline",
+            position: "sticky",
+            top: 0,
+            zIndex: 20,
+            marginBottom: 18,
+            paddingTop: 8,
+            paddingBottom: 12,
+            background: "rgba(10,12,18,0.55)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Link
-                href={`/c/${encodeURIComponent(safe(i.id))}`}
-                style={{ textDecoration: "none", color: "inherit" }}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <img
+                src="/logo.png"
+                alt="NurseDiary"
+                style={{
+                  width: 84,
+                  height: 84,
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  background: "rgba(255,255,255,0.10)",
+                  padding: 6,
+                  border: "1px solid rgba(255,255,255,0.22)",
+                }}
+              />
+              <h1
+                style={{
+                  margin: 0,
+                  letterSpacing: -0.3,
+                  background:
+                    "linear-gradient(90deg, rgba(91,217,255,1), rgba(165,110,255,1))",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  boxShadow: "0 8px 30px rgba(91,217,255,0.25)",
+                }}
               >
-                <h2 style={{ marginTop: 0, marginBottom: 0 }}>
-                  {safe(i.titolo)}
-                </h2>
-              </Link>
+                NurseDiary
+              </h1>
+            </div>
+
+            <p style={{ margin: 0, opacity: 0.75, lineHeight: 1.35 }}>
+              Biblioteca rapida di contenuti infermieristici. Cerca per titolo/tag e filtra per
+              categoria.
+            </p>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+              <div style={{ position: "relative", flex: "1 1 280px" }}>
+                <input
+                  type="search"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Cerca (es. ECG, PEA, accesso venoso...)"
+                  style={{
+                    width: "100%",
+                    padding: "12px 36px 12px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.18)",
+                    outline: "none",
+                  }}
+                />
+
+                {query && (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    aria-label="Cancella ricerca"
+                    style={{
+                      position: "absolute",
+                      right: 10,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "transparent",
+                      border: "none",
+                      color: "rgba(255,255,255,0.6)",
+                      fontSize: 16,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+                style={{
+                  padding: "12px 12px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(0,0,0,0.18)",
+                  outline: "none",
+                  minWidth: 160,
+                }}
+              >
+                {categorie.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
 
               <button
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  toggleFavorite(safe(i.id));
+                disabled={favoritesCount === 0}
+                onClick={() => {
+                  if (favoritesCount === 0) return;
+                  setOnlyFavorites((v) => !v);
                 }}
-                aria-label={
-                  favorites.has(safe(i.id))
-                    ? "Rimuovi dai preferiti"
-                    : "Aggiungi ai preferiti"
-                }
-                title={favorites.has(safe(i.id)) ? "Preferito" : "Aggiungi ai preferiti"}
+                aria-pressed={onlyFavorites}
+                title={favoritesCount === 0 ? "Nessun preferito salvato" : "Mostra solo preferiti"}
                 style={{
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  background: "rgba(0,0,0,0.18)",
+                  padding: "12px 14px",
                   borderRadius: 999,
-                  padding: "2px 8px",
-                  cursor: "pointer",
-                  lineHeight: 1.2,
-                  opacity: favorites.has(safe(i.id)) ? 1 : 0.75,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background:
+                    favoritesCount === 0
+                      ? "rgba(0,0,0,0.10)"
+                      : onlyFavorites
+                      ? "rgba(255,215,0,0.25)"
+                      : "rgba(0,0,0,0.18)",
+                  cursor: favoritesCount === 0 ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 13,
+                  whiteSpace: "nowrap",
+                  opacity: favoritesCount === 0 ? 0.5 : 1,
                 }}
               >
-                {favorites.has(safe(i.id)) ? "★" : "☆"}
+                ⭐ Preferiti ({favoritesCount})
               </button>
             </div>
-
-            <span style={{ fontSize: 12, opacity: 0.6 }}>
-              {safe(i.categoria)}
-            </span>
           </div>
+        </header>
 
-          {safe(i.premium).toUpperCase() === "TRUE" && (
-            <span
-              style={{
-                fontSize: 12,
-                padding: "4px 8px",
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.18)",
-              }}
-            >
-              Premium 🔒
-            </span>
-          )}
-        </div>
-
-        <div style={{ height: 8 }} />
-
-        <p style={{ opacity: 0.8, lineHeight: 1.4 }}>
-          {safe(i.descrizione)}
-        </p>
-
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-          {safe(i.tag)
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-            .map((t) => (
-              <span
-                key={t}
-                style={{
-                  fontSize: 12,
-                  padding: "4px 8px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  opacity: 0.8,
-                }}
-              >
-                {t}
-              </span>
-            ))}
-        </div>
-
-        <Link
-          href={`/c/${encodeURIComponent(safe(i.id))}`}
+        <section
           style={{
-            display: "inline-block",
-            marginTop: 8,
-            padding: "8px 10px",
-            borderRadius: 12,
-            border: "1px solid rgba(255,255,255,0.18)",
-            textDecoration: "none",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: 14,
+            paddingTop: 10,
           }}
         >
-          Apri contenuto
-        </Link>
-      </article>
-    ))
-  ) : (
-    <div
-      style={{
-        gridColumn: "1 / -1",
-        opacity: 0.8,
-        fontSize: 12,
-        padding: 12,
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.04)",
-      }}
-    >
-      Nessun altro contenuto oltre ai preferiti.
-    </div>
-  )}
-</>
+          {filtered.length === 0 ? (
+            <div
+              style={{
+                gridColumn: "1 / -1",
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 18,
+                padding: 16,
+                background: "rgba(255,255,255,0.04)",
+                opacity: 0.9,
+              }}
+            >
+              <div style={{ fontSize: 14, marginBottom: 8 }}>Nessun contenuto trovato.</div>
 
-  )}
-</section>
-          </div>
-  </main>
-);
+              <div
+                style={{
+                  fontSize: 12,
+                  opacity: 0.8,
+                  marginBottom: 12,
+                  lineHeight: 1.4,
+                }}
+              >
+                Prova a cambiare categoria o usa parole più generiche (es. “ECG”, “shock”, “accesso”).
+              </div>
 
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery("");
+                  setCategoria("Tutte");
+                }}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(0,0,0,0.18)",
+                  cursor: "pointer",
+                }}
+              >
+                Reset filtri
+              </button>
+            </div>
+          ) : (
+            <>
+              {favoriteItems.length > 0 && (
+                <div style={{ gridColumn: "1 / -1", marginBottom: 6 }}>
+                  <div style={{ fontSize: 13, opacity: 0.85, marginBottom: 8 }}>⭐ Preferiti</div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                      gap: 14,
+                      marginBottom: 14,
+                    }}
+                  >
+                    {favoriteItems.map((i) => (
+                      <ContentCard
+                        key={safe(i.id)}
+                        item={i}
+                        isFavorite={favorites.has(safe(i.id))}
+                        onToggleFavorite={toggleFavorite}
+                      />
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      height: 1,
+                      background: "rgba(255,255,255,0.10)",
+                      borderRadius: 999,
+                      marginBottom: 14,
+                    }}
+                  />
+                </div>
+              )}
+
+              {otherItems.length > 0 ? (
+                otherItems.map((i) => (
+                  <ContentCard
+                    key={safe(i.id)}
+                    item={i}
+                    isFavorite={favorites.has(safe(i.id))}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                ))
+              ) : (
+                <div
+                  style={{
+                    gridColumn: "1 / -1",
+                    opacity: 0.8,
+                    fontSize: 12,
+                    padding: 12,
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.04)",
+                  }}
+                >
+                  Nessun altro contenuto oltre ai preferiti.
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      </div>
+    </main>
+  );
+}
 
 
