@@ -80,7 +80,46 @@ function ContentCard({
   onToggleFavorite: (id: string) => void;
 }) {
   const id = safe(item.id);
+const [copied, setCopied] = useState(false);
 
+async function handleShare() {
+  const url =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/c/${encodeURIComponent(id)}`
+      : `/c/${encodeURIComponent(id)}`;
+
+  const title = safe(item.titolo) || "NurseDiary";
+  const text = safe(item.descrizione) || "Contenuto NurseDiary";
+
+  try {
+    // Web Share API (mobile)
+    // @ts-ignore
+    if (navigator.share) {
+      // @ts-ignore
+      await navigator.share({ title, text, url });
+      return;
+    }
+
+    // Fallback: copia link
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url);
+    } else {
+      // fallback vecchio stile
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1000);
+  } catch (e) {
+    // Se l’utente annulla la share, non è un errore grave
+    console.log("Share/copy annullato o fallito", e);
+  }
+}
   return (
     <article
       style={{
@@ -129,6 +168,27 @@ function ContentCard({
             >
               {isFavorite ? "★" : "☆"}
             </button>
+            <button
+  type="button"
+  onClick={(e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleShare();
+  }}
+  aria-label="Condividi"
+  title="Condividi"
+  style={{
+    border: "1px solid rgba(255,255,255,0.18)",
+    background: "rgba(0,0,0,0.18)",
+    borderRadius: 999,
+    padding: "2px 8px",
+    cursor: "pointer",
+    lineHeight: 1.2,
+    opacity: 0.85,
+  }}
+>
+  {copied ? "Copiato ✓" : "Condividi"}
+</button>
           </div>
 
           <span style={{ fontSize: 12, opacity: 0.6 }}>{safe(item.categoria)}</span>
