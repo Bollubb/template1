@@ -118,17 +118,32 @@ borderRadius: 24,
   >
   <header style={{ marginBottom: 18 }}>
   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-    <h1
-  style={{
-    margin: 0,
-    letterSpacing: -0.3,
-    background: "linear-gradient(90deg, rgba(91,217,255,1), rgba(165,110,255,1))",
-    WebkitBackgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-  }}
->
-  NurseDiary
-</h1>
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+  <img
+    src="/logo.png"
+    alt="NurseDiary"
+    style={{
+      width: 42,
+      height: 42,
+      borderRadius: 12,
+      objectFit: "contain",
+      background: "rgba(255,255,255,0.06)",
+      padding: 6,
+      border: "1px solid rgba(255,255,255,0.14)",
+    }}
+  />
+  <h1
+    style={{
+      margin: 0,
+      letterSpacing: -0.3,
+      background: "linear-gradient(90deg, rgba(91,217,255,1), rgba(165,110,255,1))",
+      WebkitBackgroundClip: "text",
+      WebkitTextFillColor: "transparent",
+    }}
+  >
+    NurseDiary
+  </h1>
+</div>
     <p style={{ margin: 0, opacity: 0.75, lineHeight: 1.35 }}>
       Biblioteca rapida di contenuti infermieristici. Cerca per titolo/tag e filtra per categoria.
     </p>
