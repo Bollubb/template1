@@ -213,6 +213,11 @@ return (
     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
       <div style={{ position: "relative", flex: "1 1 280px" }}>
   <input
+    type="search"
+  inputMode="search"
+  enterKeyHint="search"
+  autoComplete="off"
+  spellCheck={false}
     value={query}
     onChange={(e) => setQuery(e.target.value)}
     placeholder="Cerca (es. ECG, PEA, accesso venoso...)"
