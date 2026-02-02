@@ -172,7 +172,12 @@ return (
 }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
   <h2 style={{ marginTop: 0, marginBottom: 0 }}>{safe(i.titolo)}</h2>
+  <span style={{ fontSize: 12, opacity: 0.6 }}>
+    {safe(i.categoria)}
+  </span>
+</div>
   {safe(i.premium).toUpperCase() === "TRUE" && (
     <span style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.18)" }}>
       Premium 🔒
@@ -181,8 +186,28 @@ return (
 </div>
 <div style={{ height: 8 }} />
 
-          <p style={{ opacity: 0.8 }}>{safe(i.descrizione)}</p>
+          <p style={{ opacity: 0.8, lineHeight: 1.4 }}>{safe(i.descrizione)}</p>
 
+<div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+  {safe(i.tag)
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .map((t) => (
+      <span
+        key={t}
+        style={{
+          fontSize: 12,
+          padding: "4px 8px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.14)",
+          opacity: 0.8,
+        }}
+      >
+        {t}
+      </span>
+    ))}
+</div>
           {safe(i.link) && (
             <a
               href={safe(i.link)}
@@ -193,7 +218,9 @@ return (
                 marginTop: 8,
                 padding: "6px 10px",
                 borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.18)",
+                border: "1px solid rgba(255,255,255,0.25)",
+background: "rgba(255,255,255,0.06)",
+
                 textDecoration: "none",
               }}
             >
