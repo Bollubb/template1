@@ -94,18 +94,19 @@ export default function Home() {
     });
   }, [items, query, categoria]);
 
-  return (
-<main
-  style={{
-    maxWidth: 1080,
-    margin: "0 auto",
-    padding: "28px 16px 48px",
-    fontFamily:
-      'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
-  }}
->
+return (
+  <main
+    style={{
+      maxWidth: 1080,
+      margin: "0 auto",
+      padding: "28px 16px 48px",
+      fontFamily:
+        'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
+    }}
+  >
 
-     <header style={{ marginBottom: 18 }}>
+
+   <header style={{ marginBottom: 18 }}>
   <div
     style={{
       display: "flex",
