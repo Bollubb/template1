@@ -286,22 +286,134 @@ return (
   </div>
 </header>
 <section
+ {filtered.length === 0 ? (
+  <div
+    style={{
+      gridColumn: "1 / -1",
+      border: "1px solid rgba(255,255,255,0.12)",
+      borderRadius: 18,
+      padding: 16,
+      background: "rgba(255,255,255,0.04)",
+      opacity: 0.9,
+    }}
+  >
+    <div style={{ fontSize: 14, marginBottom: 8 }}>
+      Nessun contenuto trovato.
+    </div>
+
+    <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 12, lineHeight: 1.4 }}>
+      Prova a cambiare categoria o usa parole più generiche (es. “ECG”, “shock”, “accesso”).
+    </div>
+
+    <button
+      onClick={() => {
+        setQuery("");
+        setCategoria("Tutte");
+      }}
+      style={{
+        padding: "8px 10px",
+        borderRadius: 12,
+        border: "1px solid rgba(255,255,255,0.18)",
+        background: "rgba(0,0,0,0.18)",
+        cursor: "pointer",
+      }}
+    >
+      Reset filtri
+    </button>
+  </div>
+) : (
+  filtered.map((i) => (
+    <article
+  key={safe(i.id)}
   style={{
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: 14,
-    paddingTop: 10
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 18,
+    padding: 16,
+    background: "rgba(255,255,255,0.04)",
+    boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
   }}
 >
-      {filtered.map((i) => (
-        <article key={safe(i.id)}
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      gap: 10,
+      alignItems: "baseline",
+    }}
+  >
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+      <Link
+        href={`/c/${encodeURIComponent(safe(i.id))}`}
+        style={{ textDecoration: "none", color: "inherit" }}
+      >
+        <h2 style={{ marginTop: 0, marginBottom: 0 }}>
+          {safe(i.titolo)}
+        </h2>
+      </Link>
+
+      <span style={{ fontSize: 12, opacity: 0.6 }}>
+        {safe(i.categoria)}
+      </span>
+    </div>
+
+    {safe(i.premium).toUpperCase() === "TRUE" && (
+      <span
+        style={{
+          fontSize: 12,
+          padding: "4px 8px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.18)",
+        }}
+      >
+        Premium 🔒
+      </span>
+    )}
+  </div>
+
+  <div style={{ height: 8 }} />
+
+  <p style={{ opacity: 0.8, lineHeight: 1.4 }}>
+    {safe(i.descrizione)}
+  </p>
+
+  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+    {safe(i.tag)
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .map((t) => (
+        <span
+          key={t}
           style={{
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: 18,
-  padding: 16,
-  background: "rgba(255,255,255,0.04)",
-  boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
-}}
+            fontSize: 12,
+            padding: "4px 8px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)",
+            opacity: 0.8,
+          }}
+        >
+          {t}
+        </span>
+      ))}
+  </div>
+
+  <Link
+    href={`/c/${encodeURIComponent(safe(i.id))}`}
+    style={{
+      display: "inline-block",
+      marginTop: 8,
+      padding: "8px 10px",
+      borderRadius: 12,
+      border: "1px solid rgba(255,255,255,0.18)",
+      textDecoration: "none",
+    }}
+  >
+    Apri contenuto
+  </Link>
+</article>
+
+  ))
+)}
         >
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
   <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
