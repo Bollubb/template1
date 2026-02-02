@@ -1,3 +1,13 @@
 id,titolo,categoria,tag,descrizione,contenuto,link,immagine,tipo,premium
 ecg-7step,ECG dubbio? 7 step per non sbagliare,ECG,"ecg,ritmo,aritmie",Checklist rapida per interpretare un ECG dubbio in reparto o in urgenza.,,https://www.instagram.com/p/DT8Zkm0jZqw/?img_index,,carosello,FALSE
 pea-algoritmo,PEA: cosa controllare subito,Emergenze,"pea,acls,arresto",Algoritmo decisionale rapido,PEA = attività elettrica senza polso...,https://www.instagram.com/p/DULsHZJDaHJ/?img_index=1,,algoritmo,FALSE
+shock_anafilattico,Shock anafilattico,Emergenze,"anafilassi,shock,adrenalina,ABCDE","Cosa fare nei primi minuti: riconoscimento, adrenalina IM, monitoraggio e rivalutazione.","","","","carosello","FALSE"
+sepsi_screening,Sepsi: screening rapido,Emergenze,"sepsi,qSOFA,shock,antibiotico","Come identificare precocemente una sepsi e quali priorità nelle prime ore.","","","","carosello","FALSE"
+insuff_renale_acuta,Insufficienza renale acuta (AKI),Patologie,"AKI,creatinina,diuresi,nefro","Definizione, stadi, segnali di allarme e cosa monitorare.","","","","carosello","FALSE"
+iperkaliemia,Iperkaliemia: cosa fare,Elettroliti,"K+,ECG,calcio,insulina","Segni ECG, quando allertare e gestione iniziale step-by-step.","","","","carosello","FALSE"
+iponatriemia,Iponatriemia: rischio neurologico,Elettroliti,"Na+,confusione,convulsioni","Quando è urgente, cosa controllare e cosa evitare.","","","","carosello","FALSE"
+cvc_medicazione,Checklist medicazione CVC,Procedure,"CVC,medicazione,asepsi,clorexidina","Passaggi essenziali e errori comuni da evitare.","","","","checklist","TRUE"
+lavaggio_cvc,Lavaggio CVC: push-pause,Procedure,"CVC,flush,occlusione,push-pause","Perché si usa il push-pause, volumi e buone pratiche.","","","","checklist","FALSE"
+emogas_interpretazione,Emogas: lettura rapida,Emogas,"ABG,pH,CO2,HCO3,lattato","Metodo semplice per interpretare acid-base e lattato senza perdersi.","","","","carosello","FALSE"
+accesso_venoso_difficile,Accesso venoso difficile: algoritmo,Procedure,"CVP,ecoguida,midline,PICC","Scelta progressiva della strategia: cosa provare e quando escalation.","","","","carosello","FALSE"
+disfagia_screening,Disfagia: screening e sicurezza,Procedure,"disfagia,deglutizione,aspirazione","Cosa osservare, quando sospendere orale e quando segnalare.","_
