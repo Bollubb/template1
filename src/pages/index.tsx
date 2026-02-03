@@ -609,18 +609,416 @@ export default function Home() {
   );
 
   const HomeView = (
-    <section style={{ paddingTop: 6 }}>
-      <h2 style={{ margin: 0, marginBottom: 10 }}>Benvenuto in NurseDiary</h2>
-      <p style={{ margin: 0, opacity: 0.8 }}>Home (placeholder)</p>
-    </section>
-  );
+  <section style={{ paddingTop: 6 }}>
+    <div
+      style={{
+        border: "1px solid rgba(255,255,255,0.12)",
+        borderRadius: 20,
+        padding: 18,
+        background: "rgba(255,255,255,0.04)",
+        boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            display: "grid",
+            placeItems: "center",
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(91,217,255,0.10)",
+            fontSize: 22,
+          }}
+        >
+          ✨
+        </div>
+        <div>
+          <h2 style={{ margin: 0, letterSpacing: -0.2 }}>Benvenuto in NurseDiary</h2>
+          <p style={{ margin: "6px 0 0", opacity: 0.8, lineHeight: 1.35 }}>
+            Una biblioteca rapida di contenuti infermieristici: cerca, salva i preferiti e costruisci la tua raccolta.
+          </p>
+        </div>
+      </div>
 
-  const CarteView = (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+        <span
+          style={{
+            fontSize: 12,
+            padding: "5px 10px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,255,255,0.06)",
+            opacity: 0.9,
+          }}
+        >
+          Contenuti: <strong style={{ fontWeight: 700 }}>{items.length}</strong>
+        </span>
+
+        <span
+          style={{
+            fontSize: 12,
+            padding: "5px 10px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,210,90,0.12)",
+            opacity: 0.95,
+          }}
+        >
+          Preferiti: <strong style={{ fontWeight: 700 }}>{favorites.size}</strong>
+        </span>
+      </div>
+
+      <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+        {/* CTA 1: Azione, non tab */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("contenuti");
+            // micro-UX: portiamo subito il focus sulla ricerca
+            setTimeout(() => {
+              const el = document.querySelector('input[type="search"]') as HTMLInputElement | null;
+              el?.focus();
+            }, 50);
+          }}
+          style={{
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(91,217,255,0.18)",
+            color: "white",
+            borderRadius: 16,
+            padding: "12px 14px",
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+        >
+          <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>🔎 Trova subito quello che ti serve</div>
+          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+            Apri la ricerca e inizia a digitare (ECG, PEA, accessi venosi…).
+          </div>
+        </button>
+
+        {/* CTA 2: se non ha preferiti, invitalo; se li ha, porta a Contenuti + filtro */}
+        {favorites.size === 0 ? (
+          <button
+            type="button"
+            onClick={() => setActiveTab("contenuti")}
+            style={{
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(0,0,0,0.18)",
+              color: "white",
+              borderRadius: 16,
+              padding: "12px 14px",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>⭐ Crea la tua libreria</div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+              Aggiungi i primi preferiti per ritrovarli al volo.
+            </div>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("contenuti");
+              setOnlyFavorites(true);
+            }}
+            style={{
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,210,90,0.14)",
+              color: "white",
+              borderRadius: 16,
+              padding: "12px 14px",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>⭐ Apri i tuoi preferiti</div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+              Vai direttamente alla sezione “Preferiti” già filtrata.
+            </div>
+          </button>
+        )}
+
+        {/* CTA 3: teaser Carte (senza “Vai a Carte”) */}
+        <button
+          type="button"
+          onClick={() => setActiveTab("carte")}
+          style={{
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(165,110,255,0.16)",
+            color: "white",
+            borderRadius: 16,
+            padding: "12px 14px",
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+        >
+          <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>🃏 Scopri la collezione</div>
+          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+            Le carte arriveranno a breve: prepara lo spazio per la raccolta.
+          </div>
+        </button>
+      </div>
+    </div>
+
+    <div style={{ marginTop: 14, opacity: 0.75, fontSize: 13, lineHeight: 1.35 }}>
+      Suggerimento: usa ⭐ nei contenuti per creare una “lista rapida” delle cose che ti servono più spesso.
+    </div>
+  </section>
+);
+// --- CARTE VIEW (placeholder "reale") ---
+const CarteView = (() => {
+  // mini-stato solo per demo UI (non persiste)
+  const [pillole, setPillole] = useState(120);
+  const [lastPull, setLastPull] = useState<string | null>(null);
+
+  const rarities = [
+    { key: "comune", label: "Comune", emoji: "⬜️" },
+    { key: "rara", label: "Rara", emoji: "🟦" },
+    { key: "epica", label: "Epica", emoji: "🟪" },
+    { key: "leggendaria", label: "Leggendaria", emoji: "🟨" },
+  ] as const;
+
+  const slots = Array.from({ length: 12 }, (_, i) => i);
+
+  function demoOpenPack() {
+    if (pillole < 30) {
+      alert("Pillole insufficienti (demo).");
+      return;
+    }
+    setPillole((p) => p - 30);
+
+    // estrazione demo (solo testo)
+    const roll = Math.random();
+    const rarity =
+      roll < 0.70 ? rarities[0] : roll < 0.90 ? rarities[1] : roll < 0.985 ? rarities[2] : rarities[3];
+
+    const demoNames = [
+      "Bradicardia",
+      "Mobitz I",
+      "PEA",
+      "Noradrenalina",
+      "CVC",
+      "Emogas",
+      "Accesso venoso difficile",
+      "Calze elastocompressive",
+      "Pressione venosa centrale",
+      "Aminoglicosidi",
+      "Cefalosporine",
+      "Macrolidi",
+    ];
+
+    const name = demoNames[Math.floor(Math.random() * demoNames.length)];
+    setLastPull(`${rarity.emoji} ${rarity.label}: ${name}`);
+  }
+
+  function demoDustDuplicates() {
+    // demo: +15 pillole
+    setPillole((p) => p + 15);
+  }
+
+  return (
     <section style={{ paddingTop: 6 }}>
-      <h2 style={{ margin: 0, marginBottom: 10 }}>🃏 Carte</h2>
-      <p style={{ margin: 0, opacity: 0.8 }}>Carte (placeholder)</p>
+      <div
+        style={{
+          border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 20,
+          padding: 18,
+          background: "rgba(255,255,255,0.04)",
+          boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              display: "grid",
+              placeItems: "center",
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(165,110,255,0.14)",
+              fontSize: 22,
+            }}
+          >
+            🃏
+          </div>
+          <div>
+            <h2 style={{ margin: 0, letterSpacing: -0.2 }}>Carte</h2>
+            <p style={{ margin: "6px 0 0", opacity: 0.8, lineHeight: 1.35 }}>
+              Qui costruirai la tua collezione: bustine, rarità e doppioni (UI demo).
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+          <span
+            style={{
+              fontSize: 12,
+              padding: "5px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,255,255,0.06)",
+              opacity: 0.9,
+            }}
+          >
+            💊 Pillole: <strong style={{ fontWeight: 800 }}>{pillole}</strong>
+          </span>
+
+          <span
+            style={{
+              fontSize: 12,
+              padding: "5px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(0,0,0,0.16)",
+              opacity: 0.9,
+            }}
+          >
+            Slot collezione: <strong style={{ fontWeight: 800 }}>12</strong>
+          </span>
+
+          <span
+            style={{
+              fontSize: 12,
+              padding: "5px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(91,217,255,0.10)",
+              opacity: 0.95,
+            }}
+          >
+            Bustina (demo): <strong style={{ fontWeight: 800 }}>30</strong> pillole
+          </span>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginTop: 16 }}>
+          <button
+            type="button"
+            onClick={demoOpenPack}
+            style={{
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(165,110,255,0.18)",
+              color: "white",
+              borderRadius: 16,
+              padding: "12px 14px",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>📦 Apri una bustina (demo)</div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+              Simula un’apertura: riduce pillole e mostra un’estrazione casuale.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={demoDustDuplicates}
+            style={{
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,210,90,0.14)",
+              color: "white",
+              borderRadius: 16,
+              padding: "12px 14px",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>🧪 Distruggi doppioni (demo)</div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+              Aggiunge pillole (placeholder): più avanti useremo il vero inventario.
+            </div>
+          </button>
+
+          {lastPull && (
+            <div
+              style={{
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(0,0,0,0.18)",
+                borderRadius: 16,
+                padding: 12,
+                opacity: 0.95,
+              }}
+            >
+              <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Ultima estrazione</div>
+              <div style={{ fontWeight: 800 }}>{lastPull}</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+          <h3 style={{ margin: 0, fontSize: 16 }}>Collezione</h3>
+          <div style={{ fontSize: 13, opacity: 0.7 }}>0 / 24 (demo)</div>
+        </div>
+
+        <div
+          style={{
+            marginTop: 10,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {slots.map((i) => (
+            <div
+              key={i}
+              style={{
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 18,
+                padding: 14,
+                background: "rgba(255,255,255,0.03)",
+                minHeight: 120,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>Slot #{i + 1}</div>
+                <span style={{ fontSize: 12, opacity: 0.7 }}>🔒</span>
+              </div>
+
+              <div style={{ marginTop: 10, fontSize: 13, opacity: 0.8, lineHeight: 1.3 }}>
+                Coming soon
+                <div style={{ fontSize: 12, opacity: 0.65, marginTop: 6 }}>
+                  Qui comparirà la carta quando la sblocchi.
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                {rarities.map((r) => (
+                  <span
+                    key={r.key}
+                    style={{
+                      fontSize: 11,
+                      padding: "3px 7px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(0,0,0,0.14)",
+                      opacity: 0.85,
+                    }}
+                  >
+                    {r.emoji} {r.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginTop: 12, opacity: 0.75, fontSize: 13, lineHeight: 1.35 }}>
+          Prossimo step: inventario reale + bustine per espansioni (Antibiotici / Ritmi ECG) e doppioni → pillole.
+        </div>
+      </div>
     </section>
   );
+})();
 
   const ProfiloView = (
     <section style={{ paddingTop: 6 }}>
