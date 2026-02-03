@@ -777,6 +777,15 @@ function CarteTab() {
     { key: "leggendaria", label: "Leggendaria", emoji: "🟨" },
   ] as const;
 
+  const rarityColors: Record<(typeof rarities)[number]["key"], string> = {
+  comune: "rgba(180,180,180,0.75)",
+  rara: "rgba(91,217,255,0.85)",
+  epica: "rgba(165,110,255,0.90)",
+  leggendaria: "rgba(255,210,90,0.95)",
+};
+
+const activeColor = pullRarity ? rarityColors[pullRarity.key] : "rgba(255,255,255,0.20)";
+
   const slots = Array.from({ length: 12 }, (_, i) => i);
 
   // ✅ Persistenza (localStorage)
@@ -804,6 +813,9 @@ function CarteTab() {
   const [isOpening, setIsOpening] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [cardLabel, setCardLabel] = useState<string | null>(null);
+  const [pullRarity, setPullRarity] = useState<(typeof rarities)[number] | null>(null);
+  const [legendFlash, setLegendFlash] = useState(false);
+
 
 
   function demoOpenPack() {
@@ -814,10 +826,12 @@ function CarteTab() {
       return;
     }
 
-    setIsOpening(true);
-    setReveal(false);
-    setCardLabel(null);
-    setPillole((p) => p - 30);
+setIsOpening(true);
+setReveal(false);
+setCardLabel(null);
+setPullRarity(null);
+setLegendFlash(false);
+setPillole((p) => p - 30);
 
     const roll = Math.random();
     const rarity =
@@ -849,6 +863,15 @@ function CarteTab() {
       setIsOpening(false);
     }, 820);
   }
+setPullRarity(rarity);
+
+if (rarity.key === "leggendaria") {
+  setLegendFlash(true);
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    navigator.vibrate?.([40, 30, 40]);
+  }
+  setTimeout(() => setLegendFlash(false), 700);
+}
 
   function demoDustDuplicates() {
     setPillole((p) => p + 15);
@@ -931,15 +954,16 @@ function CarteTab() {
 
         <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
           {/* PACK ANIMATO */}
-          <div
-            style={{
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(0,0,0,0.18)",
-              borderRadius: 18,
-              padding: 14,
-              overflow: "hidden",
-            }}
-          >
+         <div
+  className={`packwrap ${legendFlash ? "legendFlash" : ""}`}
+  style={{
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(0,0,0,0.18)",
+    borderRadius: 18,
+    padding: 14,
+    overflow: "hidden",
+  }}
+>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>Bustina (demo)</div>
@@ -954,11 +978,12 @@ function CarteTab() {
                   width: 86,
                   height: 112,
                   borderRadius: 16,
-                  border: "1px solid rgba(255,255,255,0.18)",
-                  background: "linear-gradient(180deg, rgba(165,110,255,0.25), rgba(91,217,255,0.10))",
-                  boxShadow: isOpening
-                    ? "0 0 0 2px rgba(165,110,255,0.25), 0 20px 60px rgba(0,0,0,0.45)"
-                    : "0 18px 55px rgba(0,0,0,0.28)",
+                  background: `radial-gradient(circle, ${activeColor}, rgba(0,0,0,0))`,
+                  border: `1px solid ${activeColor}`,
+boxShadow: isOpening
+  ? `0 0 0 2px rgba(0,0,0,0.0), 0 0 22px ${activeColor}, 0 20px 60px rgba(0,0,0,0.45)`
+  : `0 0 0 1px rgba(255,255,255,0.06), 0 14px 50px rgba(0,0,0,0.30)`,
+
                   display: "grid",
                   placeItems: "center",
                   position: "relative",
@@ -1025,9 +1050,9 @@ function CarteTab() {
       bottom: 14,
       height: 108,
       borderRadius: 16,
-      border: "1px solid rgba(255,255,255,0.16)",
-      background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.18))",
-      boxShadow: "0 18px 60px rgba(0,0,0,0.45)",
+      border: `1px solid ${activeColor}`,
+      background: `linear-gradient(180deg, ${activeColor}, rgba(0,0,0,0.18))`,
+      boxShadow: reveal ? `0 0 28px ${activeColor}, 0 18px 60px rgba(0,0,0,0.45)` : "0 18px 60px rgba(0,0,0,0.45)",
       padding: 12,
       display: "flex",
       flexDirection: "column",
@@ -1036,7 +1061,8 @@ function CarteTab() {
   >
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
       <div style={{ fontWeight: 950, letterSpacing: -0.2 }}>Carta</div>
-      <span style={{ fontSize: 12, opacity: 0.75 }}>{cardLabel ? "Rivelata" : isOpening ? "..." : "Chiusa"}</span>
+      <span style={{ fontSize: 12, opacity: 0.75 }}>{pullRarity ? `${pullRarity.emoji} ${pullRarity.label}` : isOpening ? "…" : "Chiusa"}
+</span>
     </div>
 
     <div style={{ fontWeight: 900, lineHeight: 1.2 }}>
@@ -1231,7 +1257,19 @@ function CarteTab() {
             transform: scale(1);
           }
         }
-      `}
+      `
+          .packwrap.legendFlash {
+  animation: legendFlash 700ms ease-in-out;
+}
+
+@keyframes legendFlash {
+  0% { box-shadow: 0 0 0 rgba(0,0,0,0); }
+  20% { box-shadow: 0 0 0 2px rgba(255,210,90,0.25), 0 0 40px rgba(255,210,90,0.85); }
+  45% { box-shadow: 0 0 0 2px rgba(255,255,255,0.25), 0 0 60px rgba(255,255,255,0.75); }
+  70% { box-shadow: 0 0 0 2px rgba(255,210,90,0.22), 0 0 35px rgba(255,210,90,0.70); }
+  100% { box-shadow: 0 0 0 rgba(0,0,0,0); }
+}
+}
 .cardpop {
   transform: translateY(0px);
   opacity: 0.92;
