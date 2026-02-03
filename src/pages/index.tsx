@@ -713,7 +713,9 @@ function claimQuizReward() {
     <button
       onClick={onClick}
       style={{
-        flex: 1,
+        flex: "0 0 auto",
+        minWidth: 112,
+        whiteSpace: "nowrap",
         padding: "10px 10px",
         borderRadius: 14,
         border: "1px solid rgba(255,255,255,0.12)",
@@ -747,6 +749,22 @@ function claimQuizReward() {
         }}
       >
         <div style={{ position: "relative", width: "100%", paddingTop: "133%" }}>
+          {/* aura leggera solo per sbloccate (preview) - dietro l'immagine */}
+          {!locked && (
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: -30,
+                background: `radial-gradient(circle at 50% 40%, ${aura} 0%, rgba(0,0,0,0) 60%)`,
+                filter: "blur(18px)",
+                opacity: 0.32,
+                pointerEvents: "none",
+                zIndex: 0,
+              }}
+            />
+          )}
+
           <img
             src={card.image}
             alt={locked ? "Carta bloccata" : card.name}
@@ -757,52 +775,60 @@ function claimQuizReward() {
               height: "calc(100% - 20px)",
               objectFit: "contain",
               display: "block",
-              filter: locked ? "grayscale(1) blur(0.2px)" : "none",
-              opacity: locked ? 0.22 : 1,
+              filter: locked ? "grayscale(1) blur(0.25px)" : "none",
+              opacity: locked ? 0.18 : 1,
+              zIndex: 1,
             }}
           />
 
-          {/* aura leggera solo per sbloccate (preview) */}
-          {!locked && (
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: -30,
-                background: `radial-gradient(circle at 50% 40%, ${aura} 0%, rgba(0,0,0,0) 60%)`,
-                filter: "blur(18px)",
-                opacity: 0.35,
-                pointerEvents: "none",
-              }}
-            />
-          )}
-
+          {/* overlay locked con lucchetto centrale grande */}
           {locked && (
             <div
               aria-hidden
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.55))",
+                display: "grid",
+                placeItems: "center",
+                pointerEvents: "none",
+                zIndex: 2,
               }}
-            />
+            >
+              <div
+                style={{
+                  width: 84,
+                  height: 84,
+                  borderRadius: 999,
+                  background: "rgba(0,0,0,0.55)",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  boxShadow: "0 18px 50px rgba(0,0,0,0.55)",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <span style={{ fontSize: 48, lineHeight: 1 }}>🔒</span>
+              </div>
+            </div>
           )}
         </div>
 
+        {/* badges */}
         <div style={{ position: "absolute", left: 10, top: 10, display: "flex", gap: 8 }}>
-          <span
-            style={{
-              fontSize: 12,
-              padding: "4px 8px",
-              borderRadius: 999,
-              background: locked ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.40)",
-              border: "1px solid rgba(255,255,255,0.14)",
-              color: "white",
-              fontWeight: 800,
-            }}
-          >
-            {locked ? "🔒" : card.rarity.toUpperCase()}
-          </span>
+          {!locked && (
+            <span
+              style={{
+                fontSize: 12,
+                padding: "4px 8px",
+                borderRadius: 999,
+                background: "rgba(0,0,0,0.40)",
+                border: `1px solid ${aura}`,
+                color: "white",
+                fontWeight: 900,
+              }}
+            >
+              {card.rarity.toUpperCase()}
+            </span>
+          )}
 
           {!locked && owned > 1 && (
             <span
@@ -888,38 +914,24 @@ const Modal = ({ card }: { card: CardDef }) => {
           <div style={{ height: 10 }} />
 
           <div
-            style={{
-              borderRadius: 18,
-              overflow: "hidden",
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(0,0,0,0.25)",
-              position: "relative",
-            }}
-          >
-            
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: -60,
-                background: `radial-gradient(circle at 50% 45%, ${aura} 0%, rgba(0,0,0,0) 62%)`,
-                filter: "blur(22px)",
-                opacity: 0.9,
-                pointerEvents: "none",
-              }}
-            />
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: 0,
-                boxShadow: `0 0 60px 18px ${aura}`,
-                opacity: 0.55,
-                pointerEvents: "none",
-              }}
-            />
-            <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
-          </div>
+  style={{
+    borderRadius: 22,
+    padding: 10,
+    background: "rgba(0,0,0,0.18)",
+    boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 0 48px 14px ${aura}`,
+  }}
+>
+  <div
+    style={{
+      borderRadius: 18,
+      overflow: "hidden",
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: "rgba(0,0,0,0.25)",
+    }}
+  >
+    <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
+  </div>
+</div>
 
           <div style={{ height: 12 }} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -978,12 +990,23 @@ const Modal = ({ card }: { card: CardDef }) => {
 
       <div style={{ height: 12 }} />
 
-      <div style={{ display: "flex", gap: 10 }}>
-        <TabButton label="Negozio" active={cardsView === "negozio"} onClick={() => setCardsView("negozio")} />
-        <TabButton label="Collezione" active={cardsView === "collezione"} onClick={() => setCardsView("collezione")} />
-        <TabButton label="Scambia" active={cardsView === "scambia"} onClick={() => setCardsView("scambia")} />
-        <TabButton label="Guadagna" active={cardsView === "guadagna"} onClick={() => setCardsView("guadagna")} />
-      </div>
+      <div
+  style={{
+    display: "flex",
+    gap: 10,
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+    paddingBottom: 2,
+    scrollbarWidth: "none",
+  }}
+>
+  <div style={{ display: "flex", gap: 10, minWidth: "max-content" }}>
+    <TabButton label="Negozio" active={cardsView === "negozio"} onClick={() => setCardsView("negozio")} />
+    <TabButton label="Collezione" active={cardsView === "collezione"} onClick={() => setCardsView("collezione")} />
+    <TabButton label="Scambia" active={cardsView === "scambia"} onClick={() => setCardsView("scambia")} />
+    <TabButton label="Guadagna" active={cardsView === "guadagna"} onClick={() => setCardsView("guadagna")} />
+  </div>
+</div>
 
       <div style={{ height: 14 }} />
 
