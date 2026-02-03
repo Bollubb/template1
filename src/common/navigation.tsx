@@ -1,4 +1,3 @@
-import { FactSvg, HomeSvg } from '@svg/index';
 import { DOCS_URL, GITHUB_URL } from '@constants/index';
 
 const bottomNavigation: cat.BottomNavigation = [
@@ -6,13 +5,13 @@ const bottomNavigation: cat.BottomNavigation = [
     id: 1,
     label: 'Home',
     href: '/',
-    icon: <HomeSvg className="w-6 h-6" />,
+    icon: <span style={{ fontSize: 20 }}>🏠</span>,
   },
   {
     id: 2,
     label: 'Facts',
     href: '/facts',
-    icon: <FactSvg />,
+    icon: <span style={{ fontSize: 20 }}>📚</span>,
   },
 ];
 
