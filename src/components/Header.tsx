@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { CatLogoSvg } from '@svg/index';
+import CatLogoSvg from '@svg/CatLogoSvg';
 import NavBar from '@components/NavBar';
 import styles from '@styles/Header.module.css';
 
