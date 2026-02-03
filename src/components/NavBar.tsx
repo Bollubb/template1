@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { navBar } from '@common/navigation';
-import { ExternalSvg } from '@svg/index';
+import ExternalSvg from '@svg/ExternalSvg';
 import styles from '@styles/NavBar.module.css';
 
 /**
