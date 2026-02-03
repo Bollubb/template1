@@ -713,9 +713,7 @@ function claimQuizReward() {
     <button
       onClick={onClick}
       style={{
-        flex: "0 0 auto",
-        minWidth: 112,
-        whiteSpace: "nowrap",
+        flex: 1,
         padding: "10px 10px",
         borderRadius: 14,
         border: "1px solid rgba(255,255,255,0.12)",
@@ -914,24 +912,38 @@ const Modal = ({ card }: { card: CardDef }) => {
           <div style={{ height: 10 }} />
 
           <div
-  style={{
-    borderRadius: 22,
-    padding: 10,
-    background: "rgba(0,0,0,0.18)",
-    boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 0 48px 14px ${aura}`,
-  }}
->
-  <div
-    style={{
-      borderRadius: 18,
-      overflow: "hidden",
-      border: "1px solid rgba(255,255,255,0.12)",
-      background: "rgba(0,0,0,0.25)",
-    }}
-  >
-    <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
-  </div>
-</div>
+            style={{
+              borderRadius: 18,
+              overflow: "hidden",
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+              position: "relative",
+            }}
+          >
+            
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: -60,
+                background: `radial-gradient(circle at 50% 45%, ${aura} 0%, rgba(0,0,0,0) 62%)`,
+                filter: "blur(22px)",
+                opacity: 0.9,
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: 0,
+                boxShadow: `0 0 60px 18px ${aura}`,
+                opacity: 0.55,
+                pointerEvents: "none",
+              }}
+            />
+            <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
+          </div>
 
           <div style={{ height: 12 }} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -990,23 +1002,12 @@ const Modal = ({ card }: { card: CardDef }) => {
 
       <div style={{ height: 12 }} />
 
-      <div
-  style={{
-    display: "flex",
-    gap: 10,
-    overflowX: "auto",
-    WebkitOverflowScrolling: "touch",
-    paddingBottom: 2,
-    scrollbarWidth: "none",
-  }}
->
-  <div style={{ display: "flex", gap: 10, minWidth: "max-content" }}>
-    <TabButton label="Negozio" active={cardsView === "negozio"} onClick={() => setCardsView("negozio")} />
-    <TabButton label="Collezione" active={cardsView === "collezione"} onClick={() => setCardsView("collezione")} />
-    <TabButton label="Scambia" active={cardsView === "scambia"} onClick={() => setCardsView("scambia")} />
-    <TabButton label="Guadagna" active={cardsView === "guadagna"} onClick={() => setCardsView("guadagna")} />
-  </div>
-</div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <TabButton label="Negozio" active={cardsView === "negozio"} onClick={() => setCardsView("negozio")} />
+        <TabButton label="Collezione" active={cardsView === "collezione"} onClick={() => setCardsView("collezione")} />
+        <TabButton label="Scambia" active={cardsView === "scambia"} onClick={() => setCardsView("scambia")} />
+        <TabButton label="Guadagna" active={cardsView === "guadagna"} onClick={() => setCardsView("guadagna")} />
+      </div>
 
       <div style={{ height: 14 }} />
 
