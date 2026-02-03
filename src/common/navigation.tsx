@@ -1,4 +1,4 @@
-import { BreedSvg, FactSvg, HomeSvg } from '@svg/index';
+import { FactSvg, HomeSvg } from '@svg/index';
 import { DOCS_URL, GITHUB_URL } from '@constants/index';
 
 const bottomNavigation: cat.BottomNavigation = [
@@ -14,19 +14,12 @@ const bottomNavigation: cat.BottomNavigation = [
     href: '/facts',
     icon: <FactSvg />,
   },
-  {
-    id: 3,
-    label: 'Breeds',
-    href: '/breeds',
-    icon: <BreedSvg />,
-  },
 ];
 
 const navBar: cat.Navbar = [
   { id: 1, label: 'Docs', href: DOCS_URL, external: true },
   { id: 2, label: 'Github', href: GITHUB_URL, external: true },
   { id: 3, label: 'Facts', href: '/facts', external: false },
-  { id: 4, label: 'Breeds', href: '/breeds', external: false },
 ];
 
 export { bottomNavigation, navBar };
