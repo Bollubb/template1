@@ -338,7 +338,158 @@ function CarteTab() {
   const [activeRarity, setActiveRarity] = useState<RarityKey | null>(null);
   const [legendFlash, setLegendFlash] = useState(false);
 
-  const [cardsView, setCardsView] = useState<"negozio" | "collezione" | "scambia">("negozio");
+  const [cardsView, setCardsView] = useState<"negozio" | "collezione" | "scambia" | "guadagna">("negozio");
+
+// Guadagna pillole: quiz
+type QuizMode = "giornaliero" | "settimanale";
+type QuizQ = { id: string; q: string; options: string[]; answer: number };
+
+const QUIZ_BANK: QuizQ[] = useMemo(
+  () => [
+    { id: "q1", q: "Qual è la sede più comune per misurare la saturazione SpO₂?", options: ["Dito", "Tibia", "Addome", "Scapola"], answer: 0 },
+    { id: "q2", q: "La tecnica “push-pause” nel lavaggio di un accesso venoso serve a:", options: ["Ridurre la pressione arteriosa", "Creare turbolenza e prevenire occlusioni", "Aumentare la diuresi", "Sterilizzare il catetere"], answer: 1 },
+    { id: "q3", q: "In caso di sospetta ipoglicemia, il primo controllo utile è:", options: ["ECG", "Glicemia capillare", "Saturazione", "Temperatura"], answer: 1 },
+    { id: "q4", q: "Un paziente con dispnea improvvisa: quale dato raccogli per primo?", options: ["Peso", "SpO₂ e FR", "Altezza", "Anamnesi familiare"], answer: 1 },
+    { id: "q5", q: "Per ridurre contaminazioni in emocoltura è importante:", options: ["Usare guanti sterili e antisepsi corretta", "Prelevare sempre dopo antibiotico", "Agitare energicamente il flacone", "Usare solo aghi piccoli"], answer: 0 },
+    { id: "q6", q: "Un CVC appena medicato: cosa va documentato sempre?", options: ["Colore dei capelli", "Data/ora e condizioni del sito", "Numero di passi", "Marca del cerotto"], answer: 1 },
+    { id: "q7", q: "La PEA (attività elettrica senza polso) richiede:", options: ["Solo ossigeno", "RCP + ricerca cause reversibili", "Antibiotico immediato", "Solo fluidi"], answer: 1 },
+    { id: "q8", q: "Un segno tipico di disidratazione è:", options: ["Cute calda e sudata", "Mucose secche", "Bradicardia severa sempre", "Tosse produttiva"], answer: 1 },
+    { id: "q9", q: "Nel dolore toracico acuto, una priorità è:", options: ["Misurare la circonferenza vita", "ECG precoce", "Fare fisioterapia", "Dare latte"], answer: 1 },
+    { id: "q10", q: "Una corretta igiene delle mani dura (in media) almeno:", options: ["2 secondi", "10–20 secondi", "1 minuto", "5 minuti"], answer: 1 },
+    { id: "q11", q: "Un parametro che indica possibile sepsi è:", options: ["Febbre + tachicardia + FR aumentata", "Solo prurito", "Solo insonnia", "Solo fame"], answer: 0 },
+    { id: "q12", q: "La scala AVPU valuta:", options: ["Dolore addominale", "Stato di coscienza", "Tono muscolare", "Colore della cute"], answer: 1 },
+    { id: "q13", q: "Nel sospetto shock, quale parametro è molto utile monitorare?", options: ["Diuresi oraria", "Colore occhi", "Numero di SMS", "Capelli"], answer: 0 },
+    { id: "q14", q: "Prima di un prelievo arterioso, è utile verificare:", options: ["Test di Allen (se indicato)", "Glicemia postprandiale", "Visione 10/10", "BMI"], answer: 0 },
+    { id: "q15", q: "Un campione di urine per urinocoltura dovrebbe essere:", options: ["Primo mitto scartato, poi mitto intermedio", "Sempre raccolto dalla borsa catetere", "Mescolato con sapone", "Tenuto a temperatura ambiente 24h"], answer: 0 },
+    { id: "q16", q: "Nel paziente ipossico, una delle prime verifiche pratiche è:", options: ["Che il sensore SpO₂ sia posizionato correttamente", "Che abbia mangiato", "Che dorma", "Che abbia scarpe comode"], answer: 0 },
+    { id: "q17", q: "Il rischio di infezione aumenta con:", options: ["Manipolazioni frequenti del device", "Igiene mani corretta", "Antisepsi adeguata", "Medicazioni protette"], answer: 0 },
+    { id: "q18", q: "Un segno compatibile con extravasazione è:", options: ["Gonfiore e dolore nel sito", "Aumento appetito", "Visione migliore", "Riduzione sete"], answer: 0 },
+    { id: "q19", q: "L’obiettivo principale della medicazione sterile è:", options: ["Decorare il sito", "Ridurre rischio infezione e proteggere il punto di inserzione", "Aumentare la pressione", "Ridurre la glicemia"], answer: 1 },
+    { id: "q20", q: "In triage/urgenza, il dolore (NRS) è:", options: ["Un parametro non necessario", "Un parametro da rilevare e rivalutare", "Solo per bambini", "Solo per sportivi"], answer: 1 },
+  ],
+  []
+);
+
+const [earnTab, setEarnTab] = useState<QuizMode>("giornaliero");
+
+const [dailyDoneKey, setDailyDoneKey] = useState<string>(() => {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("nd_quiz_daily_done") || "";
+});
+
+const [weeklyDoneKey, setWeeklyDoneKey] = useState<string>(() => {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem("nd_quiz_weekly_done") || "";
+});
+
+const [quiz, setQuiz] = useState<{
+  mode: QuizMode;
+  status: "idle" | "running" | "done";
+  idx: number;
+  correct: number;
+  selected: number | null;
+  questions: QuizQ[];
+}>({ mode: "giornaliero", status: "idle", idx: 0, correct: 0, selected: null, questions: [] });
+
+function todayKeyISO() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function isoWeekKey() {
+  const d = new Date();
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const y = date.getUTCFullYear();
+  return `${y}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+function mulberry32(seed: number) {
+  return function () {
+    let t = (seed += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seedFromString(s: string) {
+  let h = 1779033703 ^ s.length;
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(h ^ s.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return (h >>> 0) || 1;
+}
+
+function pickQuizQuestions(mode: QuizMode) {
+  const key = mode === "giornaliero" ? todayKeyISO() : isoWeekKey();
+  const seed = seedFromString(`${mode}-${key}`);
+  const rnd = mulberry32(seed);
+  const arr = [...QUIZ_BANK];
+  // fisher-yates seeded
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  const n = mode === "giornaliero" ? 5 : 12;
+  return arr.slice(0, Math.min(n, arr.length));
+}
+
+function quizDoneFor(mode: QuizMode) {
+  const key = mode === "giornaliero" ? todayKeyISO() : isoWeekKey();
+  return mode === "giornaliero" ? dailyDoneKey === key : weeklyDoneKey === key;
+}
+
+function startQuiz(mode: QuizMode) {
+  if (quizDoneFor(mode)) return;
+  const questions = pickQuizQuestions(mode);
+  setQuiz({ mode, status: "running", idx: 0, correct: 0, selected: null, questions });
+}
+
+function selectAnswer(choiceIdx: number) {
+  setQuiz((q) => ({ ...q, selected: choiceIdx }));
+}
+
+function nextQuestion() {
+  setQuiz((q) => {
+    if (q.status !== "running") return q;
+    const current = q.questions[q.idx];
+    const isCorrect = q.selected === current.answer;
+    const nextIdx = q.idx + 1;
+    if (nextIdx >= q.questions.length) {
+      return { ...q, status: "done", correct: q.correct + (isCorrect ? 1 : 0), selected: null, idx: q.idx };
+    }
+    return { ...q, idx: nextIdx, correct: q.correct + (isCorrect ? 1 : 0), selected: null };
+  });
+}
+
+function claimQuizReward() {
+  setQuiz((q) => {
+    if (q.status !== "done") return q;
+    const perCorrect = q.mode === "giornaliero" ? 2 : 3;
+    const earned = q.correct * perCorrect;
+    const key = q.mode === "giornaliero" ? todayKeyISO() : isoWeekKey();
+    setPillole((p) => p + earned);
+    if (typeof window !== "undefined") {
+      if (q.mode === "giornaliero") {
+        setDailyDoneKey(key);
+        localStorage.setItem("nd_quiz_daily_done", key);
+      } else {
+        setWeeklyDoneKey(key);
+        localStorage.setItem("nd_quiz_weekly_done", key);
+      }
+    }
+    return { ...q, status: "idle", idx: 0, correct: 0, selected: null, questions: [] };
+  });
+}
+
 
   // Collezione: filtri / ordinamento
   const [filterSet, setFilterSet] = useState<"tutti" | "antibiotici">("tutti");
@@ -593,17 +744,39 @@ function CarteTab() {
           minHeight: 128,
         }}
       >
-        <img
-          src={card.image}
-          alt={card.name}
-          style={{
-            width: "100%",
-            height: 160,
-            objectFit: "cover",
-            filter: locked ? "grayscale(1) blur(0.4px)" : "none",
-            opacity: locked ? 0.32 : 1,
-          }}
-        />
+        <div
+  style={{
+    position: "relative",
+    borderRadius: 18,
+    overflow: "hidden",
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(0,0,0,0.35)",
+  }}
+>
+  <div
+    aria-hidden
+    style={{
+      position: "absolute",
+      inset: -40,
+      background: `radial-gradient(circle at 50% 40%, ${aura} 0%, rgba(0,0,0,0) 60%)`,
+      filter: "blur(18px)",
+      opacity: 0.95,
+    }}
+  />
+  <img
+    src={card.image}
+    alt={card.name}
+    style={{
+      position: "relative",
+      zIndex: 1,
+      width: "100%",
+      height: 320,
+      objectFit: "contain",
+      display: "block",
+      padding: 12,
+    }}
+  />
+</div>
         <div style={{ position: "absolute", left: 10, top: 10, display: "flex", gap: 8 }}>
           <span
             style={{
@@ -678,7 +851,7 @@ function CarteTab() {
             border: "1px solid rgba(255,255,255,0.14)",
             background: "rgba(10,10,10,0.88)",
             padding: 14,
-            boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 34px 6px ${aura}`,
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 50px 12px ${aura}`,
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
@@ -772,6 +945,7 @@ function CarteTab() {
         <TabButton label="Negozio" active={cardsView === "negozio"} onClick={() => setCardsView("negozio")} />
         <TabButton label="Collezione" active={cardsView === "collezione"} onClick={() => setCardsView("collezione")} />
         <TabButton label="Scambia" active={cardsView === "scambia"} onClick={() => setCardsView("scambia")} />
+        <TabButton label="Guadagna" active={cardsView === "guadagna"} onClick={() => setCardsView("guadagna")} />
       </div>
 
       <div style={{ height: 14 }} />
@@ -1148,6 +1322,157 @@ function CarteTab() {
           </div>
         </div>
       )}
+
+      {cardsView === "guadagna" && (
+  <div>
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 18,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(0,0,0,0.20)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ color: "white", fontWeight: 1000 }}>Guadagna pillole</div>
+        <div style={{ opacity: 0.8, fontWeight: 900, color: "white" }}>
+          +2/corretta (daily) • +3/corretta (weekly)
+        </div>
+      </div>
+
+      <div style={{ height: 10 }} />
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <TabButton label="Quiz giornaliero" active={earnTab === "giornaliero"} onClick={() => setEarnTab("giornaliero")} />
+        <TabButton label="Quiz settimanale" active={earnTab === "settimanale"} onClick={() => setEarnTab("settimanale")} />
+      </div>
+
+      <div style={{ height: 12 }} />
+
+      {quiz.status === "idle" && (
+        <div>
+          <div style={{ color: "rgba(255,255,255,0.85)", fontWeight: 900, lineHeight: 1.3 }}>
+            {earnTab === "giornaliero" ? "5 domande • una volta al giorno" : "12 domande • una volta a settimana"}
+          </div>
+          <div style={{ height: 10 }} />
+          {quizDoneFor(earnTab) ? (
+            <div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 800 }}>
+              ✅ Già completato {earnTab === "giornaliero" ? "oggi" : "questa settimana"}.
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => startQuiz(earnTab)}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: 16,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(91,217,255,0.18)",
+                color: "white",
+                fontWeight: 1000,
+                cursor: "pointer",
+              }}
+            >
+              Inizia quiz
+            </button>
+          )}
+        </div>
+      )}
+
+      {quiz.status === "running" && (
+        <div>
+          <div style={{ color: "white", fontWeight: 1000 }}>
+            Domanda {quiz.idx + 1}/{quiz.questions.length}
+          </div>
+          <div style={{ height: 10 }} />
+          <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900, lineHeight: 1.35 }}>
+            {quiz.questions[quiz.idx]?.q}
+          </div>
+          <div style={{ height: 10 }} />
+
+          <div style={{ display: "grid", gap: 10 }}>
+            {quiz.questions[quiz.idx]?.options.map((opt, i) => {
+              const selected = quiz.selected === i;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => selectAnswer(i)}
+                  style={{
+                    textAlign: "left",
+                    padding: "12px 12px",
+                    borderRadius: 16,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: selected ? "rgba(165,110,255,0.22)" : "rgba(0,0,0,0.22)",
+                    color: "white",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <button
+            type="button"
+            onClick={nextQuestion}
+            disabled={quiz.selected === null}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: quiz.selected === null ? "rgba(255,255,255,0.08)" : "rgba(91,217,255,0.18)",
+              color: "white",
+              fontWeight: 1000,
+              cursor: quiz.selected === null ? "not-allowed" : "pointer",
+            }}
+          >
+            {quiz.idx + 1 >= quiz.questions.length ? "Concludi" : "Avanti"}
+          </button>
+        </div>
+      )}
+
+      {quiz.status === "done" && (
+        <div>
+          <div style={{ color: "white", fontWeight: 1000 }}>Quiz completato</div>
+          <div style={{ height: 8 }} />
+          <div style={{ color: "rgba(255,255,255,0.85)", fontWeight: 900 }}>
+            Risposte corrette: {quiz.correct}/{quiz.questions.length}
+          </div>
+          <div style={{ height: 10 }} />
+          <button
+            type="button"
+            onClick={claimQuizReward}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,210,90,0.20)",
+              color: "white",
+              fontWeight: 1000,
+              cursor: "pointer",
+            }}
+          >
+            Riscatta pillole
+          </button>
+        </div>
+      )}
+    </div>
+
+    <div style={{ height: 12 }} />
+
+    <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 700, lineHeight: 1.35 }}>
+      Nota: i quiz sono pensati come mini-gioco didattico e non sostituiscono protocolli/linee guida locali.
+    </div>
+  </div>
+)}
 
       {modalCard && <Modal card={modalCard} />}
     </div>
