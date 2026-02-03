@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { FLAGS_URL } from '@constants/index';
-import { WikipediaSvg } from '@svg/index';
+import WikipediaSvg from '@svg/WikipediaSvg';
 import styles from '@styles/Breed.module.css';
 import Ratings from './Ratings';
 
