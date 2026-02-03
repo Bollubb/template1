@@ -1,4 +1,4 @@
-import { CrossSvg } from '@svg/index';
+import CrossSvg from '@svg/CrossSvg';
 import styles from '@styles/Toasts.module.css';
 
 /**
