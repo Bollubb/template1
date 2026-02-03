@@ -780,6 +780,9 @@ const [lastPull, setLastPull] = useState<string | null>(() => {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("nd_lastPull");
 });
+const [isOpening, setIsOpening] = useState(false);
+const [reveal, setReveal] = useState(false);
+  
 useEffect(() => {
   if (typeof window === "undefined") return;
   localStorage.setItem("nd_pillole", String(pillole));
@@ -800,10 +803,50 @@ useEffect(() => {
   const slots = Array.from({ length: 12 }, (_, i) => i);
 
   function demoOpenPack() {
-    if (pillole < 30) {
-      alert("Pillole insufficienti (demo).");
-      return;
-    }
+  if (isOpening) return;
+
+  if (pillole < 30) {
+    alert("Pillole insufficienti (demo).");
+    return;
+  }
+
+  setIsOpening(true);
+  setReveal(false);
+  setLastPull(null);
+
+  // “costo” subito
+  setPillole((p) => p - 30);
+
+  // estrazione demo (solo testo)
+  const roll = Math.random();
+  const rarity =
+    roll < 0.7 ? rarities[0] : roll < 0.9 ? rarities[1] : roll < 0.985 ? rarities[2] : rarities[3];
+
+  const demoNames = [
+    "Cefalosporine",
+    "Penicilline",
+    "Fluorochinoloni",
+    "Noradrenalina",
+    "Glicopeptidi",
+    "Carbapenemi",
+    "Sulfonamidi",
+    "Licosamidi",
+    "Tetracicline",
+    "Aminoglicosidi",
+    "Nitroimidazoli",
+    "Macrolidi",
+  ];
+
+  const name = demoNames[Math.floor(Math.random() * demoNames.length)];
+  const result = `${rarity.emoji} ${rarity.label}: ${name}`;
+
+  // timing animazione
+  setTimeout(() => setReveal(true), 520);
+  setTimeout(() => {
+    setLastPull(result);
+    setIsOpening(false);
+  }, 820);
+}
     setPillole((p) => p - 30);
 
     // estrazione demo (solo testo)
@@ -812,18 +855,18 @@ useEffect(() => {
       roll < 0.70 ? rarities[0] : roll < 0.90 ? rarities[1] : roll < 0.985 ? rarities[2] : rarities[3];
 
     const demoNames = [
-      "Bradicardia",
-      "Mobitz I",
-      "PEA",
-      "Noradrenalina",
-      "CVC",
-      "Emogas",
-      "Accesso venoso difficile",
-      "Calze elastocompressive",
-      "Pressione venosa centrale",
-      "Aminoglicosidi",
-      "Cefalosporine",
-      "Macrolidi",
+    "Cefalosporine",
+    "Penicilline",
+    "Fluorochinoloni",
+    "Noradrenalina",
+    "Glicopeptidi",
+    "Carbapenemi",
+    "Sulfonamidi",
+    "Licosamidi",
+    "Tetracicline",
+    "Aminoglicosidi",
+    "Nitroimidazoli",
+    "Macrolidi",
     ];
 
     const name = demoNames[Math.floor(Math.random() * demoNames.length)];
@@ -911,24 +954,109 @@ useEffect(() => {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10, marginTop: 16 }}>
+          <div
+  style={{
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(0,0,0,0.18)",
+    borderRadius: 18,
+    padding: 14,
+    overflow: "hidden",
+  }}
+>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+    <div>
+      <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>Bustina (demo)</div>
+      <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
+        Premi “Apri” per vedere l’estrazione con animazione.
+      </div>
+    </div>
+
+    <div
+      className={`pack ${isOpening ? "opening" : ""}`}
+      style={{
+        width: 86,
+        height: 112,
+        borderRadius: 16,
+        border: "1px solid rgba(255,255,255,0.18)",
+        background: "linear-gradient(180deg, rgba(165,110,255,0.25), rgba(91,217,255,0.10))",
+        boxShadow: isOpening ? "0 0 0 2px rgba(165,110,255,0.25), 0 20px 60px rgba(0,0,0,0.45)" : "0 18px 55px rgba(0,0,0,0.28)",
+        display: "grid",
+        placeItems: "center",
+        position: "relative",
+      }}
+    >
+      <div style={{ fontSize: 26, opacity: 0.95 }}>📦</div>
+
+      {/* “taglio” superiore */}
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          left: 10,
+          right: 10,
+          height: 10,
+          borderRadius: 999,
+          background: "rgba(255,255,255,0.12)",
+        }}
+      />
+
+      {/* glow */}
+      {isOpening && (
+        <div
+          className="glow"
+          style={{
+            position: "absolute",
+            inset: -30,
+            borderRadius: 999,
+            background: "radial-gradient(circle, rgba(165,110,255,0.35), rgba(0,0,0,0))",
+          }}
+        />
+      )}
+    </div>
+  </div>
+
+  {/* REVEAL */}
+  <div
+    className={`reveal ${reveal ? "show" : ""}`}
+    style={{
+      marginTop: 12,
+      borderRadius: 16,
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: "rgba(255,255,255,0.04)",
+      padding: 12,
+      opacity: reveal ? 1 : 0,
+      transform: reveal ? "translateY(0px)" : "translateY(10px)",
+      transition: "opacity 260ms ease, transform 260ms ease",
+    }}
+  >
+    <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Carta rivelata</div>
+    <div style={{ fontWeight: 900 }}>
+      {lastPull ? lastPull : isOpening ? "…" : "Apri una bustina per estrarre una carta"}
+    </div>
+  </div>
+</div>
           <button
-            type="button"
-            onClick={demoOpenPack}
-            style={{
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(165,110,255,0.18)",
-              color: "white",
-              borderRadius: 16,
-              padding: "12px 14px",
-              cursor: "pointer",
-              textAlign: "left",
-            }}
-          >
-            <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>📦 Apri una bustina (demo)</div>
-            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-              Simula un’apertura: riduce pillole e mostra un’estrazione casuale.
-            </div>
-          </button>
+  type="button"
+  onClick={demoOpenPack}
+  disabled={isOpening}
+  style={{
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(165,110,255,0.18)",
+    color: "white",
+    borderRadius: 16,
+    padding: "12px 14px",
+    cursor: isOpening ? "not-allowed" : "pointer",
+    opacity: isOpening ? 0.7 : 1,
+    textAlign: "left",
+  }}
+>
+  <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>
+    {isOpening ? "📦 Apertura in corso…" : "📦 Apri una bustina (demo)"}
+  </div>
+  <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+    Simula un’apertura: riduce pillole e mostra un’estrazione casuale.
+  </div>
+</button>
 
           <button
             type="button"
@@ -1031,6 +1159,28 @@ useEffect(() => {
           Prossimo step: inventario reale + bustine per espansioni (Antibiotici / Ritmi ECG) e doppioni → pillole.
         </div>
       </div>
+      <style jsx>{`
+  .pack.opening {
+    animation: packShake 520ms ease-in-out;
+  }
+  .glow {
+    animation: glowPulse 520ms ease-in-out;
+  }
+  @keyframes packShake {
+    0% { transform: rotate(0deg) translateY(0px); }
+    20% { transform: rotate(-6deg) translateY(-2px); }
+    40% { transform: rotate(6deg) translateY(-1px); }
+    60% { transform: rotate(-4deg) translateY(-2px); }
+    80% { transform: rotate(4deg) translateY(-1px); }
+    100% { transform: rotate(0deg) translateY(0px); }
+  }
+  @keyframes glowPulse {
+    0% { opacity: 0.2; transform: scale(0.95); }
+    50% { opacity: 1; transform: scale(1.05); }
+    100% { opacity: 0.25; transform: scale(1.0); }
+  }
+`}</style>
+
     </section>
   );
 })();
