@@ -726,9 +726,12 @@ function claimQuizReward() {
     </button>
   );
 
+  
   const CardTile = ({ card }: { card: CardDef }) => {
     const owned = countOf(card.id);
     const locked = owned <= 0;
+    const aura = RARITY_COLORS[card.rarity];
+    // aspect ratio ~ 3:4
     return (
       <div
         onClick={() => {
@@ -741,42 +744,51 @@ function claimQuizReward() {
           border: "1px solid rgba(255,255,255,0.12)",
           background: "rgba(0,0,0,0.22)",
           cursor: locked ? "default" : "pointer",
-          minHeight: 128,
         }}
       >
-        <div
-  style={{
-    position: "relative",
-    borderRadius: 18,
-    overflow: "hidden",
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.35)",
-  }}
->
-  <div
-    aria-hidden
-    style={{
-      position: "absolute",
-      inset: -40,
-      background: `radial-gradient(circle at 50% 40%, ${aura} 0%, rgba(0,0,0,0) 60%)`,
-      filter: "blur(18px)",
-      opacity: 0.95,
-    }}
-  />
-  <img
-    src={card.image}
-    alt={card.name}
-    style={{
-      position: "relative",
-      zIndex: 1,
-      width: "100%",
-      height: 320,
-      objectFit: "contain",
-      display: "block",
-      padding: 12,
-    }}
-  />
-</div>
+        <div style={{ position: "relative", width: "100%", paddingTop: "133%" }}>
+          <img
+            src={card.image}
+            alt={locked ? "Carta bloccata" : card.name}
+            style={{
+              position: "absolute",
+              inset: 10,
+              width: "calc(100% - 20px)",
+              height: "calc(100% - 20px)",
+              objectFit: "contain",
+              display: "block",
+              filter: locked ? "grayscale(1) blur(0.2px)" : "none",
+              opacity: locked ? 0.22 : 1,
+            }}
+          />
+
+          {/* aura leggera solo per sbloccate (preview) */}
+          {!locked && (
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: -30,
+                background: `radial-gradient(circle at 50% 40%, ${aura} 0%, rgba(0,0,0,0) 60%)`,
+                filter: "blur(18px)",
+                opacity: 0.35,
+                pointerEvents: "none",
+              }}
+            />
+          )}
+
+          {locked && (
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.55))",
+              }}
+            />
+          )}
+        </div>
+
         <div style={{ position: "absolute", left: 10, top: 10, display: "flex", gap: 8 }}>
           <span
             style={{
@@ -791,6 +803,7 @@ function claimQuizReward() {
           >
             {locked ? "🔒" : card.rarity.toUpperCase()}
           </span>
+
           {!locked && owned > 1 && (
             <span
               style={{
@@ -815,7 +828,8 @@ function claimQuizReward() {
             right: 0,
             bottom: 0,
             padding: "10px 10px",
-            background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.70) 65%, rgba(0,0,0,0.80) 100%)",
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.68) 55%, rgba(0,0,0,0.82) 100%)",
             color: "white",
             fontWeight: 800,
           }}
@@ -827,7 +841,7 @@ function claimQuizReward() {
     );
   };
 
-  const Modal = ({ card }: { card: CardDef }) => {
+const Modal = ({ card }: { card: CardDef }) => {
     const aura = RARITY_COLORS[card.rarity];
     return (
       <div
@@ -879,8 +893,31 @@ function claimQuizReward() {
               overflow: "hidden",
               border: "1px solid rgba(255,255,255,0.12)",
               background: "rgba(0,0,0,0.25)",
+              position: "relative",
             }}
           >
+            
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: -60,
+                background: `radial-gradient(circle at 50% 45%, ${aura} 0%, rgba(0,0,0,0) 62%)`,
+                filter: "blur(22px)",
+                opacity: 0.9,
+                pointerEvents: "none",
+              }}
+            />
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: 0,
+                boxShadow: `0 0 60px 18px ${aura}`,
+                opacity: 0.55,
+                pointerEvents: "none",
+              }}
+            />
             <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
           </div>
 
