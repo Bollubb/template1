@@ -771,9 +771,24 @@ export default function Home() {
 );
 // --- CARTE VIEW (placeholder "reale") ---
 const CarteView = (() => {
-  // mini-stato solo per demo UI (non persiste)
-  const [pillole, setPillole] = useState(120);
-  const [lastPull, setLastPull] = useState<string | null>(null);
+ const [pillole, setPillole] = useState<number>(() => {
+  if (typeof window === "undefined") return 120;
+  return Number(localStorage.getItem("nd_pillole")) || 120;
+});
+
+const [lastPull, setLastPull] = useState<string | null>(() => {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("nd_lastPull");
+});
+useEffect(() => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("nd_pillole", String(pillole));
+}, [pillole]);
+
+useEffect(() => {
+  if (typeof window === "undefined") return;
+  if (lastPull) localStorage.setItem("nd_lastPull", lastPull);
+}, [lastPull]);
 
   const rarities = [
     { key: "comune", label: "Comune", emoji: "⬜️" },
