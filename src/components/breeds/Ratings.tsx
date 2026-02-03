@@ -1,4 +1,4 @@
-import { StarSvg } from '@svg/index';
+import  StarSvg  from '@svg/StarSvg';
 
 /**
  * It's a React component that takes a count prop and returns a JSX element.
