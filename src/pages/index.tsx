@@ -256,8 +256,11 @@ export default function Home() {
   const [categoria, setCategoria] = useState("Tutte");
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [onlyFavorites, setOnlyFavorites] = useState(false);
-
   const favoritesCount = favorites.size;
+  type TabKey = "home" | "contenuti" | "carte" | "profilo";
+
+const [activeTab, setActiveTab] = useState<TabKey>("home");
+
 
   // Se sei in "solo preferiti" e diventano 0, esci automaticamente
   useEffect(() => {
@@ -367,7 +370,7 @@ export default function Home() {
         borderRadius: 24,
         maxWidth: 1080,
         margin: "0 auto",
-        padding: "28px 16px 48px",
+        padding: "28px 16px 110px",
         fontFamily:
           "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
       }}
@@ -386,7 +389,16 @@ export default function Home() {
       />
 
       <div style={{ position: "relative", zIndex: 1 }}>
-        <header
+        {activeTab === "home" && (
+  <div style={{ paddingTop: 6 }}>
+    <h2 style={{ margin: 0, marginBottom: 10 }}>Benvenuto in NurseDiary</h2>
+    <p style={{ margin: 0, opacity: 0.8 }}>Home (placeholder)</p>
+  </div>
+)}
+
+{activeTab === "contenuti" && (
+  <>
+    {<header
           style={{
             position: "sticky",
             top: 0,
@@ -530,8 +542,8 @@ export default function Home() {
             </div>
           </div>
         </header>
-
-        <section
+}
+    {        <section
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
@@ -641,8 +653,89 @@ export default function Home() {
               )}
             </>
           )}
-        </section>
+        </section>}
+  </>
+)}
+
+{activeTab === "carte" && (
+  <div style={{ paddingTop: 6 }}>
+    <h2 style={{ margin: 0, marginBottom: 10 }}>🃏 Carte</h2>
+    <p style={{ margin: 0, opacity: 0.8 }}>Carte (placeholder)</p>
+  </div>
+)}
+
+{activeTab === "profilo" && (
+  <div style={{ paddingTop: 6 }}>
+    <h2 style={{ margin: 0, marginBottom: 10 }}>👤 Profilo</h2>
+    <p style={{ margin: 0, opacity: 0.8 }}>
+      Profilo (placeholder, non loggato - scelta B)
+    </p>
+  </div>
+)}
+        
+
       </div>
+      <nav
+  style={{
+    position: "fixed",
+    left: "50%",
+    transform: "translateX(-50%)",
+    bottom: 14,
+    width: "min(1080px, calc(100% - 24px))",
+    zIndex: 50,
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(10,12,18,0.65)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    boxShadow: "0 18px 60px rgba(0,0,0,0.45)",
+    padding: "10px 10px",
+    display: "grid",
+    gridTemplateColumns: "repeat(4, 1fr)",
+    gap: 8,
+  }}
+>
+  {([
+    ["home", "🏠", "Home"],
+    ["contenuti", "📚", "Contenuti"],
+    ["carte", "🃏", "Carte"],
+    ["profilo", "👤", "Profilo"],
+  ] as const).map(([key, icon, label]) => {
+    const isActive = activeTab === key;
+    return (
+      <button
+        key={key}
+        type="button"
+        onClick={() => setActiveTab(key)}
+        style={{
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: isActive
+            ? "rgba(91,217,255,0.18)"
+            : "rgba(0,0,0,0.18)",
+          color: "white",
+          borderRadius: 14,
+          padding: "10px 8px",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          fontSize: 14,
+          lineHeight: 1,
+          whiteSpace: "nowrap",
+        }}
+        aria-current={isActive ? "page" : undefined}
+        aria-label={label}
+        title={label}
+      >
+        <span style={{ fontSize: 18 }}>{icon}</span>
+        {/* label visibile solo quando attivo */}
+        {isActive && <span style={{ fontSize: 13, opacity: 0.95 }}>{label}</span>}
+      </button>
+    );
+  })}
+</nav>
+
     </main>
   );
 }
