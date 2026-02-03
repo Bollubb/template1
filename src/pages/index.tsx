@@ -776,14 +776,15 @@ function CarteTab() {
     { key: "epica", label: "Epica", emoji: "🟪" },
     { key: "leggendaria", label: "Leggendaria", emoji: "🟨" },
   ] as const;
-
+//rarity color
   const rarityColors: Record<(typeof rarities)[number]["key"], string> = {
   comune: "rgba(180,180,180,0.75)",
   rara: "rgba(91,217,255,0.85)",
   epica: "rgba(165,110,255,0.90)",
   leggendaria: "rgba(255,210,90,0.95)",
 };
-
+ const [pullRarity, setPullRarity] = useState<(typeof rarities)[number] | null>(null);
+const [legendFlash, setLegendFlash] = useState(false);
 const activeColor = pullRarity ? rarityColors[pullRarity.key] : "rgba(255,255,255,0.20)";
 
   const slots = Array.from({ length: 12 }, (_, i) => i);
@@ -813,8 +814,7 @@ const activeColor = pullRarity ? rarityColors[pullRarity.key] : "rgba(255,255,25
   const [isOpening, setIsOpening] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [cardLabel, setCardLabel] = useState<string | null>(null);
-  const [pullRarity, setPullRarity] = useState<(typeof rarities)[number] | null>(null);
-  const [legendFlash, setLegendFlash] = useState(false);
+ 
 
 
 
