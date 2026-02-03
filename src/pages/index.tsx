@@ -833,45 +833,41 @@ setPullRarity(null);
 setLegendFlash(false);
 setPillole((p) => p - 30);
 
-    const roll = Math.random();
-    const rarity =
-      roll < 0.7 ? rarities[0] : roll < 0.9 ? rarities[1] : roll < 0.985 ? rarities[2] : rarities[3];
+      // estrazione demo (solo testo)
+  const roll = Math.random();
+  const pickedRarity =
+    roll < 0.7 ? rarities[0] : roll < 0.9 ? rarities[1] : roll < 0.985 ? rarities[2] : rarities[3];
 
-    const demoNames = [
-    "Cefalosporine",
-    "Penicilline",
-    "Fluorochinoloni",
+  const demoNames = [
+    "Bradicardia",
+    "Mobitz I",
+    "PEA",
     "Noradrenalina",
-    "Glicopeptidi",
-    "Carbapenemi",
-    "Sulfonamidi",
-    "Licosamidi",
-    "Tetracicline",
+    "CVC",
+    "Emogas",
+    "Accesso venoso difficile",
+    "Calze elastocompressive",
+    "Pressione venosa centrale",
     "Aminoglicosidi",
-    "Nitroimidazoli",
+    "Cefalosporine",
     "Macrolidi",
-    ];
+  ];
 
-    const name = demoNames[Math.floor(Math.random() * demoNames.length)];
-    const result = `${rarity.emoji} ${rarity.label}: ${name}`;
-    setCardLabel(result);
+  const name = demoNames[Math.floor(Math.random() * demoNames.length)];
+  const result = `${pickedRarity.emoji} ${pickedRarity.label}: ${name}`;
 
+  setCardLabel(result);
+  setPullRarity(pickedRarity);
 
-    setTimeout(() => setReveal(true), 520);
-    setTimeout(() => {
-      setLastPull(result);
-      setIsOpening(false);
-    }, 820);
+  if (pickedRarity.key === "leggendaria") {
+    setLegendFlash(true);
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate?.([40, 30, 40]);
+    }
+    setTimeout(() => setLegendFlash(false), 700);
   }
-setPullRarity(rarity);
 
-if (rarity.key === "leggendaria") {
-  setLegendFlash(true);
-  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-    navigator.vibrate?.([40, 30, 40]);
-  }
-  setTimeout(() => setLegendFlash(false), 700);
-}
+    
 
   function demoDustDuplicates() {
     setPillole((p) => p + 15);
