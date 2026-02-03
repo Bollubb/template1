@@ -272,503 +272,6 @@ function ContentCard({
   );
 }
 
-export default function Home() {
-  const [items, setItems] = useState<ContentItem[]>([]);
-  const [query, setQuery] = useState("");
-  const [categoria, setCategoria] = useState("Tutte");
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
-
-  const favoritesCount = favorites.size;
-
-  type TabKey = "home" | "contenuti" | "carte" | "profilo";
-  const [activeTab, setActiveTab] = useState<TabKey>("home");
-
-  // Se sei in "solo preferiti" e diventano 0, esci automaticamente
-  useEffect(() => {
-    if (onlyFavorites && favorites.size === 0) {
-      setOnlyFavorites(false);
-    }
-  }, [onlyFavorites, favorites]);
-
-  // Carica CSV contenuti
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/contenuti.csv", { cache: "no-store" });
-        const text = await res.text();
-        const parsed = parseCSV(text) as ContentItem[];
-        setItems(parsed);
-      } catch (e) {
-        console.error(e);
-        setItems([]);
-      }
-    })();
-  }, []);
-
-  // Carica preferiti da localStorage (una sola volta)
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("nd_favorites");
-      const arr = raw ? (JSON.parse(raw) as string[]) : [];
-      setFavorites(new Set(arr));
-    } catch (e) {
-      console.error("Errore lettura preferiti", e);
-    }
-  }, []);
-
-  // Salva preferiti in localStorage (ogni volta che cambiano)
-  useEffect(() => {
-    try {
-      localStorage.setItem("nd_favorites", JSON.stringify(Array.from(favorites)));
-    } catch (e) {
-      console.error("Errore salvataggio preferiti", e);
-    }
-  }, [favorites]);
-
-  useEffect(() => {
-    // Se cambio categoria mentre sono in onlyFavorites, resetto la query
-    // per evitare combinazioni troppo restrittive.
-    if (onlyFavorites && query.length > 0) {
-      setQuery("");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoria]);
-
-  function toggleFavorite(id: string) {
-    setFavorites((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  const categorie = useMemo(() => {
-    const set = new Set<string>();
-    items.forEach((i) => {
-      const c = safe(i.categoria).trim();
-      if (c) set.add(c);
-    });
-    return ["Tutte", ...Array.from(set).sort()];
-  }, [items]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    return items.filter((i) => {
-      const catOk = categoria === "Tutte" || safe(i.categoria) === categoria;
-      const favOk = !onlyFavorites || favorites.has(safe(i.id));
-
-      const hay = `${safe(i.titolo)} ${safe(i.descrizione)} ${safe(i.tag)} ${safe(i.tipo)}`.toLowerCase();
-      const qOk = !q || hay.includes(q);
-
-      return catOk && qOk && favOk;
-    });
-  }, [items, query, categoria, onlyFavorites, favorites]);
-
-  const favoriteItems = useMemo(() => {
-    return filtered.filter((i) => favorites.has(safe(i.id)));
-  }, [filtered, favorites]);
-
-  const otherItems = useMemo(() => {
-    return filtered.filter((i) => !favorites.has(safe(i.id)));
-  }, [filtered, favorites]);
-
-  // ✅ WRAP "CONTENUTI" in una view dedicata (niente più {<header/>} e parentesi strane)
-  const ContenutiView = (
-    <>
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 20,
-          marginBottom: 18,
-          paddingTop: 8,
-          paddingBottom: 12,
-          background: "rgba(10,12,18,0.55)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <img
-              src="/logo.png"
-              alt="NurseDiary"
-              style={{
-                width: 84,
-                height: 84,
-                borderRadius: "50%",
-                objectFit: "cover",
-                background: "rgba(255,255,255,0.10)",
-                padding: 6,
-                border: "1px solid rgba(255,255,255,0.22)",
-              }}
-            />
-            <h1
-              style={{
-                margin: 0,
-                letterSpacing: -0.3,
-                background: "linear-gradient(90deg, rgba(91,217,255,1), rgba(165,110,255,1))",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                boxShadow: "0 8px 30px rgba(91,217,255,0.25)",
-              }}
-            >
-              NurseDiary
-            </h1>
-          </div>
-
-          <p style={{ margin: 0, opacity: 0.75, lineHeight: 1.35 }}>
-            Biblioteca rapida di contenuti infermieristici. Cerca per titolo/tag e filtra per categoria.
-          </p>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
-            <div style={{ position: "relative", flex: "1 1 280px" }}>
-              <input
-                type="search"
-                inputMode="search"
-                enterKeyHint="search"
-                autoComplete="off"
-                spellCheck={false}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Cerca (es. ECG, PEA, accesso venoso...)"
-                style={{
-                  width: "100%",
-                  padding: "12px 36px 12px 12px",
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(0,0,0,0.18)",
-                  outline: "none",
-                }}
-              />
-
-              {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery("")}
-                  aria-label="Cancella ricerca"
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "white",
-                    opacity: 0.9,
-                    fontSize: 16,
-                  }}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            <select
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-              style={{
-                padding: "12px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: "rgba(0,0,0,0.18)",
-                color: "white",
-                outline: "none",
-                flex: "0 0 180px",
-              }}
-              aria-label="Seleziona categoria"
-            >
-              {categorie.map((c) => (
-                <option key={c} value={c} style={{ color: "black" }}>
-                  {c}
-                </option>
-              ))}
-            </select>
-
-            <button
-              type="button"
-              onClick={() => setOnlyFavorites((v) => !v)}
-              disabled={favoritesCount === 0}
-              aria-pressed={onlyFavorites}
-              title={favoritesCount === 0 ? "Nessun preferito" : "Mostra solo preferiti"}
-              style={{
-                padding: "12px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: onlyFavorites ? "rgba(255,210,90,0.20)" : "rgba(0,0,0,0.18)",
-                color: "white",
-                outline: "none",
-                cursor: favoritesCount === 0 ? "not-allowed" : "pointer",
-                opacity: favoritesCount === 0 ? 0.55 : 1,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                whiteSpace: "nowrap",
-              }}
-            >
-              ⭐ Preferiti <span style={{ opacity: 0.85 }}>({favoritesCount})</span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-          gap: 14,
-          paddingTop: 10,
-        }}
-      >
-        {filtered.length === 0 ? (
-          <div
-            style={{
-              gridColumn: "1 / -1",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: 18,
-              padding: 16,
-              background: "rgba(255,255,255,0.04)",
-              opacity: 0.9,
-            }}
-          >
-            <div style={{ fontSize: 14, marginBottom: 8 }}>Nessun contenuto trovato.</div>
-            <div style={{ fontSize: 13, opacity: 0.85 }}>
-              Prova a cambiare categoria o a rimuovere filtri/ricerca.
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* sezione preferiti "pinnata" */}
-            {favoriteItems.length > 0 && (
-              <div style={{ gridColumn: "1 / -1" }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
-                  <h2 style={{ margin: 0, fontSize: 16 }}>⭐ Preferiti</h2>
-                  <span style={{ fontSize: 13, opacity: 0.7 }}>{favoriteItems.length}</span>
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                    gap: 14,
-                  }}
-                >
-                  {favoriteItems.map((it) => (
-                    <ContentCard
-                      key={safe(it.id)}
-                      item={it}
-                      isFavorite={favorites.has(safe(it.id))}
-                      onToggleFavorite={toggleFavorite}
-                    />
-                  ))}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 14,
-                    borderTop: "1px solid rgba(255,255,255,0.10)",
-                    opacity: 0.85,
-                  }}
-                />
-              </div>
-            )}
-
-            {/* resto */}
-            {otherItems.map((it) => (
-              <ContentCard
-                key={safe(it.id)}
-                item={it}
-                isFavorite={favorites.has(safe(it.id))}
-                onToggleFavorite={toggleFavorite}
-              />
-            ))}
-
-            {/* se non ci sono "otherItems", piccolo placeholder */}
-            {otherItems.length === 0 && favoriteItems.length > 0 && (
-              <div
-                style={{
-                  gridColumn: "1 / -1",
-                  borderRadius: 16,
-                  padding: 14,
-                  opacity: 0.9,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.04)",
-                }}
-              >
-                Nessun altro contenuto oltre ai preferiti.
-              </div>
-            )}
-          </>
-        )}
-      </section>
-    </>
-  );
-
-  const HomeView = (
-  <section style={{ paddingTop: 6 }}>
-    <div
-      style={{
-        border: "1px solid rgba(255,255,255,0.12)",
-        borderRadius: 20,
-        padding: 18,
-        background: "rgba(255,255,255,0.04)",
-        boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 14,
-            display: "grid",
-            placeItems: "center",
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(91,217,255,0.10)",
-            fontSize: 22,
-          }}
-        >
-          ✨
-        </div>
-        <div>
-          <h2 style={{ margin: 0, letterSpacing: -0.2 }}>Benvenuto in NurseDiary</h2>
-          <p style={{ margin: "6px 0 0", opacity: 0.8, lineHeight: 1.35 }}>
-            Una biblioteca rapida di contenuti infermieristici: cerca, salva i preferiti e costruisci la tua raccolta.
-          </p>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
-        <span
-          style={{
-            fontSize: 12,
-            padding: "5px 10px",
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(255,255,255,0.06)",
-            opacity: 0.9,
-          }}
-        >
-          Contenuti: <strong style={{ fontWeight: 700 }}>{items.length}</strong>
-        </span>
-
-        <span
-          style={{
-            fontSize: 12,
-            padding: "5px 10px",
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(255,210,90,0.12)",
-            opacity: 0.95,
-          }}
-        >
-          Preferiti: <strong style={{ fontWeight: 700 }}>{favorites.size}</strong>
-        </span>
-      </div>
-
-      <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-        {/* CTA 1: Azione, non tab */}
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("contenuti");
-            // micro-UX: portiamo subito il focus sulla ricerca
-            setTimeout(() => {
-              const el = document.querySelector('input[type="search"]') as HTMLInputElement | null;
-              el?.focus();
-            }, 50);
-          }}
-          style={{
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(91,217,255,0.18)",
-            color: "white",
-            borderRadius: 16,
-            padding: "12px 14px",
-            cursor: "pointer",
-            textAlign: "left",
-          }}
-        >
-          <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>🔎 Trova subito quello che ti serve</div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            Apri la ricerca e inizia a digitare (ECG, PEA, accessi venosi…).
-          </div>
-        </button>
-
-        {/* CTA 2: se non ha preferiti, invitalo; se li ha, porta a Contenuti + filtro */}
-        {favorites.size === 0 ? (
-          <button
-            type="button"
-            onClick={() => setActiveTab("contenuti")}
-            style={{
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(0,0,0,0.18)",
-              color: "white",
-              borderRadius: 16,
-              padding: "12px 14px",
-              cursor: "pointer",
-              textAlign: "left",
-            }}
-          >
-            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>⭐ Crea la tua libreria</div>
-            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-              Aggiungi i primi preferiti per ritrovarli al volo.
-            </div>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("contenuti");
-              setOnlyFavorites(true);
-            }}
-            style={{
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(255,210,90,0.14)",
-              color: "white",
-              borderRadius: 16,
-              padding: "12px 14px",
-              cursor: "pointer",
-              textAlign: "left",
-            }}
-          >
-            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>⭐ Apri i tuoi preferiti</div>
-            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-              Vai direttamente alla sezione “Preferiti” già filtrata.
-            </div>
-          </button>
-        )}
-
-        {/* CTA 3: teaser Carte (senza “Vai a Carte”) */}
-        <button
-          type="button"
-          onClick={() => setActiveTab("carte")}
-          style={{
-            border: "1px solid rgba(255,255,255,0.14)",
-            background: "rgba(165,110,255,0.16)",
-            color: "white",
-            borderRadius: 16,
-            padding: "12px 14px",
-            cursor: "pointer",
-            textAlign: "left",
-          }}
-        >
-          <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>🃏 Scopri la collezione</div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-            Le carte arriveranno a breve: prepara lo spazio per la raccolta.
-          </div>
-        </button>
-      </div>
-    </div>
-
-    <div style={{ marginTop: 14, opacity: 0.75, fontSize: 13, lineHeight: 1.35 }}>
-      Suggerimento: usa ⭐ nei contenuti per creare una “lista rapida” delle cose che ti servono più spesso.
-    </div>
-  </section>
-);
 function CarteTab() {
   const rarities = [
     { key: "comune", label: "Comune", emoji: "⬜️" },
@@ -1072,7 +575,49 @@ function CarteTab() {
                   {cardLabel ? cardLabel : isOpening ? "Estrazione in corso…" : "Apri una bustina"}
                 </div>
 
-                {/* (se vuoi, qui poi mettiamo SOLO 1 badge rarità invece della lista intera) */}
+                {/* footer (badge stabile, nessun JSX invalido, no layout jump) */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 12, opacity: 0.75 }}>NurseDiary Cards</span>
+
+                  <span style={{ minWidth: 126, display: "flex", justifyContent: "flex-end" }}>
+                    {pullRarity ? (
+                      <span
+                        style={{
+                          fontSize: 12,
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          border: `1px solid ${activeColor}`,
+                          background: "rgba(0,0,0,0.18)",
+                          boxShadow: `0 0 14px ${activeColor}`,
+                          fontWeight: 900,
+                          letterSpacing: -0.1,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        <span style={{ fontSize: 14 }}>{pullRarity.emoji}</span>
+                        {pullRarity.label}
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: 12,
+                          padding: "4px 10px",
+                          borderRadius: 999,
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          background: "rgba(0,0,0,0.10)",
+                          opacity: 0.55,
+                          fontWeight: 800,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        —
+                      </span>
+                    )}
+                  </span>
+                </div>
               </div>
 
               <div
@@ -1093,20 +638,21 @@ function CarteTab() {
           <button
             type="button"
             onClick={demoOpenPack}
-            disabled={isOpening}
+            disabled={isOpening || pillole < 30}
+            title={pillole < 30 ? "Servono 30 pillole" : "Apri una bustina"}
             style={{
               border: "1px solid rgba(255,255,255,0.14)",
               background: "rgba(165,110,255,0.18)",
               color: "white",
               borderRadius: 16,
               padding: "12px 14px",
-              cursor: isOpening ? "not-allowed" : "pointer",
-              opacity: isOpening ? 0.7 : 1,
+              cursor: isOpening || pillole < 30 ? "not-allowed" : "pointer",
+              opacity: isOpening || pillole < 30 ? 0.7 : 1,
               textAlign: "left",
             }}
           >
             <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>
-              {isOpening ? "📦 Apertura in corso…" : "📦 Apri una bustina (demo)"}
+              {isOpening ? "📦 Apertura in corso…" : pillole < 30 ? "❌ Pillole insufficienti" : "📦 Apri una bustina (demo)"}
             </div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
               Simula un’apertura: riduce pillole e mostra un’estrazione casuale.
@@ -1182,7 +728,7 @@ function CarteTab() {
         </div>
       </div>
 
-      {/* ✅ CSS UNICO CORRETTO (tutto dentro la stringa) */}
+      {/* CSS UNICO */}
       <style jsx>{`
         .pack.opening {
           animation: packShake 520ms ease-in-out;
@@ -1281,9 +827,509 @@ function CarteTab() {
   );
 }
 
-// nel punto dove definisci le view:
-const CarteView = <CarteTab />;
+export default function Home() {
+  const [items, setItems] = useState<ContentItem[]>([]);
+  const [query, setQuery] = useState("");
+  const [categoria, setCategoria] = useState("Tutte");
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
 
+  const favoritesCount = favorites.size;
+
+  type TabKey = "home" | "contenuti" | "carte" | "profilo";
+  const [activeTab, setActiveTab] = useState<TabKey>("home");
+
+  useEffect(() => {
+    // Home resta sempre default, ma se arriva un deep-link tipo /#contenuti lo rispettiamo
+    if (typeof window === "undefined") return;
+
+    const hash = window.location.hash.replace("#", "").trim() as TabKey;
+
+    const allowed: TabKey[] = ["home", "contenuti", "carte", "profilo"];
+    if (allowed.includes(hash) && hash !== "home") {
+      setActiveTab(hash);
+    }
+  }, []);
+
+  // Se sei in "solo preferiti" e diventano 0, esci automaticamente
+  useEffect(() => {
+    if (onlyFavorites && favorites.size === 0) {
+      setOnlyFavorites(false);
+    }
+  }, [onlyFavorites, favorites]);
+
+  // Carica CSV contenuti
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/contenuti.csv", { cache: "no-store" });
+        const text = await res.text();
+        const parsed = parseCSV(text) as ContentItem[];
+        setItems(parsed);
+      } catch (e) {
+        console.error(e);
+        setItems([]);
+      }
+    })();
+  }, []);
+
+  // Carica preferiti da localStorage (una sola volta)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("nd_favorites");
+      const arr = raw ? (JSON.parse(raw) as string[]) : [];
+      setFavorites(new Set(arr));
+    } catch (e) {
+      console.error("Errore lettura preferiti", e);
+    }
+  }, []);
+
+  // Salva preferiti in localStorage (ogni volta che cambiano)
+  useEffect(() => {
+    try {
+      localStorage.setItem("nd_favorites", JSON.stringify(Array.from(favorites)));
+    } catch (e) {
+      console.error("Errore salvataggio preferiti", e);
+    }
+  }, [favorites]);
+
+  useEffect(() => {
+    // Se cambio categoria mentre sono in onlyFavorites, resetto la query
+    // per evitare combinazioni troppo restrittive.
+    if (onlyFavorites && query.length > 0) {
+      setQuery("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoria]);
+
+  function toggleFavorite(id: string) {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const categorie = useMemo(() => {
+    const set = new Set<string>();
+    items.forEach((i) => {
+      const c = safe(i.categoria).trim();
+      if (c) set.add(c);
+    });
+    return ["Tutte", ...Array.from(set).sort()];
+  }, [items]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+
+    return items.filter((i) => {
+      const catOk = categoria === "Tutte" || safe(i.categoria) === categoria;
+      const favOk = !onlyFavorites || favorites.has(safe(i.id));
+
+      const hay = `${safe(i.titolo)} ${safe(i.descrizione)} ${safe(i.tag)} ${safe(i.tipo)}`.toLowerCase();
+      const qOk = !q || hay.includes(q);
+
+      return catOk && qOk && favOk;
+    });
+  }, [items, query, categoria, onlyFavorites, favorites]);
+
+  const favoriteItems = useMemo(() => {
+    return filtered.filter((i) => favorites.has(safe(i.id)));
+  }, [filtered, favorites]);
+
+  const otherItems = useMemo(() => {
+    return filtered.filter((i) => !favorites.has(safe(i.id)));
+  }, [filtered, favorites]);
+
+  const ContenutiView = (
+    <>
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 20,
+          marginBottom: 18,
+          paddingTop: 8,
+          paddingBottom: 12,
+          background: "rgba(10,12,18,0.55)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <img
+              src="/logo.png"
+              alt="NurseDiary"
+              style={{
+                width: 84,
+                height: 84,
+                borderRadius: "50%",
+                objectFit: "cover",
+                background: "rgba(255,255,255,0.10)",
+                padding: 6,
+                border: "1px solid rgba(255,255,255,0.22)",
+              }}
+            />
+            <h1
+              style={{
+                margin: 0,
+                letterSpacing: -0.3,
+                background: "linear-gradient(90deg, rgba(91,217,255,1), rgba(165,110,255,1))",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                boxShadow: "0 8px 30px rgba(91,217,255,0.25)",
+              }}
+            >
+              NurseDiary
+            </h1>
+          </div>
+
+          <p style={{ margin: 0, opacity: 0.75, lineHeight: 1.35 }}>
+            Biblioteca rapida di contenuti infermieristici. Cerca per titolo/tag e filtra per categoria.
+          </p>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+            <div style={{ position: "relative", flex: "1 1 280px" }}>
+              <input
+                type="search"
+                inputMode="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                spellCheck={false}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cerca (es. ECG, PEA, accesso venoso...)"
+                style={{
+                  width: "100%",
+                  padding: "12px 36px 12px 12px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(0,0,0,0.18)",
+                  outline: "none",
+                }}
+              />
+
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Cancella ricerca"
+                  style={{
+                    position: "absolute",
+                    right: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "white",
+                    opacity: 0.9,
+                    fontSize: 16,
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              style={{
+                padding: "12px 12px",
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(0,0,0,0.18)",
+                color: "white",
+                outline: "none",
+                flex: "0 0 180px",
+              }}
+              aria-label="Seleziona categoria"
+            >
+              {categorie.map((c) => (
+                <option key={c} value={c} style={{ color: "black" }}>
+                  {c}
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setOnlyFavorites((v) => !v)}
+              disabled={favoritesCount === 0}
+              aria-pressed={onlyFavorites}
+              title={favoritesCount === 0 ? "Nessun preferito" : "Mostra solo preferiti"}
+              style={{
+                padding: "12px 12px",
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: onlyFavorites ? "rgba(255,210,90,0.20)" : "rgba(0,0,0,0.18)",
+                color: "white",
+                outline: "none",
+                cursor: favoritesCount === 0 ? "not-allowed" : "pointer",
+                opacity: favoritesCount === 0 ? 0.55 : 1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                whiteSpace: "nowrap",
+              }}
+            >
+              ⭐ Preferiti <span style={{ opacity: 0.85 }}>({favoritesCount})</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: 14,
+          paddingTop: 10,
+        }}
+      >
+        {filtered.length === 0 ? (
+          <div
+            style={{
+              gridColumn: "1 / -1",
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: 18,
+              padding: 16,
+              background: "rgba(255,255,255,0.04)",
+              opacity: 0.9,
+            }}
+          >
+            <div style={{ fontSize: 14, marginBottom: 8 }}>Nessun contenuto trovato.</div>
+            <div style={{ fontSize: 13, opacity: 0.85 }}>
+              Prova a cambiare categoria o a rimuovere filtri/ricerca.
+            </div>
+          </div>
+        ) : (
+          <>
+            {favoriteItems.length > 0 && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+                  <h2 style={{ margin: 0, fontSize: 16 }}>⭐ Preferiti</h2>
+                  <span style={{ fontSize: 13, opacity: 0.7 }}>{favoriteItems.length}</span>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                    gap: 14,
+                  }}
+                >
+                  {favoriteItems.map((it) => (
+                    <ContentCard
+                      key={safe(it.id)}
+                      item={it}
+                      isFavorite={favorites.has(safe(it.id))}
+                      onToggleFavorite={toggleFavorite}
+                    />
+                  ))}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 14,
+                    borderTop: "1px solid rgba(255,255,255,0.10)",
+                    opacity: 0.85,
+                  }}
+                />
+              </div>
+            )}
+
+            {otherItems.map((it) => (
+              <ContentCard
+                key={safe(it.id)}
+                item={it}
+                isFavorite={favorites.has(safe(it.id))}
+                onToggleFavorite={toggleFavorite}
+              />
+            ))}
+
+            {otherItems.length === 0 && favoriteItems.length > 0 && (
+              <div
+                style={{
+                  gridColumn: "1 / -1",
+                  borderRadius: 16,
+                  padding: 14,
+                  opacity: 0.9,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(255,255,255,0.04)",
+                }}
+              >
+                Nessun altro contenuto oltre ai preferiti.
+              </div>
+            )}
+          </>
+        )}
+      </section>
+    </>
+  );
+
+  const HomeView = (
+    <section style={{ paddingTop: 6 }}>
+      <div
+        style={{
+          border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 20,
+          padding: 18,
+          background: "rgba(255,255,255,0.04)",
+          boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 14,
+              display: "grid",
+              placeItems: "center",
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(91,217,255,0.10)",
+              fontSize: 22,
+            }}
+          >
+            ✨
+          </div>
+          <div>
+            <h2 style={{ margin: 0, letterSpacing: -0.2 }}>Benvenuto in NurseDiary</h2>
+            <p style={{ margin: "6px 0 0", opacity: 0.8, lineHeight: 1.35 }}>
+              Una biblioteca rapida di contenuti infermieristici: cerca, salva i preferiti e costruisci la tua raccolta.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+          <span
+            style={{
+              fontSize: 12,
+              padding: "5px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,255,255,0.06)",
+              opacity: 0.9,
+            }}
+          >
+            Contenuti: <strong style={{ fontWeight: 700 }}>{items.length}</strong>
+          </span>
+
+          <span
+            style={{
+              fontSize: 12,
+              padding: "5px 10px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(255,210,90,0.12)",
+              opacity: 0.95,
+            }}
+          >
+            Preferiti: <strong style={{ fontWeight: 700 }}>{favorites.size}</strong>
+          </span>
+        </div>
+
+        <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("contenuti");
+              setTimeout(() => {
+                const el = document.querySelector('input[type="search"]') as HTMLInputElement | null;
+                el?.focus();
+              }, 50);
+            }}
+            style={{
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(91,217,255,0.18)",
+              color: "white",
+              borderRadius: 16,
+              padding: "12px 14px",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>🔎 Trova subito quello che ti serve</div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+              Apri la ricerca e inizia a digitare (ECG, PEA, accessi venosi…).
+            </div>
+          </button>
+
+          {favorites.size === 0 ? (
+            <button
+              type="button"
+              onClick={() => setActiveTab("contenuti")}
+              style={{
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(0,0,0,0.18)",
+                color: "white",
+                borderRadius: 16,
+                padding: "12px 14px",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>⭐ Crea la tua libreria</div>
+              <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+                Aggiungi i primi preferiti per ritrovarli al volo.
+              </div>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("contenuti");
+                setOnlyFavorites(true);
+              }}
+              style={{
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,210,90,0.14)",
+                color: "white",
+                borderRadius: 16,
+                padding: "12px 14px",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+            >
+              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>⭐ Apri i tuoi preferiti</div>
+              <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+                Vai direttamente alla sezione “Preferiti” già filtrata.
+              </div>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setActiveTab("carte")}
+            style={{
+              border: "1px solid rgba(255,255,255,0.14)",
+              background: "rgba(165,110,255,0.16)",
+              color: "white",
+              borderRadius: 16,
+              padding: "12px 14px",
+              cursor: "pointer",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>🃏 Scopri la collezione</div>
+            <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
+              Le carte arriveranno a breve: prepara lo spazio per la raccolta.
+            </div>
+          </button>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 14, opacity: 0.75, fontSize: 13, lineHeight: 1.35 }}>
+        Suggerimento: usa ⭐ nei contenuti per creare una “lista rapida” delle cose che ti servono più spesso.
+      </div>
+    </section>
+  );
+
+  const CarteView = <CarteTab />;
 
   const ProfiloView = (
     <section style={{ paddingTop: 6 }}>
