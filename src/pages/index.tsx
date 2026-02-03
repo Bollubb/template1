@@ -776,20 +776,17 @@ function CarteTab() {
     { key: "epica", label: "Epica", emoji: "🟪" },
     { key: "leggendaria", label: "Leggendaria", emoji: "🟨" },
   ] as const;
-//rarity color
+
   const rarityColors: Record<(typeof rarities)[number]["key"], string> = {
-  comune: "rgba(180,180,180,0.75)",
-  rara: "rgba(91,217,255,0.85)",
-  epica: "rgba(165,110,255,0.90)",
-  leggendaria: "rgba(255,210,90,0.95)",
-};
- const [pullRarity, setPullRarity] = useState<(typeof rarities)[number] | null>(null);
-const [legendFlash, setLegendFlash] = useState(false);
-const activeColor = pullRarity ? rarityColors[pullRarity.key] : "rgba(255,255,255,0.20)";
+    comune: "rgba(180,180,180,0.75)",
+    rara: "rgba(91,217,255,0.85)",
+    epica: "rgba(165,110,255,0.90)",
+    leggendaria: "rgba(255,210,90,0.95)",
+  };
 
   const slots = Array.from({ length: 12 }, (_, i) => i);
 
-  // ✅ Persistenza (localStorage)
+  // persist demo
   const [pillole, setPillole] = useState<number>(() => {
     if (typeof window === "undefined") return 120;
     return Number(localStorage.getItem("nd_pillole")) || 120;
@@ -810,13 +807,15 @@ const activeColor = pullRarity ? rarityColors[pullRarity.key] : "rgba(255,255,25
     if (lastPull) localStorage.setItem("nd_lastPull", lastPull);
   }, [lastPull]);
 
-  // ✅ Animazione bustina
+  // animazione + rarità
   const [isOpening, setIsOpening] = useState(false);
   const [reveal, setReveal] = useState(false);
   const [cardLabel, setCardLabel] = useState<string | null>(null);
- 
 
+  const [pullRarity, setPullRarity] = useState<(typeof rarities)[number] | null>(null);
+  const [legendFlash, setLegendFlash] = useState(false);
 
+  const activeColor = pullRarity ? rarityColors[pullRarity.key] : "rgba(255,255,255,0.20)";
 
   function demoOpenPack() {
     if (isOpening) return;
@@ -826,48 +825,54 @@ const activeColor = pullRarity ? rarityColors[pullRarity.key] : "rgba(255,255,25
       return;
     }
 
-setIsOpening(true);
-setReveal(false);
-setCardLabel(null);
-setPullRarity(null);
-setLegendFlash(false);
-setPillole((p) => p - 30);
+    setIsOpening(true);
+    setReveal(false);
+    setCardLabel(null);
+    setPullRarity(null);
+    setLegendFlash(false);
 
-      // estrazione demo (solo testo)
-  const roll = Math.random();
-  const pickedRarity =
-    roll < 0.7 ? rarities[0] : roll < 0.9 ? rarities[1] : roll < 0.985 ? rarities[2] : rarities[3];
+    setPillole((p) => p - 30);
 
-  const demoNames = [
-    "Bradicardia",
-    "Mobitz I",
-    "PEA",
-    "Noradrenalina",
-    "CVC",
-    "Emogas",
-    "Accesso venoso difficile",
-    "Calze elastocompressive",
-    "Pressione venosa centrale",
-    "Aminoglicosidi",
-    "Cefalosporine",
-    "Macrolidi",
-  ];
+    const roll = Math.random();
+    const pickedRarity =
+      roll < 0.7 ? rarities[0] : roll < 0.9 ? rarities[1] : roll < 0.985 ? rarities[2] : rarities[3];
 
-  const name = demoNames[Math.floor(Math.random() * demoNames.length)];
-  const result = `${pickedRarity.emoji} ${pickedRarity.label}: ${name}`;
+    const demoNames = [
+      "Bradicardia",
+      "Mobitz I",
+      "PEA",
+      "Noradrenalina",
+      "CVC",
+      "Emogas",
+      "Accesso venoso difficile",
+      "Calze elastocompressive",
+      "Pressione venosa centrale",
+      "Aminoglicosidi",
+      "Cefalosporine",
+      "Macrolidi",
+    ];
 
-  setCardLabel(result);
-  setPullRarity(pickedRarity);
+    const name = demoNames[Math.floor(Math.random() * demoNames.length)];
+    const result = `${pickedRarity.emoji} ${pickedRarity.label}: ${name}`;
 
-  if (pickedRarity.key === "leggendaria") {
-    setLegendFlash(true);
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate?.([40, 30, 40]);
+    setCardLabel(result);
+    setPullRarity(pickedRarity);
+
+    if (pickedRarity.key === "leggendaria") {
+      setLegendFlash(true);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate?.([40, 30, 40]);
+      }
+      setTimeout(() => setLegendFlash(false), 700);
     }
-    setTimeout(() => setLegendFlash(false), 700);
-  }
 
-    
+    // timing: carta esce, poi “reveal”
+    setTimeout(() => setReveal(true), 520);
+    setTimeout(() => {
+      setLastPull(result);
+      setIsOpening(false);
+    }, 820);
+  }
 
   function demoDustDuplicates() {
     setPillole((p) => p + 15);
@@ -949,17 +954,17 @@ setPillole((p) => p - 30);
         </div>
 
         <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
-          {/* PACK ANIMATO */}
-         <div
-  className={`packwrap ${legendFlash ? "legendFlash" : ""}`}
-  style={{
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.18)",
-    borderRadius: 18,
-    padding: 14,
-    overflow: "hidden",
-  }}
->
+          {/* PACK ANIMATO (wrapper per flash leggendaria) */}
+          <div
+            className={`packwrap ${legendFlash ? "legendFlash" : ""}`}
+            style={{
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.18)",
+              borderRadius: 18,
+              padding: 14,
+              overflow: "hidden",
+            }}
+          >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>Bustina (demo)</div>
@@ -974,12 +979,11 @@ setPillole((p) => p - 30);
                   width: 86,
                   height: 112,
                   borderRadius: 16,
-                  background: `radial-gradient(circle, ${activeColor}, rgba(0,0,0,0))`,
                   border: `1px solid ${activeColor}`,
-boxShadow: isOpening
-  ? `0 0 0 2px rgba(0,0,0,0.0), 0 0 22px ${activeColor}, 0 20px 60px rgba(0,0,0,0.45)`
-  : `0 0 0 1px rgba(255,255,255,0.06), 0 14px 50px rgba(0,0,0,0.30)`,
-
+                  background: "rgba(255,255,255,0.02)",
+                  boxShadow: isOpening
+                    ? `0 0 22px ${activeColor}, 0 20px 60px rgba(0,0,0,0.45)`
+                    : `0 0 0 1px rgba(255,255,255,0.06), 0 14px 50px rgba(0,0,0,0.30)`,
                   display: "grid",
                   placeItems: "center",
                   position: "relative",
@@ -1006,99 +1010,83 @@ boxShadow: isOpening
                       position: "absolute",
                       inset: -30,
                       borderRadius: 999,
-                      background: "radial-gradient(circle, rgba(165,110,255,0.35), rgba(0,0,0,0))",
+                      background: `radial-gradient(circle, ${activeColor}, rgba(0,0,0,0))`,
                     }}
                   />
                 )}
               </div>
             </div>
-<div
-  style={{
-    position: "relative",
-    height: 140,
-    marginTop: 10,
-    borderRadius: 18,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.03)",
-    overflow: "hidden",
-  }}
->
-  {/* “guideline” */}
-  <div
-    style={{
-      position: "absolute",
-      left: 12,
-      right: 12,
-      top: 12,
-      height: 1,
-      background: "rgba(255,255,255,0.08)",
-      opacity: 0.8,
-    }}
-  />
 
-  {/* CARTA CHE ESCE */}
-  <div
-    className={`cardpop ${isOpening ? "opening" : ""} ${reveal ? "show" : ""}`}
-    style={{
-      position: "absolute",
-      left: 14,
-      right: 14,
-      bottom: 14,
-      height: 108,
-      borderRadius: 16,
-      border: `1px solid ${activeColor}`,
-      background: `linear-gradient(180deg, ${activeColor}, rgba(0,0,0,0.18))`,
-      boxShadow: reveal ? `0 0 28px ${activeColor}, 0 18px 60px rgba(0,0,0,0.45)` : "0 18px 60px rgba(0,0,0,0.45)",
-      padding: 12,
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "space-between",
-    }}
-  >
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-      <div style={{ fontWeight: 950, letterSpacing: -0.2 }}>Carta</div>
-      <span style={{ fontSize: 12, opacity: 0.75 }}>{pullRarity ? `${pullRarity.emoji} ${pullRarity.label}` : isOpening ? "…" : "Chiusa"}
-</span>
-    </div>
+            {/* CARTA CHE ESCE */}
+            <div
+              style={{
+                position: "relative",
+                height: 140,
+                marginTop: 10,
+                borderRadius: 18,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.03)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  right: 12,
+                  top: 12,
+                  height: 1,
+                  background: "rgba(255,255,255,0.08)",
+                  opacity: 0.8,
+                }}
+              />
 
-    <div style={{ fontWeight: 900, lineHeight: 1.2 }}>
-      {cardLabel ? cardLabel : isOpening ? "Estrazione in corso…" : "Apri una bustina"}
-    </div>
+              <div
+                className={`cardpop ${isOpening ? "opening" : ""} ${reveal ? "show" : ""}`}
+                style={{
+                  position: "absolute",
+                  left: 14,
+                  right: 14,
+                  bottom: 14,
+                  height: 108,
+                  borderRadius: 16,
+                  border: `1px solid ${activeColor}`,
+                  background: `linear-gradient(180deg, ${activeColor}, rgba(0,0,0,0.18))`,
+                  boxShadow: reveal
+                    ? `0 0 28px ${activeColor}, 0 18px 60px rgba(0,0,0,0.45)`
+                    : "0 18px 60px rgba(0,0,0,0.45)",
+                  padding: 12,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ fontWeight: 950, letterSpacing: -0.2 }}>Carta</div>
+                  <span style={{ fontSize: 12, opacity: 0.8 }}>
+                    {pullRarity ? `${pullRarity.emoji} ${pullRarity.label}` : isOpening ? "…" : "Chiusa"}
+                  </span>
+                </div>
 
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {rarities.map((r) => (
-        <span
-          key={r.key}
-          style={{
-            fontSize: 11,
-            padding: "3px 7px",
-            borderRadius: 999,
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(0,0,0,0.14)",
-            opacity: 0.7,
-          }}
-        >
-          {r.emoji} {r.label}
-        </span>
-      ))}
-    </div>
-  </div>
+                <div style={{ fontWeight: 900, lineHeight: 1.2 }}>
+                  {cardLabel ? cardLabel : isOpening ? "Estrazione in corso…" : "Apri una bustina"}
+                </div>
 
-  {/* Testo “ultima estrazione” persistito */}
-  <div
-    style={{
-      position: "absolute",
-      left: 14,
-      right: 14,
-      top: 18,
-      fontSize: 12,
-      opacity: 0.75,
-    }}
-  >
-    Ultima: <span style={{ opacity: 0.95 }}>{lastPull ?? "—"}</span>
-  </div>
-</div>
+                {/* (se vuoi, qui poi mettiamo SOLO 1 badge rarità invece della lista intera) */}
+              </div>
 
+              <div
+                style={{
+                  position: "absolute",
+                  left: 14,
+                  right: 14,
+                  top: 18,
+                  fontSize: 12,
+                  opacity: 0.75,
+                }}
+              >
+                Ultima: <span style={{ opacity: 0.95 }}>{lastPull ?? "—"}</span>
+              </div>
             </div>
           </div>
 
@@ -1185,24 +1173,6 @@ boxShadow: isOpening
                   Qui comparirà la carta quando la sblocchi.
                 </div>
               </div>
-
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                {rarities.map((r) => (
-                  <span
-                    key={r.key}
-                    style={{
-                      fontSize: 11,
-                      padding: "3px 7px",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(0,0,0,0.14)",
-                      opacity: 0.85,
-                    }}
-                  >
-                    {r.emoji} {r.label}
-                  </span>
-                ))}
-              </div>
             </div>
           ))}
         </div>
@@ -1212,6 +1182,7 @@ boxShadow: isOpening
         </div>
       </div>
 
+      {/* ✅ CSS UNICO CORRETTO (tutto dentro la stringa) */}
       <style jsx>{`
         .pack.opening {
           animation: packShake 520ms ease-in-out;
@@ -1219,6 +1190,24 @@ boxShadow: isOpening
         .glow {
           animation: glowPulse 520ms ease-in-out;
         }
+
+        .packwrap.legendFlash {
+          animation: legendFlash 700ms ease-in-out;
+        }
+
+        .cardpop {
+          transform: translateY(0px);
+          opacity: 0.92;
+          transition: opacity 220ms ease;
+        }
+        .cardpop.opening {
+          animation: cardOut 520ms cubic-bezier(0.2, 0.9, 0.2, 1);
+        }
+        .cardpop.show {
+          transform: translateY(-36px);
+          opacity: 1;
+        }
+
         @keyframes packShake {
           0% {
             transform: rotate(0deg) translateY(0px);
@@ -1239,6 +1228,7 @@ boxShadow: isOpening
             transform: rotate(0deg) translateY(0px);
           }
         }
+
         @keyframes glowPulse {
           0% {
             opacity: 0.2;
@@ -1253,52 +1243,40 @@ boxShadow: isOpening
             transform: scale(1);
           }
         }
-      `
-          .packwrap.legendFlash {
-  animation: legendFlash 700ms ease-in-out;
-}
 
-@keyframes legendFlash {
-  0% { box-shadow: 0 0 0 rgba(0,0,0,0); }
-  20% { box-shadow: 0 0 0 2px rgba(255,210,90,0.25), 0 0 40px rgba(255,210,90,0.85); }
-  45% { box-shadow: 0 0 0 2px rgba(255,255,255,0.25), 0 0 60px rgba(255,255,255,0.75); }
-  70% { box-shadow: 0 0 0 2px rgba(255,210,90,0.22), 0 0 35px rgba(255,210,90,0.70); }
-  100% { box-shadow: 0 0 0 rgba(0,0,0,0); }
-}
-}
-.cardpop {
-  transform: translateY(0px);
-  opacity: 0.92;
-  transition: opacity 220ms ease;
-}
+        @keyframes cardOut {
+          0% {
+            transform: translateY(0px);
+          }
+          65% {
+            transform: translateY(-44px);
+          }
+          85% {
+            transform: translateY(-32px);
+          }
+          100% {
+            transform: translateY(-36px);
+          }
+        }
 
-/* durante apertura: la carta sale */
-.cardpop.opening {
-  animation: cardOut 520ms cubic-bezier(0.2, 0.9, 0.2, 1);
-}
-
-/* quando reveal true, la carta resta “fuori” */
-.cardpop.show {
-  transform: translateY(-36px);
-  opacity: 1;
-}
-
-@keyframes cardOut {
-  0% {
-    transform: translateY(0px);
-  }
-  65% {
-    transform: translateY(-44px);
-  }
-  85% {
-    transform: translateY(-32px);
-  }
-  100% {
-    transform: translateY(-36px);
-  }
-}
-
-</style>
+        @keyframes legendFlash {
+          0% {
+            box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+          }
+          20% {
+            box-shadow: 0 0 0 2px rgba(255, 210, 90, 0.25), 0 0 40px rgba(255, 210, 90, 0.85);
+          }
+          45% {
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25), 0 0 60px rgba(255, 255, 255, 0.75);
+          }
+          70% {
+            box-shadow: 0 0 0 2px rgba(255, 210, 90, 0.22), 0 0 35px rgba(255, 210, 90, 0.7);
+          }
+          100% {
+            box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+          }
+        }
+      `}</style>
     </section>
   );
 }
