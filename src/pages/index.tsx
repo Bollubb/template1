@@ -803,6 +803,8 @@ function CarteTab() {
   // ✅ Animazione bustina
   const [isOpening, setIsOpening] = useState(false);
   const [reveal, setReveal] = useState(false);
+  const [cardLabel, setCardLabel] = useState<string | null>(null);
+
 
   function demoOpenPack() {
     if (isOpening) return;
@@ -814,8 +816,7 @@ function CarteTab() {
 
     setIsOpening(true);
     setReveal(false);
-    setLastPull(null);
-
+    setCardLabel(null);
     setPillole((p) => p - 30);
 
     const roll = Math.random();
@@ -823,22 +824,24 @@ function CarteTab() {
       roll < 0.7 ? rarities[0] : roll < 0.9 ? rarities[1] : roll < 0.985 ? rarities[2] : rarities[3];
 
     const demoNames = [
-      "Bradicardia",
-      "Mobitz I",
-      "PEA",
-      "Noradrenalina",
-      "CVC",
-      "Emogas",
-      "Accesso venoso difficile",
-      "Calze elastocompressive",
-      "Pressione venosa centrale",
-      "Aminoglicosidi",
-      "Cefalosporine",
-      "Macrolidi",
+    "Cefalosporine",
+    "Penicilline",
+    "Fluorochinoloni",
+    "Noradrenalina",
+    "Glicopeptidi",
+    "Carbapenemi",
+    "Sulfonamidi",
+    "Licosamidi",
+    "Tetracicline",
+    "Aminoglicosidi",
+    "Nitroimidazoli",
+    "Macrolidi",
     ];
 
     const name = demoNames[Math.floor(Math.random() * demoNames.length)];
     const result = `${rarity.emoji} ${rarity.label}: ${name}`;
+    setCardLabel(result);
+
 
     setTimeout(() => setReveal(true), 520);
     setTimeout(() => {
@@ -988,23 +991,92 @@ function CarteTab() {
                 )}
               </div>
             </div>
+<div
+  style={{
+    position: "relative",
+    height: 140,
+    marginTop: 10,
+    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.03)",
+    overflow: "hidden",
+  }}
+>
+  {/* “guideline” */}
+  <div
+    style={{
+      position: "absolute",
+      left: 12,
+      right: 12,
+      top: 12,
+      height: 1,
+      background: "rgba(255,255,255,0.08)",
+      opacity: 0.8,
+    }}
+  />
 
-            <div
-              style={{
-                marginTop: 12,
-                borderRadius: 16,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.04)",
-                padding: 12,
-                opacity: reveal ? 1 : 0,
-                transform: reveal ? "translateY(0px)" : "translateY(10px)",
-                transition: "opacity 260ms ease, transform 260ms ease",
-              }}
-            >
-              <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 6 }}>Carta rivelata</div>
-              <div style={{ fontWeight: 900 }}>
-                {lastPull ? lastPull : isOpening ? "…" : "Apri una bustina per estrarre una carta"}
-              </div>
+  {/* CARTA CHE ESCE */}
+  <div
+    className={`cardpop ${isOpening ? "opening" : ""} ${reveal ? "show" : ""}`}
+    style={{
+      position: "absolute",
+      left: 14,
+      right: 14,
+      bottom: 14,
+      height: 108,
+      borderRadius: 16,
+      border: "1px solid rgba(255,255,255,0.16)",
+      background: "linear-gradient(180deg, rgba(255,255,255,0.08), rgba(0,0,0,0.18))",
+      boxShadow: "0 18px 60px rgba(0,0,0,0.45)",
+      padding: 12,
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "space-between",
+    }}
+  >
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+      <div style={{ fontWeight: 950, letterSpacing: -0.2 }}>Carta</div>
+      <span style={{ fontSize: 12, opacity: 0.75 }}>{cardLabel ? "Rivelata" : isOpening ? "..." : "Chiusa"}</span>
+    </div>
+
+    <div style={{ fontWeight: 900, lineHeight: 1.2 }}>
+      {cardLabel ? cardLabel : isOpening ? "Estrazione in corso…" : "Apri una bustina"}
+    </div>
+
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {rarities.map((r) => (
+        <span
+          key={r.key}
+          style={{
+            fontSize: 11,
+            padding: "3px 7px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "rgba(0,0,0,0.14)",
+            opacity: 0.7,
+          }}
+        >
+          {r.emoji} {r.label}
+        </span>
+      ))}
+    </div>
+  </div>
+
+  {/* Testo “ultima estrazione” persistito */}
+  <div
+    style={{
+      position: "absolute",
+      left: 14,
+      right: 14,
+      top: 18,
+      fontSize: 12,
+      opacity: 0.75,
+    }}
+  >
+    Ultima: <span style={{ opacity: 0.95 }}>{lastPull ?? "—"}</span>
+  </div>
+</div>
+
             </div>
           </div>
 
@@ -1159,7 +1231,40 @@ function CarteTab() {
             transform: scale(1);
           }
         }
-      `}</style>
+      `}
+.cardpop {
+  transform: translateY(0px);
+  opacity: 0.92;
+  transition: opacity 220ms ease;
+}
+
+/* durante apertura: la carta sale */
+.cardpop.opening {
+  animation: cardOut 520ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+/* quando reveal true, la carta resta “fuori” */
+.cardpop.show {
+  transform: translateY(-36px);
+  opacity: 1;
+}
+
+@keyframes cardOut {
+  0% {
+    transform: translateY(0px);
+  }
+  65% {
+    transform: translateY(-44px);
+  }
+  85% {
+    transform: translateY(-32px);
+  }
+  100% {
+    transform: translateY(-36px);
+  }
+}
+
+</style>
     </section>
   );
 }
