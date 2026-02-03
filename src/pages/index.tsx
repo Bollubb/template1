@@ -308,6 +308,7 @@ function ContentCard({
 const slots = Array.from({ length: 12 }, (_, i) => i);
 
 function CarteTab() {
+  // ---- Persistent state (SSR-safe) ----
   const [pillole, setPillole] = useState<number>(() => {
     if (typeof window === "undefined") return 120;
     return Number(localStorage.getItem("nd_pillole")) || 120;
@@ -322,12 +323,53 @@ function CarteTab() {
     }
   });
 
+  const [recentPulls, setRecentPulls] = useState<CardDef[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      return JSON.parse(localStorage.getItem("nd_recent_pulls") || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  // ---- UI state ----
   const [isOpening, setIsOpening] = useState(false);
   const [pulledCards, setPulledCards] = useState<CardDef[]>([]);
   const [activeRarity, setActiveRarity] = useState<RarityKey | null>(null);
   const [legendFlash, setLegendFlash] = useState(false);
-  const [cardsView, setCardsView] = useState<"apri" | "collezione" | "scambia">("apri");
-  const [swapSelected, setSwapSelected] = useState<Record<string, boolean>>({});
+
+  const [cardsView, setCardsView] = useState<"negozio" | "collezione" | "scambia">("negozio");
+
+  // Collezione: filtri / ordinamento
+  const [filterSet, setFilterSet] = useState<"tutti" | "antibiotici">("tutti");
+  const [filterRarity, setFilterRarity] = useState<"tutte" | RarityKey>("tutte");
+  const [sortMode, setSortMode] = useState<"unlocked" | "rarity" | "name">("unlocked");
+
+  // Negozio: selezione pack
+  type PackDef = {
+    id: string;
+    name: string;
+    price: number; // pillole
+    image: string;
+    set: "antibiotici";
+  };
+
+  const PACKS: PackDef[] = useMemo(
+    () => [
+      { id: "pack-antibiotici", name: "Bustina Antibiotici", price: 30, image: "/packs/pack-antibiotici.png", set: "antibiotici" },
+    ],
+    []
+  );
+
+  const [selectedPackId, setSelectedPackId] = useState<string>(() => PACKS[0]?.id ?? "pack-antibiotici");
+
+  const selectedPack = useMemo(() => PACKS.find((p) => p.id === selectedPackId) || PACKS[0], [PACKS, selectedPackId]);
+
+  // Modal carta
+  const [modalCard, setModalCard] = useState<CardDef | null>(null);
+
+  // Scambio: quantità per carta (solo doppioni)
+  const [swapQtyById, setSwapQtyById] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -339,60 +381,67 @@ function CarteTab() {
     localStorage.setItem("nd_collection_abx", JSON.stringify(collection));
   }, [collection]);
 
-  const activeColor = activeRarity ? RARITY_COLORS[activeRarity] : "rgba(255,255,255,0.20)";
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("nd_recent_pulls", JSON.stringify(recentPulls));
+  }, [recentPulls]);
 
-  const rarityRank: Record<RarityKey, number> = {
-    comune: 0,
-    rara: 1,
-    epica: 2,
-    leggendaria: 3,
-  };
+  // ---- Helpers ----
+  const rarityRank: Record<RarityKey, number> = useMemo(
+    () => ({ comune: 1, rara: 2, epica: 3, leggendaria: 4 }),
+    []
+  );
 
-  // Valore di scambio dei doppioni (pillole ottenute per copia scambiata)
-  const EXCHANGE_VALUE: Record<RarityKey, number> = {
-    comune: 2,
-    rara: 5,
-    epica: 10,
-    leggendaria: 20,
-  };
+  const pillolePerRarity: Record<RarityKey, number> = useMemo(
+    () => ({ comune: 1, rara: 3, epica: 7, leggendaria: 15 }),
+    []
+  );
 
-  const countOf = (id: string) => collection[id] || 0;
+  const countOf = (id: string) => Number(collection[id] || 0);
 
-  function rollRarity(): RarityKey {
-    const r = Math.random();
-    if (r < 0.6) return "comune";
-    if (r < 0.85) return "rara";
-    if (r < 0.97) return "epica";
-    return "leggendaria";
-  }
+  const cardsForPack = useMemo(() => {
+    // pronto per future espansioni: filtri per set in base al pack
+    const set = selectedPack?.set ?? "antibiotici";
+    return CARDS.filter((c) => c.set === set);
+  }, [selectedPack]);
 
-  function pickCard(): CardDef {
-    const rarity = rollRarity();
-    const pool = CARDS.filter((c) => c.rarity === rarity && c.set === "antibiotici");
-    const fallback = CARDS.filter((c) => c.set === "antibiotici");
-    const usePool = pool.length > 0 ? pool : fallback;
-    return usePool[Math.floor(Math.random() * usePool.length)];
+  function pickCardFrom(list: CardDef[]): CardDef {
+    // Distribuzione semplice: pesi per rarità (non mostrati in UI)
+    const weights: Record<RarityKey, number> = {
+      comune: 60,
+      rara: 25,
+      epica: 12,
+      leggendaria: 3,
+    };
+
+    const pool = list.length ? list : CARDS;
+    const total = pool.reduce((acc, c) => acc + (weights[c.rarity] ?? 1), 0);
+    let r = Math.random() * total;
+    for (const c of pool) {
+      r -= weights[c.rarity] ?? 1;
+      if (r <= 0) return c;
+    }
+    return pool[pool.length - 1];
   }
 
   function openPack() {
+    if (!selectedPack) return;
     if (isOpening) return;
-    if (pillole < 30) return;
+    if (pillole < selectedPack.price) return;
 
     setIsOpening(true);
     setPulledCards([]);
     setActiveRarity(null);
     setLegendFlash(false);
-    setCardsView("apri");
 
-    setPillole((p) => p - 30);
+    setPillole((p) => p - selectedPack.price);
 
     // 70% 1 carta, 30% 2 carte (non mostrato in UI)
     const cardCount = Math.random() < 0.7 ? 1 : 2;
 
     const pulls: CardDef[] = [];
-    for (let i = 0; i < cardCount; i++) pulls.push(pickCard());
+    for (let i = 0; i < cardCount; i++) pulls.push(pickCardFrom(cardsForPack));
 
-    // rarità più alta tra le pescate per colore/flash
     const highest = pulls.reduce((a, b) => (rarityRank[a.rarity] >= rarityRank[b.rarity] ? a : b));
     setActiveRarity(highest.rarity);
 
@@ -404,9 +453,9 @@ function CarteTab() {
       setTimeout(() => setLegendFlash(false), 700);
     }
 
-    // reveal sincronizzato
     setTimeout(() => {
       setPulledCards(pulls);
+
       setCollection((prev) => {
         const next = { ...prev };
         pulls.forEach((c) => {
@@ -414,573 +463,694 @@ function CarteTab() {
         });
         return next;
       });
+
+      setRecentPulls((prev) => {
+        const merged = [...pulls, ...prev].slice(0, 20);
+        return merged;
+      });
+
       setIsOpening(false);
     }, 650);
   }
 
-  const swapCandidates = useMemo(() => {
-    return CARDS
-      .map((card) => {
-        const count = countOf(card.id);
-        const dupes = Math.max(0, count - 1);
-        return { card, count, dupes };
-      })
+  // ---- Collezione: lista filtrata + ordinata ----
+  const filteredCards = useMemo(() => {
+    let list = [...CARDS];
+
+    if (filterSet !== "tutti") list = list.filter((c) => c.set === filterSet);
+    if (filterRarity !== "tutte") list = list.filter((c) => c.rarity === filterRarity);
+
+    const isUnlocked = (c: CardDef) => countOf(c.id) > 0;
+
+    const byName = (a: CardDef, b: CardDef) => a.name.localeCompare(b.name, "it", { sensitivity: "base" });
+    const byRarityThenName = (a: CardDef, b: CardDef) =>
+      rarityRank[b.rarity] - rarityRank[a.rarity] || byName(a, b);
+    const byUnlockedFirst = (a: CardDef, b: CardDef) => {
+      const au = isUnlocked(a) ? 1 : 0;
+      const bu = isUnlocked(b) ? 1 : 0;
+      return bu - au || byRarityThenName(a, b);
+    };
+
+    if (sortMode === "name") list.sort(byName);
+    else if (sortMode === "rarity") list.sort(byRarityThenName);
+    else list.sort(byUnlockedFirst);
+
+    return list;
+  }, [collection, filterSet, filterRarity, sortMode, rarityRank]);
+
+  // ---- Scambio: candidati + totale pillole ----
+  const swapRows = useMemo(() => {
+    return CARDS.map((card) => {
+      const count = countOf(card.id);
+      const dupes = Math.max(0, count - 1);
+      return { card, count, dupes };
+    })
       .filter((x) => x.dupes > 0)
       .sort((a, b) => rarityRank[b.card.rarity] - rarityRank[a.card.rarity]);
-  }, [collection]);
+  }, [collection, rarityRank]);
 
-  const swapSummary = useMemo(() => {
-    let totalCopies = 0;
-    let totalPillole = 0;
-    for (const c of swapCandidates) {
-      if (!swapSelected[c.card.id]) continue;
-      totalCopies += c.dupes;
-      totalPillole += c.dupes * EXCHANGE_VALUE[c.card.rarity];
-    }
-    return { totalCopies, totalPillole };
-  }, [swapCandidates, swapSelected]);
+  const swapTotalPills = useMemo(() => {
+    return swapRows.reduce((acc, row) => {
+      const qty = Math.min(row.dupes, Math.max(0, swapQtyById[row.card.id] || 0));
+      return acc + qty * (pillolePerRarity[row.card.rarity] || 0);
+    }, 0);
+  }, [swapRows, swapQtyById, pillolePerRarity]);
 
-  function toggleSwap(id: string) {
-    setSwapSelected((prev) => ({ ...prev, [id]: !prev[id] }));
+  function incSwap(id: string, max: number) {
+    setSwapQtyById((prev) => {
+      const cur = prev[id] || 0;
+      const next = Math.min(max, cur + 1);
+      return { ...prev, [id]: next };
+    });
   }
 
-  function swapSelectedDupes() {
-    if (swapSummary.totalCopies <= 0) return;
+  function decSwap(id: string) {
+    setSwapQtyById((prev) => {
+      const cur = prev[id] || 0;
+      const next = Math.max(0, cur - 1);
+      return { ...prev, [id]: next };
+    });
+  }
+
+  function confirmSwap() {
+    if (swapTotalPills <= 0) return;
+
+    // aggiorna collezione (brucia solo doppioni, lasciando almeno 1)
     setCollection((prev) => {
       const next = { ...prev };
-      for (const c of swapCandidates) {
-        if (!swapSelected[c.card.id]) continue;
-        // manteniamo sempre 1 copia in collezione
-        next[c.card.id] = Math.max(1, (next[c.card.id] || 0) - c.dupes);
-      }
+      swapRows.forEach(({ card, dupes }) => {
+        const qty = Math.min(dupes, Math.max(0, swapQtyById[card.id] || 0));
+        if (qty > 0) next[card.id] = Math.max(1, (next[card.id] || 0) - qty);
+      });
       return next;
     });
-    setPillole((p) => p + swapSummary.totalPillole);
-    setSwapSelected({});
+
+    setPillole((p) => p + swapTotalPills);
+    setSwapQtyById({});
   }
 
-  const ownedCount = useMemo(() => {
-    // numero di carte sbloccate (almeno 1 copia)
-    return CARDS.reduce((acc, c) => acc + ((collection[c.id] || 0) > 0 ? 1 : 0), 0);
-  }, [collection]);
+  // ---- UI components ----
+  const TabButton = ({
+    label,
+    active,
+    onClick,
+  }: {
+    label: string;
+    active: boolean;
+    onClick: () => void;
+  }) => (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1,
+        padding: "10px 10px",
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: active ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.18)",
+        color: "white",
+        fontWeight: 700,
+      }}
+    >
+      {label}
+    </button>
+  );
 
-  return (
-    <section style={{ paddingTop: 6 }}>
+  const CardTile = ({ card }: { card: CardDef }) => {
+    const owned = countOf(card.id);
+    const locked = owned <= 0;
+    return (
       <div
+        onClick={() => {
+          if (!locked) setModalCard(card);
+        }}
         style={{
+          position: "relative",
+          borderRadius: 16,
+          overflow: "hidden",
           border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: 20,
-          padding: 18,
-          background: "rgba(255,255,255,0.04)",
-          boxShadow: "0 18px 55px rgba(0,0,0,0.28)",
+          background: "rgba(0,0,0,0.22)",
+          cursor: locked ? "default" : "pointer",
+          minHeight: 128,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 14,
-              display: "grid",
-              placeItems: "center",
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(165,110,255,0.14)",
-              fontSize: 22,
-            }}
-          >
-            🃏
-          </div>
-          <div>
-            <h2 style={{ margin: 0, letterSpacing: -0.2 }}>Carte – Antibiotici</h2>
-            <p style={{ margin: "6px 0 0", opacity: 0.8, lineHeight: 1.35 }}>
-              Apri bustine, trova rarità e colleziona doppioni (xN).
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+        <img
+          src={card.image}
+          alt={card.name}
+          style={{
+            width: "100%",
+            height: 160,
+            objectFit: "cover",
+            filter: locked ? "grayscale(1) blur(0.4px)" : "none",
+            opacity: locked ? 0.32 : 1,
+          }}
+        />
+        <div style={{ position: "absolute", left: 10, top: 10, display: "flex", gap: 8 }}>
           <span
             style={{
               fontSize: 12,
-              padding: "5px 10px",
+              padding: "4px 8px",
               borderRadius: 999,
+              background: locked ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.40)",
               border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(255,255,255,0.06)",
-              opacity: 0.9,
+              color: "white",
+              fontWeight: 800,
             }}
           >
-            💊 Pillole: <strong style={{ fontWeight: 800 }}>{pillole}</strong>
+            {locked ? "🔒" : card.rarity.toUpperCase()}
           </span>
-
-          <span
-            style={{
-              fontSize: 12,
-              padding: "5px 10px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.14)",
-              background: "rgba(0,0,0,0.16)",
-              opacity: 0.9,
-            }}
-          >
-            Bustina: <strong style={{ fontWeight: 800 }}>30</strong> pillole
-          </span>
+          {!locked && owned > 1 && (
+            <span
+              style={{
+                fontSize: 12,
+                padding: "4px 8px",
+                borderRadius: 999,
+                background: "rgba(0,0,0,0.40)",
+                border: "1px solid rgba(255,255,255,0.14)",
+                color: "white",
+                fontWeight: 900,
+              }}
+            >
+              x{owned}
+            </span>
+          )}
         </div>
 
-        {/* Mini menu interno */}
         <div
           style={{
-            marginTop: 14,
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 10,
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: "10px 10px",
+            background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.70) 65%, rgba(0,0,0,0.80) 100%)",
+            color: "white",
+            fontWeight: 800,
           }}
         >
-          {([
-            { key: "apri", label: "Apri bustine" },
-            { key: "collezione", label: "Collezione" },
-            { key: "scambia", label: "Scambia doppioni" },
-          ] as const).map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setCardsView(t.key)}
-              style={{
-                border: "1px solid rgba(255,255,255,0.14)",
-                background: cardsView === t.key ? "rgba(165,110,255,0.22)" : "rgba(0,0,0,0.14)",
-                color: "white",
-                borderRadius: 14,
-                padding: "10px 12px",
-                cursor: "pointer",
-                fontWeight: 900,
-                letterSpacing: -0.1,
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
+          {locked ? "???" : card.name}
+          <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 600 }}>{locked ? "Da sbloccare" : "Collezione"}</div>
         </div>
+      </div>
+    );
+  };
 
-        {/* VIEW: APRI */}
-        {cardsView === "apri" && (
-          <>
-            {/* PACK */}
-            <div
-              className={`packwrap ${legendFlash ? "legendFlash" : ""}`}
+  const Modal = ({ card }: { card: CardDef }) => {
+    const aura = RARITY_COLORS[card.rarity];
+    return (
+      <div
+        onClick={() => setModalCard(null)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.65)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 50,
+          padding: 18,
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "min(420px, 92vw)",
+            borderRadius: 22,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(10,10,10,0.88)",
+            padding: 14,
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 34px 6px ${aura}`,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <div style={{ color: "white", fontWeight: 900, fontSize: 16 }}>{card.name}</div>
+            <button
+              onClick={() => setModalCard(null)}
               style={{
-                marginTop: 16,
+                borderRadius: 12,
+                padding: "8px 10px",
                 border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(0,0,0,0.18)",
-                borderRadius: 18,
-                padding: 14,
-                overflow: "hidden",
-                boxShadow: isOpening ? `0 0 22px ${activeColor}` : undefined,
+                background: "rgba(255,255,255,0.08)",
+                color: "white",
+                fontWeight: 800,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <div>
-                  <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>Bustina Antibiotici</div>
-                  <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
-                    {pillole < 30 ? "Servono 30 pillole per aprire." : "Premi “Apri” per estrarre carte."}
-                  </div>
-                </div>
-
-                <div
-                  className={`pack ${isOpening ? "opening" : ""}`}
-                  style={{
-                    width: 90,
-                    height: 120,
-                    borderRadius: 16,
-                    border: `1px solid ${activeColor}`,
-                    background: "rgba(255,255,255,0.02)",
-                    boxShadow: isOpening
-                      ? `0 0 22px ${activeColor}, 0 20px 60px rgba(0,0,0,0.45)`
-                      : `0 0 0 1px rgba(255,255,255,0.06), 0 14px 50px rgba(0,0,0,0.30)`,
-                    display: "grid",
-                    placeItems: "center",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
-                  <img
-                    src="/packs/pack-antibiotici.png"
-                    alt="Bustina Antibiotici"
-                    style={{ width: "110%", height: "110%", objectFit: "cover" }}
-                  />
-
-                  {isOpening && (
-                    <div
-                      className="glow"
-                      style={{
-                        position: "absolute",
-                        inset: -30,
-                        borderRadius: 999,
-                        background: `radial-gradient(circle, ${activeColor}, rgba(0,0,0,0))`,
-                        pointerEvents: "none",
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={openPack}
-                disabled={isOpening || pillole < 30}
-                title={pillole < 30 ? "Servono 30 pillole" : "Apri bustina"}
-                style={{
-                  marginTop: 12,
-                  width: "100%",
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: "rgba(165,110,255,0.18)",
-                  color: "white",
-                  borderRadius: 16,
-                  padding: "12px 14px",
-                  cursor: isOpening || pillole < 30 ? "not-allowed" : "pointer",
-                  opacity: isOpening || pillole < 30 ? 0.7 : 1,
-                  textAlign: "left",
-                }}
-              >
-                <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>
-                  {isOpening ? "📦 Apertura in corso…" : pillole < 30 ? "❌ Pillole insufficienti" : "📦 Apri bustina (30💊)"}
-                </div>
-                <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-                  Trova nuove carte e accumula doppioni (xN).
-                </div>
-              </button>
-            </div>
-
-            {/* REVEAL CARDS */}
-            {pulledCards.length > 0 && (
-              <div style={{ marginTop: 14 }}>
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                  <h3 style={{ margin: 0, fontSize: 16 }}>🎴 Carte estratte</h3>
-                  <div style={{ fontSize: 13, opacity: 0.7 }}>{pulledCards.length} carta/e</div>
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 10,
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                    gap: 12,
-                  }}
-                >
-                  {pulledCards.map((c, idx) => (
-                    <div
-                      key={`${c.id}-${idx}`}
-                      className="cardpop show"
-                      style={{
-                        border: `1px solid ${RARITY_COLORS[c.rarity]}`,
-                        borderRadius: 18,
-                        padding: 12,
-                        background: "rgba(0,0,0,0.18)",
-                        boxShadow: `0 0 18px ${RARITY_COLORS[c.rarity]}`,
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-                        <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>{c.name}</div>
-                        <span
-                          style={{
-                            fontSize: 12,
-                            padding: "4px 10px",
-                            borderRadius: 999,
-                            border: `1px solid ${RARITY_COLORS[c.rarity]}`,
-                            background: "rgba(0,0,0,0.18)",
-                            fontWeight: 900,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {c.rarity}
-                        </span>
-                      </div>
-
-                      <img
-                        src={c.image}
-                        alt={c.name}
-                        style={{
-                          width: "100%",
-                          marginTop: 10,
-                          borderRadius: 14,
-                          border: "1px solid rgba(255,255,255,0.10)",
-                          background: "rgba(255,255,255,0.03)",
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* VIEW: COLLEZIONE */}
-        {cardsView === "collezione" && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-              <h3 style={{ margin: 0, fontSize: 16 }}>📦 Collezione</h3>
-              <div style={{ fontSize: 13, opacity: 0.7 }}>
-                {ownedCount} / {CARDS.length}
-              </div>
-            </div>
-
-            <div
-              style={{
-                marginTop: 10,
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-                gap: 12,
-              }}
-            >
-              {CARDS
-                .slice()
-                .sort((a, b) => rarityRank[b.rarity] - rarityRank[a.rarity])
-                .map((card) => {
-                  const count = collection[card.id] || 0;
-                  const locked = count <= 0;
-                  return (
-                    <div
-                      key={card.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 18,
-                        padding: 12,
-                        background: "rgba(255,255,255,0.03)",
-                        position: "relative",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {!locked && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: 10,
-                            right: 10,
-                            fontSize: 12,
-                            padding: "4px 10px",
-                            borderRadius: 999,
-                            border: `1px solid ${RARITY_COLORS[card.rarity]}`,
-                            background: "rgba(0,0,0,0.18)",
-                            fontWeight: 900,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          x{count}
-                        </div>
-                      )}
-
-                      <div style={{ fontWeight: 900, letterSpacing: -0.1 }}>{locked ? "???" : card.name}</div>
-                      <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>{locked ? "da sbloccare" : card.rarity}</div>
-
-                      <div style={{ position: "relative", marginTop: 10 }}>
-                        <img
-                          src={card.image}
-                          alt={card.name}
-                          style={{
-                            width: "100%",
-                            borderRadius: 14,
-                            border: locked ? "1px solid rgba(255,255,255,0.10)" : `1px solid ${RARITY_COLORS[card.rarity]}`,
-                            background: "rgba(0,0,0,0.12)",
-                            filter: locked ? "grayscale(1)" : "none",
-                            opacity: locked ? 0.22 : 1,
-                          }}
-                        />
-
-                        {locked && (
-                          <div
-                            style={{
-                              position: "absolute",
-                              inset: 0,
-                              display: "grid",
-                              placeItems: "center",
-                              pointerEvents: "none",
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontWeight: 1000,
-                                letterSpacing: -0.2,
-                                padding: "8px 10px",
-                                borderRadius: 14,
-                                border: "1px solid rgba(255,255,255,0.14)",
-                                background: "rgba(0,0,0,0.40)",
-                              }}
-                            >
-                              🔒
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
+              Chiudi
+            </button>
           </div>
-        )}
 
-        {/* VIEW: SCAMBIA */}
-        {cardsView === "scambia" && (
-          <div style={{ marginTop: 16 }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-              <h3 style={{ margin: 0, fontSize: 16 }}>♻️ Scambia doppioni</h3>
-              <div style={{ fontSize: 13, opacity: 0.7 }}>Conservi sempre 1 copia</div>
-            </div>
+          <div style={{ height: 10 }} />
 
-            <div
-              style={{
-                marginTop: 10,
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 18,
-                padding: 14,
-                background: "rgba(0,0,0,0.16)",
-              }}
-            >
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-                <span style={{ fontSize: 13, opacity: 0.9 }}>
-                  Selezionati: <strong style={{ fontWeight: 900 }}>{swapSummary.totalCopies}</strong> doppioni
-                </span>
-                <span style={{ fontSize: 13, opacity: 0.9 }}>
-                  Guadagno: <strong style={{ fontWeight: 900 }}>{swapSummary.totalPillole}</strong> 💊
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={swapSelectedDupes}
-                disabled={swapSummary.totalCopies <= 0}
-                style={{
-                  marginTop: 12,
-                  width: "100%",
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: swapSummary.totalCopies > 0 ? "rgba(91,217,255,0.16)" : "rgba(0,0,0,0.10)",
-                  color: "white",
-                  borderRadius: 16,
-                  padding: "12px 14px",
-                  cursor: swapSummary.totalCopies > 0 ? "pointer" : "not-allowed",
-                  opacity: swapSummary.totalCopies > 0 ? 1 : 0.6,
-                  textAlign: "left",
-                }}
-              >
-                <div style={{ fontWeight: 1000, letterSpacing: -0.1 }}>♻️ Scambia selezionati</div>
-                <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>Trasforma i doppioni in pillole.</div>
-              </button>
-            </div>
-
-            <div
-              style={{
-                marginTop: 12,
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: 12,
-              }}
-            >
-              {CARDS
-                .slice()
-                .sort((a, b) => rarityRank[b.rarity] - rarityRank[a.rarity])
-                .map((card) => {
-                  const count = collection[card.id] || 0;
-                  const dupes = Math.max(0, count - 1);
-                  const disabled = dupes <= 0;
-                  const checked = !!swapSelected[card.id];
-                  return (
-                    <label
-                      key={card.id}
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 18,
-                        padding: 12,
-                        background: disabled ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.03)",
-                        opacity: disabled ? 0.55 : 1,
-                        cursor: disabled ? "not-allowed" : "pointer",
-                        display: "flex",
-                        gap: 12,
-                        alignItems: "center",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        disabled={disabled}
-                        checked={checked}
-                        onChange={(e) => {
-                          const val = e.target.checked;
-                          setSwapSelected((prev) => ({ ...prev, [card.id]: val }));
-                        }}
-                        style={{ width: 18, height: 18 }}
-                      />
-
-                      <div style={{ width: 54, height: 72, borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.10)" }}>
-                        <img src={card.image} alt={card.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      </div>
-
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                          <div style={{ fontWeight: 1000, letterSpacing: -0.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {card.name}
-                          </div>
-                          <span
-                            style={{
-                              fontSize: 12,
-                              padding: "3px 9px",
-                              borderRadius: 999,
-                              border: `1px solid ${RARITY_COLORS[card.rarity]}`,
-                              background: "rgba(0,0,0,0.18)",
-                              fontWeight: 900,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            +{EXCHANGE_VALUE[card.rarity]}💊
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-                          Disponibili: <strong style={{ fontWeight: 1000 }}>{dupes}</strong> doppioni
-                        </div>
-                      </div>
-                    </label>
-                  );
-                })}
-            </div>
+          <div
+            style={{
+              borderRadius: 18,
+              overflow: "hidden",
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.25)",
+            }}
+          >
+            <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
           </div>
-        )}
+
+          <div style={{ height: 12 }} />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <span
+              style={{
+                fontSize: 12,
+                padding: "6px 10px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.08)",
+                color: "white",
+                fontWeight: 900,
+              }}
+            >
+              {card.rarity.toUpperCase()}
+            </span>
+            <span
+              style={{
+                fontSize: 12,
+                padding: "6px 10px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.08)",
+                color: "white",
+                fontWeight: 900,
+              }}
+            >
+              Copie: x{countOf(card.id)}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ---- Render ----
+  return (
+    <div style={{ padding: "14px 12px 90px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div style={{ color: "white", fontWeight: 1000, fontSize: 18 }}>Carte</div>
+        <div
+          style={{
+            padding: "8px 12px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(0,0,0,0.22)",
+            color: "white",
+            fontWeight: 900,
+            whiteSpace: "nowrap",
+          }}
+          title="Pillole"
+        >
+          💊 {pillole}
+        </div>
       </div>
 
-      <style jsx>{`
-        .pack.opening {
-          animation: packShake 520ms ease-in-out;
-        }
-        .glow {
-          animation: glowPulse 520ms ease-in-out;
-        }
-        .packwrap.legendFlash {
-          animation: legendFlash 700ms ease-in-out;
-        }
-        .cardpop.show {
-          animation: popIn 240ms ease-out;
-        }
-        @keyframes packShake {
-          0% { transform: rotate(0deg) translateY(0px); }
-          20% { transform: rotate(-6deg) translateY(-2px); }
-          40% { transform: rotate(6deg) translateY(-1px); }
-          60% { transform: rotate(-4deg) translateY(-2px); }
-          80% { transform: rotate(4deg) translateY(-1px); }
-          100% { transform: rotate(0deg) translateY(0px); }
-        }
-        @keyframes glowPulse {
-          0% { opacity: 0.2; transform: scale(0.95); }
-          50% { opacity: 1; transform: scale(1.05); }
-          100% { opacity: 0.25; transform: scale(1); }
-        }
-        @keyframes legendFlash {
-          0% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
-          20% { box-shadow: 0 0 0 2px rgba(255, 210, 90, 0.25), 0 0 40px rgba(255, 210, 90, 0.85); }
-          45% { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25), 0 0 60px rgba(255, 255, 255, 0.75); }
-          70% { box-shadow: 0 0 0 2px rgba(255, 210, 90, 0.22), 0 0 35px rgba(255, 210, 90, 0.7); }
-          100% { box-shadow: 0 0 0 rgba(0, 0, 0, 0); }
-        }
-        @keyframes popIn {
-          from { transform: translateY(6px); opacity: 0.6; }
-          to { transform: translateY(0px); opacity: 1; }
-        }
-      `}</style>
-    </section>
+      <div style={{ height: 12 }} />
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <TabButton label="Negozio" active={cardsView === "negozio"} onClick={() => setCardsView("negozio")} />
+        <TabButton label="Collezione" active={cardsView === "collezione"} onClick={() => setCardsView("collezione")} />
+        <TabButton label="Scambia" active={cardsView === "scambia"} onClick={() => setCardsView("scambia")} />
+      </div>
+
+      <div style={{ height: 14 }} />
+
+      {cardsView === "negozio" && (
+        <div>
+          <div style={{ color: "white", fontWeight: 900, opacity: 0.9 }}>Scegli una bustina</div>
+          <div style={{ height: 10 }} />
+
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "center",
+              flexWrap: "wrap",
+              padding: 12,
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.20)",
+            }}
+          >
+            <img
+              src={selectedPack?.image}
+              alt={selectedPack?.name || "Pack"}
+              style={{ width: 92, height: 92, objectFit: "contain" }}
+            />
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ color: "white", fontWeight: 1000, fontSize: 16 }}>{selectedPack?.name}</div>
+              <div style={{ color: "rgba(255,255,255,0.80)", fontWeight: 700, marginTop: 4 }}>
+                Costo: {selectedPack?.price} 💊
+              </div>
+              <div style={{ height: 10 }} />
+
+              <select
+                value={selectedPackId}
+                onChange={(e) => setSelectedPackId(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(0,0,0,0.24)",
+                  color: "white",
+                  fontWeight: 800,
+                }}
+              >
+                {PACKS.map((p) => (
+                  <option key={p.id} value={p.id} style={{ color: "black" }}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+
+              <div style={{ height: 10 }} />
+
+              <button
+                onClick={openPack}
+                disabled={isOpening || pillole < (selectedPack?.price || 0)}
+                style={{
+                  width: "100%",
+                  padding: "12px 14px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background:
+                    isOpening || pillole < (selectedPack?.price || 0)
+                      ? "rgba(255,255,255,0.08)"
+                      : "rgba(255,255,255,0.16)",
+                  color: "white",
+                  fontWeight: 1000,
+                  cursor: isOpening || pillole < (selectedPack?.price || 0) ? "not-allowed" : "pointer",
+                }}
+              >
+                {isOpening ? "Apertura..." : "Apri bustina"}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ height: 14 }} />
+
+          {/* Effetto flash leggendaria */}
+          {legendFlash && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(255,210,90,0.10)",
+                pointerEvents: "none",
+                zIndex: 40,
+              }}
+            />
+          )}
+
+          {/* Carte estratte (solo sessione corrente) */}
+          {pulledCards.length > 0 && (
+            <div
+              style={{
+                padding: 12,
+                borderRadius: 18,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(0,0,0,0.20)",
+              }}
+            >
+              <div style={{ color: "white", fontWeight: 1000 }}>
+                Carte estratte{" "}
+                {activeRarity && (
+                  <span style={{ opacity: 0.85, fontWeight: 800 }}>• {activeRarity.toUpperCase()}</span>
+                )}
+              </div>
+              <div style={{ height: 10 }} />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
+                {pulledCards.map((c, idx) => (
+                  <div key={`${c.id}-${idx}`} style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(255,255,255,0.12)" }}>
+                    <img src={c.image} alt={c.name} style={{ width: "100%", height: 220, objectFit: "cover", display: "block" }} />
+                    <div style={{ padding: 10, background: "rgba(0,0,0,0.35)", color: "white", fontWeight: 900 }}>
+                      {c.name}
+                      <div style={{ fontSize: 12, opacity: 0.85, fontWeight: 700 }}>{c.rarity.toUpperCase()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ height: 14 }} />
+
+          {/* Ultime estrazioni (persistenti, max 20) */}
+          {recentPulls.length > 0 && (
+            <div style={{ padding: 12, borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(0,0,0,0.18)" }}>
+              <div style={{ color: "white", fontWeight: 1000 }}>Ultime estrazioni</div>
+              <div style={{ height: 10 }} />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
+                {recentPulls.map((c, idx) => (
+                  <div
+                    key={`${c.id}-recent-${idx}`}
+                    style={{
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(0,0,0,0.22)",
+                    }}
+                  >
+                    <img src={c.image} alt={c.name} style={{ width: "100%", height: 90, objectFit: "cover", display: "block" }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {cardsView === "collezione" && (
+        <div>
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.20)",
+            }}
+          >
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div>
+                <div style={{ color: "rgba(255,255,255,0.85)", fontWeight: 800, fontSize: 12, marginBottom: 6 }}>SET</div>
+                <select
+                  value={filterSet}
+                  onChange={(e) => setFilterSet(e.target.value as any)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.24)",
+                    color: "white",
+                    fontWeight: 800,
+                  }}
+                >
+                  <option value="tutti" style={{ color: "black" }}>
+                    Tutti
+                  </option>
+                  <option value="antibiotici" style={{ color: "black" }}>
+                    Antibiotici
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <div style={{ color: "rgba(255,255,255,0.85)", fontWeight: 800, fontSize: 12, marginBottom: 6 }}>RARITÀ</div>
+                <select
+                  value={filterRarity}
+                  onChange={(e) => setFilterRarity(e.target.value as any)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.24)",
+                    color: "white",
+                    fontWeight: 800,
+                  }}
+                >
+                  <option value="tutte" style={{ color: "black" }}>
+                    Tutte
+                  </option>
+                  <option value="comune" style={{ color: "black" }}>
+                    Comune
+                  </option>
+                  <option value="rara" style={{ color: "black" }}>
+                    Rara
+                  </option>
+                  <option value="epica" style={{ color: "black" }}>
+                    Epica
+                  </option>
+                  <option value="leggendaria" style={{ color: "black" }}>
+                    Leggendaria
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ height: 10 }} />
+
+            <div>
+              <div style={{ color: "rgba(255,255,255,0.85)", fontWeight: 800, fontSize: 12, marginBottom: 6 }}>ORDINAMENTO</div>
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as any)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(0,0,0,0.24)",
+                  color: "white",
+                  fontWeight: 800,
+                }}
+              >
+                <option value="unlocked" style={{ color: "black" }}>
+                  Sbloccate prima
+                </option>
+                <option value="rarity" style={{ color: "black" }}>
+                  Rarità → Nome
+                </option>
+                <option value="name" style={{ color: "black" }}>
+                  Nome A → Z
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+            {filteredCards.map((card) => (
+              <CardTile key={card.id} card={card} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {cardsView === "scambia" && (
+        <div>
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.20)",
+            }}
+          >
+            <div style={{ color: "white", fontWeight: 1000 }}>Scambia doppioni</div>
+            <div style={{ color: "rgba(255,255,255,0.80)", fontWeight: 700, marginTop: 6, fontSize: 13 }}>
+              Seleziona quante copie vuoi scambiare. Le prime copie rimangono in collezione.
+            </div>
+
+            <div style={{ height: 12 }} />
+
+            {swapRows.length === 0 ? (
+              <div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 700 }}>Nessun doppione disponibile.</div>
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {swapRows.map(({ card, dupes }) => {
+                  const qty = Math.min(dupes, Math.max(0, swapQtyById[card.id] || 0));
+                  const valueEach = pillolePerRarity[card.rarity] || 0;
+                  return (
+                    <div
+                      key={card.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: 10,
+                        borderRadius: 16,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: "rgba(0,0,0,0.18)",
+                      }}
+                    >
+                      <img src={card.image} alt={card.name} style={{ width: 64, height: 64, borderRadius: 12, objectFit: "cover" }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ color: "white", fontWeight: 900, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {card.name}
+                        </div>
+                        <div style={{ fontSize: 12, opacity: 0.85, color: "white", fontWeight: 800 }}>
+                          Doppioni: {dupes} • {valueEach}💊 ciascuno
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <button
+                          onClick={() => decSwap(card.id)}
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 12,
+                            border: "1px solid rgba(255,255,255,0.14)",
+                            background: "rgba(255,255,255,0.08)",
+                            color: "white",
+                            fontWeight: 1000,
+                          }}
+                        >
+                          −
+                        </button>
+                        <div style={{ minWidth: 28, textAlign: "center", color: "white", fontWeight: 1000 }}>{qty}</div>
+                        <button
+                          onClick={() => incSwap(card.id, dupes)}
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 12,
+                            border: "1px solid rgba(255,255,255,0.14)",
+                            background: "rgba(255,255,255,0.08)",
+                            color: "white",
+                            fontWeight: 1000,
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div style={{ height: 12 }} />
+
+            <div
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                paddingTop: 10,
+                borderTop: "1px solid rgba(255,255,255,0.10)",
+              }}
+            >
+              <div style={{ color: "white", fontWeight: 1000 }}>Totale: {swapTotalPills} 💊</div>
+              <button
+                onClick={confirmSwap}
+                disabled={swapTotalPills <= 0}
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: swapTotalPills <= 0 ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.16)",
+                  color: "white",
+                  fontWeight: 1000,
+                  cursor: swapTotalPills <= 0 ? "not-allowed" : "pointer",
+                }}
+              >
+                Scambia selezionati
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalCard && <Modal card={modalCard} />}
+    </div>
   );
 }
 
