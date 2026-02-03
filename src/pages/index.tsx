@@ -14,7 +14,7 @@ const RARITY_COLORS: Record<RarityKey, string> = {
   comune: "rgba(180,180,180,0.9)",
   rara: "rgba(91,217,255,0.95)",
   epica: "rgba(165,110,255,0.95)",
-  leggendaria: "rgba(255,210,90,1)",
+  leggendaria: "rgba(255,210,90,1)", 
 };
 
 const CARDS: CardDef[] = [
