@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { AJAY_URL } from '@constants/index';
-import { BuyMeaCoffeeSvg } from '@svg/index';
 import styles from '@styles/Bmc.module.css';
 
 /**
