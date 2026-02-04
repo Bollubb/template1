@@ -487,7 +487,7 @@ type QuizQ = { id: string; q: string; options: string[]; answer: number };
 const QUIZ_BANK: QuizQ[] = useMemo(
   () => [
     { id: "q1", q: "Qual e la sede piu comune per misurare la saturazione SpO2?", options: ["Dito", "Tibia", "Addome", "Scapola"], answer: 0 },
-    { id: "q2", q: "La tecnica "push-pause" nel lavaggio di un accesso venoso serve a:", options: ["Ridurre la pressione arteriosa", "Creare turbolenza e prevenire occlusioni", "Aumentare la diuresi", "Sterilizzare il catetere"], answer: 1 },
+    { id: "q2", q: "La tecnica \"push-pause\" nel lavaggio di un accesso venoso serve a:", options: ["Ridurre la pressione arteriosa", "Creare turbolenza e prevenire occlusioni", "Aumentare la diuresi", "Sterilizzare il catetere"], answer: 1 },
     { id: "q3", q: "In caso di sospetta ipoglicemia, il primo controllo utile e:", options: ["ECG", "Glicemia capillare", "Saturazione", "Temperatura"], answer: 1 },
     { id: "q4", q: "Un paziente con dispnea improvvisa: quale dato raccogli per primo?", options: ["Peso", "SpO2 e FR", "Altezza", "Anamnesi familiare"], answer: 1 },
     { id: "q5", q: "Per ridurre contaminazioni in emocoltura e importante:", options: ["Usare guanti sterili e antisepsi corretta", "Prelevare sempre dopo antibiotico", "Agitare energicamente il flacone", "Usare solo aghi piccoli"], answer: 0 },
