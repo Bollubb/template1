@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { BackArrowSvg, CatFourOFourSvg } from '@svg/index';
+import BackArrowSvg from '@svg/BackArrowSvg';
+import CatFourOFourSvg from '@svg/CatFourOFourSvg';
 import styles from '@styles/404.module.css';
 
 /**
