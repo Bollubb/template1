@@ -6,7 +6,7 @@ import Page from "../layouts/Page";
 import Section from "../layouts/Section";
 import styles from "../styles/Home.module.css";
 
-import ContentCard from "../components/nursediary/ContentCard";
+import { ContentCard } from "../components/nursediary/ContentCard";
 import CarteTab from "../components/nursediary/CarteTab";
 
 import { DOCS_URL, GITHUB_URL } from "../constants";
