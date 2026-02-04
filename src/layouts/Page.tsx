@@ -1,38 +1,39 @@
-import Head from 'next/head';
-import React from 'react';
+import Head from "next/head";
+import React from "react";
 
 export type PageProps = {
-  title: string;
-  className?: string;
+  title?: string;
   children: React.ReactNode;
 };
 
-function Page({ title, className, children }: PageProps): JSX.Element {
-  const pageTitle = title === 'Home' ? 'Cats Realm' : `Cats Realm | ${title}`;
+export default function Page({ title = "NurseDiary", children }: PageProps): JSX.Element {
+  const pageTitle = title ? `NurseDiary | ${title}` : "NurseDiary";
 
   return (
     <>
       <Head>
         <title>{pageTitle}</title>
+        <meta name="theme-color" content="#0ea5e9" />
       </Head>
 
-      {/* Header minimale (senza dipendenze da src/components) */}
-      <header style={{ padding: '16px 16px 0 16px' }}>
-        <a href="/" style={{ textDecoration: 'none', fontWeight: 700 }}>
-          Cats Realm
-        </a>
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+          background: "white",
+          borderBottom: "1px solid rgba(0,0,0,0.08)",
+          padding: "12px 16px",
+        }}
+      >
+        <div style={{ fontWeight: 800, fontSize: 18 }}>NurseDiary</div>
       </header>
 
-      <main>
-        <article className={className}>{children}</article>
-      </main>
+      <main style={{ paddingBottom: 88 }}>{children}</main>
 
-      {/* Footer minimale */}
-      <footer style={{ padding: '24px 16px' }}>
-        <small>© {new Date().getFullYear()} Cats Realm</small>
+      <footer style={{ padding: "18px 16px", color: "rgba(0,0,0,0.55)" }}>
+        <small>© {new Date().getFullYear()} NurseDiary</small>
       </footer>
     </>
   );
 }
-
-export default Page;
