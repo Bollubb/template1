@@ -2861,7 +2861,6 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 6,
                 gap: 8,
                 fontSize: 14,
                 lineHeight: 1,
