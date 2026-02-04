@@ -10,36 +10,24 @@ import { ContentCard } from "../components/nursediary/ContentCard";
 import { CarteTab } from "../components/nursediary/CarteTab";
 
 import { DOCS_URL, GITHUB_URL } from "../constants";
+import type { ContentItem } from "../types/nursediary/types";
 
 // =======================
-// 🔧 helper FIXATO
+// helper
 // =======================
 const safe = (v: unknown) => (v == null ? "" : String(v));
-
-// =======================
-// types locali minimi
-// =======================
-type ContentItem = {
-  id: string;
-  titolo?: string;
-  categoria?: string;
-  descrizione?: string;
-};
-
-// =======================
 
 export default function Home(): JSX.Element {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [categoria, setCategoria] = useState("Tutte");
 
-  // mock / placeholder: mantieni la tua logica originale
+  // Mantieni la tua logica reale: qui è placeholder.
+  // Importante: quando carichi items, assicurati che ContentItem abbia
+  // le stringhe obbligatorie (es. titolo).
   useEffect(() => {
     setItems([]);
   }, []);
 
-  // =======================
-  // categorie (QUI era l’errore)
-  // =======================
   const categorie = useMemo(() => {
     const set = new Set<string>();
     items.forEach((i) => {
@@ -51,25 +39,18 @@ export default function Home(): JSX.Element {
 
   const filtered = useMemo(() => {
     if (categoria === "Tutte") return items;
-    return items.filter(
-      (i) => safe(i.categoria).trim() === categoria
-    );
+    return items.filter((i) => safe(i.categoria).trim() === categoria);
   }, [items, categoria]);
 
   return (
     <Page title="Home">
       <Head>
-        <meta
-          name="description"
-          content="NurseDiary – piattaforma didattica infermieristica"
-        />
+        <meta name="description" content="NurseDiary – piattaforma didattica infermieristica" />
       </Head>
 
       <Section className={styles.hero}>
         <h1 className={styles.title}>NurseDiary</h1>
-        <p className={styles.subtitle}>
-          Didattica infermieristica, quiz e carte formative
-        </p>
+        <p className={styles.subtitle}>Didattica infermieristica, quiz e carte formative</p>
 
         <div className={styles.links}>
           <a href={DOCS_URL} target="_blank" rel="noreferrer">
@@ -90,6 +71,7 @@ export default function Home(): JSX.Element {
               key={c}
               className={c === categoria ? styles.active : ""}
               onClick={() => setCategoria(c)}
+              type="button"
             >
               {c}
             </button>
