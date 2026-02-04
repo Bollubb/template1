@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 type RarityKey = "comune" | "rara" | "epica" | "leggendaria";
 
@@ -9,6 +9,35 @@ type CardDef = {
   image: string;
   set: "antibiotici";
 };
+
+
+type UserProfile = {
+  id: string;
+  displayName: string;
+  email?: string;
+  createdAt: number; // epoch ms
+};
+
+const LS_PROFILE = "nd_profile";
+const LS_COLLECTION = "nd_collection_abx";
+const LS_PILLS = "nd_pillole";
+const LS_RECENT_PULLS = "nd_recent_pulls";
+const LS_QUIZ_DAILY_DONE = "nd_quiz_daily_done";
+const LS_QUIZ_WEEKLY_DONE = "nd_quiz_weekly_done";
+
+function safeJsonParse<T>(value: string | null, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function uid(prefix = "u") {
+  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+}
+
 
 const RARITY_COLORS: Record<RarityKey, string> = {
   comune: "rgba(180,180,180,0.9)",
@@ -110,7 +139,7 @@ async function shareOrCopy(url: string) {
 
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(url);
-      alert("Link copiato negli appunti ✅");
+      alert("Link copiato negli appunti 鉁�");
       return;
     }
 
@@ -121,7 +150,7 @@ async function shareOrCopy(url: string) {
     ta.select();
     document.execCommand("copy");
     document.body.removeChild(ta);
-    alert("Link copiato negli appunti ✅");
+    alert("Link copiato negli appunti 鉁�");
   } catch (e) {
     // non errore grave
     console.log("Share/copy annullato o fallito", e);
@@ -211,7 +240,7 @@ function ContentCard({
               cursor: "pointer",
             }}
           >
-            ⭐
+            猸�
           </button>
 
           <button
@@ -228,7 +257,7 @@ function ContentCard({
               cursor: "pointer",
             }}
           >
-            🔗
+            馃敆
           </button>
         </div>
       </div>
@@ -297,7 +326,7 @@ function ContentCard({
             borderRadius: 14,
           }}
         >
-          Apri contenuto →
+          Apri contenuto 鈫�
         </Link>
       </div>
     </article>
@@ -346,49 +375,49 @@ type QuizQ = { id: string; q: string; options: string[]; answer: number };
 
 const QUIZ_BANK: QuizQ[] = useMemo(
   () => [
-    { id: "q1", q: "Qual è la sede più comune per misurare la saturazione SpO₂?", options: ["Dito", "Tibia", "Addome", "Scapola"], answer: 0 },
-    { id: "q2", q: "La tecnica “push-pause” nel lavaggio di un accesso venoso serve a:", options: ["Ridurre la pressione arteriosa", "Creare turbolenza e prevenire occlusioni", "Aumentare la diuresi", "Sterilizzare il catetere"], answer: 1 },
-    { id: "q3", q: "In caso di sospetta ipoglicemia, il primo controllo utile è:", options: ["ECG", "Glicemia capillare", "Saturazione", "Temperatura"], answer: 1 },
-    { id: "q4", q: "Un paziente con dispnea improvvisa: quale dato raccogli per primo?", options: ["Peso", "SpO₂ e FR", "Altezza", "Anamnesi familiare"], answer: 1 },
-    { id: "q5", q: "Per ridurre contaminazioni in emocoltura è importante:", options: ["Usare guanti sterili e antisepsi corretta", "Prelevare sempre dopo antibiotico", "Agitare energicamente il flacone", "Usare solo aghi piccoli"], answer: 0 },
+    { id: "q1", q: "Qual 猫 la sede pi霉 comune per misurare la saturazione SpO鈧�?", options: ["Dito", "Tibia", "Addome", "Scapola"], answer: 0 },
+    { id: "q2", q: "La tecnica 鈥減ush-pause鈥� nel lavaggio di un accesso venoso serve a:", options: ["Ridurre la pressione arteriosa", "Creare turbolenza e prevenire occlusioni", "Aumentare la diuresi", "Sterilizzare il catetere"], answer: 1 },
+    { id: "q3", q: "In caso di sospetta ipoglicemia, il primo controllo utile 猫:", options: ["ECG", "Glicemia capillare", "Saturazione", "Temperatura"], answer: 1 },
+    { id: "q4", q: "Un paziente con dispnea improvvisa: quale dato raccogli per primo?", options: ["Peso", "SpO鈧� e FR", "Altezza", "Anamnesi familiare"], answer: 1 },
+    { id: "q5", q: "Per ridurre contaminazioni in emocoltura 猫 importante:", options: ["Usare guanti sterili e antisepsi corretta", "Prelevare sempre dopo antibiotico", "Agitare energicamente il flacone", "Usare solo aghi piccoli"], answer: 0 },
     { id: "q6", q: "Un CVC appena medicato: cosa va documentato sempre?", options: ["Colore dei capelli", "Data/ora e condizioni del sito", "Numero di passi", "Marca del cerotto"], answer: 1 },
-    { id: "q7", q: "La PEA (attività elettrica senza polso) richiede:", options: ["Solo ossigeno", "RCP + ricerca cause reversibili", "Antibiotico immediato", "Solo fluidi"], answer: 1 },
-    { id: "q8", q: "Un segno tipico di disidratazione è:", options: ["Cute calda e sudata", "Mucose secche", "Bradicardia severa sempre", "Tosse produttiva"], answer: 1 },
-    { id: "q9", q: "Nel dolore toracico acuto, una priorità è:", options: ["Misurare la circonferenza vita", "ECG precoce", "Fare fisioterapia", "Dare latte"], answer: 1 },
-    { id: "q10", q: "Una corretta igiene delle mani dura (in media) almeno:", options: ["2 secondi", "10–20 secondi", "1 minuto", "5 minuti"], answer: 1 },
-    { id: "q11", q: "Un parametro che indica possibile sepsi è:", options: ["Febbre + tachicardia + FR aumentata", "Solo prurito", "Solo insonnia", "Solo fame"], answer: 0 },
+    { id: "q7", q: "La PEA (attivit脿 elettrica senza polso) richiede:", options: ["Solo ossigeno", "RCP + ricerca cause reversibili", "Antibiotico immediato", "Solo fluidi"], answer: 1 },
+    { id: "q8", q: "Un segno tipico di disidratazione 猫:", options: ["Cute calda e sudata", "Mucose secche", "Bradicardia severa sempre", "Tosse produttiva"], answer: 1 },
+    { id: "q9", q: "Nel dolore toracico acuto, una priorit脿 猫:", options: ["Misurare la circonferenza vita", "ECG precoce", "Fare fisioterapia", "Dare latte"], answer: 1 },
+    { id: "q10", q: "Una corretta igiene delle mani dura (in media) almeno:", options: ["2 secondi", "10鈥�20 secondi", "1 minuto", "5 minuti"], answer: 1 },
+    { id: "q11", q: "Un parametro che indica possibile sepsi 猫:", options: ["Febbre + tachicardia + FR aumentata", "Solo prurito", "Solo insonnia", "Solo fame"], answer: 0 },
     { id: "q12", q: "La scala AVPU valuta:", options: ["Dolore addominale", "Stato di coscienza", "Tono muscolare", "Colore della cute"], answer: 1 },
-    { id: "q13", q: "Nel sospetto shock, quale parametro è molto utile monitorare?", options: ["Diuresi oraria", "Colore occhi", "Numero di SMS", "Capelli"], answer: 0 },
-    { id: "q14", q: "Prima di un prelievo arterioso, è utile verificare:", options: ["Test di Allen (se indicato)", "Glicemia postprandiale", "Visione 10/10", "BMI"], answer: 0 },
+    { id: "q13", q: "Nel sospetto shock, quale parametro 猫 molto utile monitorare?", options: ["Diuresi oraria", "Colore occhi", "Numero di SMS", "Capelli"], answer: 0 },
+    { id: "q14", q: "Prima di un prelievo arterioso, 猫 utile verificare:", options: ["Test di Allen (se indicato)", "Glicemia postprandiale", "Visione 10/10", "BMI"], answer: 0 },
     { id: "q15", q: "Un campione di urine per urinocoltura dovrebbe essere:", options: ["Primo mitto scartato, poi mitto intermedio", "Sempre raccolto dalla borsa catetere", "Mescolato con sapone", "Tenuto a temperatura ambiente 24h"], answer: 0 },
-    { id: "q16", q: "Nel paziente ipossico, una delle prime verifiche pratiche è:", options: ["Che il sensore SpO₂ sia posizionato correttamente", "Che abbia mangiato", "Che dorma", "Che abbia scarpe comode"], answer: 0 },
+    { id: "q16", q: "Nel paziente ipossico, una delle prime verifiche pratiche 猫:", options: ["Che il sensore SpO鈧� sia posizionato correttamente", "Che abbia mangiato", "Che dorma", "Che abbia scarpe comode"], answer: 0 },
     { id: "q17", q: "Il rischio di infezione aumenta con:", options: ["Manipolazioni frequenti del device", "Igiene mani corretta", "Antisepsi adeguata", "Medicazioni protette"], answer: 0 },
-    { id: "q18", q: "Un segno compatibile con extravasazione è:", options: ["Gonfiore e dolore nel sito", "Aumento appetito", "Visione migliore", "Riduzione sete"], answer: 0 },
-    { id: "q19", q: "L’obiettivo principale della medicazione sterile è:", options: ["Decorare il sito", "Ridurre rischio infezione e proteggere il punto di inserzione", "Aumentare la pressione", "Ridurre la glicemia"], answer: 1 },
-    { id: "q20", q: "In triage/urgenza, il dolore (NRS) è:", options: ["Un parametro non necessario", "Un parametro da rilevare e rivalutare", "Solo per bambini", "Solo per sportivi"], answer: 1 },
+    { id: "q18", q: "Un segno compatibile con extravasazione 猫:", options: ["Gonfiore e dolore nel sito", "Aumento appetito", "Visione migliore", "Riduzione sete"], answer: 0 },
+    { id: "q19", q: "L鈥檕biettivo principale della medicazione sterile 猫:", options: ["Decorare il sito", "Ridurre rischio infezione e proteggere il punto di inserzione", "Aumentare la pressione", "Ridurre la glicemia"], answer: 1 },
+    { id: "q20", q: "In triage/urgenza, il dolore (NRS) 猫:", options: ["Un parametro non necessario", "Un parametro da rilevare e rivalutare", "Solo per bambini", "Solo per sportivi"], answer: 1 },
 
-    // --- Domande aggiuntive (alcune più difficili) ---
-    { id: "q21", q: "Qual è il range di pH normale nel sangue arterioso?", options: ["7.10–7.20", "7.35–7.45", "7.50–7.60", "6.90–7.00"], answer: 1 },
-    { id: "q22", q: "Nel lavaggio di un CVC, la tecnica push-pause è utile perché:", options: ["Aumenta la coagulazione", "Riduce la turbolenza", "Crea turbolenza che aiuta a prevenire depositi", "Sostituisce l’eparina sempre"], answer: 2 },
-    { id: "q23", q: "Quale segno è più suggestivo di extravasazione durante infusione EV?", options: ["Bradicardia", "Dolore/bruciore e tumefazione locale", "Miosi", "Tosse"], answer: 1 },
-    { id: "q24", q: "In presenza di iperkaliemia severa con ECG alterato, la priorità è:", options: ["Diuretico", "Calcio gluconato EV", "Antibiotico", "Paracetamolo"], answer: 1 },
-    { id: "q25", q: "Una PVC (pressione venosa centrale) elevata può essere associata a:", options: ["Ipovolemia", "Scompenso destro/iperidratazione", "Iperventilazione", "Anemia"], answer: 1 },
-    { id: "q26", q: "Per ridurre il rischio di contaminazione nelle emocolture, è fondamentale:", options: ["Guanti sterili sempre", "Disinfezione accurata della cute e del tappo", "Fare 1 sola bottiglia", "Usare sempre ago cannula"], answer: 1 },
-    { id: "q27", q: "Qual è un criterio tipico di SIRS?", options: ["FR < 10", "FC > 90", "Temp < 34", "PAS > 180"], answer: 1 },
-    { id: "q28", q: "In un paziente con dispnea, prima di tutto si valuta:", options: ["PA e temperatura", "Vie aeree e SpO₂", "Diuresi", "BMI"], answer: 1 },
-    { id: "q29", q: "Quale valore di glicemia indica ipoglicemia nell’adulto (in genere)?", options: ["> 140 mg/dl", "< 70 mg/dl", "< 120 mg/dl", "< 90 mg/dl"], answer: 1 },
-    { id: "q30", q: "La noradrenalina è principalmente:", options: ["Un diuretico", "Un vasopressore alfa-adrenergico", "Un antiaritmico classe III", "Un analgesico"], answer: 1 },
+    // --- Domande aggiuntive (alcune pi霉 difficili) ---
+    { id: "q21", q: "Qual 猫 il range di pH normale nel sangue arterioso?", options: ["7.10鈥�7.20", "7.35鈥�7.45", "7.50鈥�7.60", "6.90鈥�7.00"], answer: 1 },
+    { id: "q22", q: "Nel lavaggio di un CVC, la tecnica push-pause 猫 utile perch茅:", options: ["Aumenta la coagulazione", "Riduce la turbolenza", "Crea turbolenza che aiuta a prevenire depositi", "Sostituisce l鈥檈parina sempre"], answer: 2 },
+    { id: "q23", q: "Quale segno 猫 pi霉 suggestivo di extravasazione durante infusione EV?", options: ["Bradicardia", "Dolore/bruciore e tumefazione locale", "Miosi", "Tosse"], answer: 1 },
+    { id: "q24", q: "In presenza di iperkaliemia severa con ECG alterato, la priorit脿 猫:", options: ["Diuretico", "Calcio gluconato EV", "Antibiotico", "Paracetamolo"], answer: 1 },
+    { id: "q25", q: "Una PVC (pressione venosa centrale) elevata pu貌 essere associata a:", options: ["Ipovolemia", "Scompenso destro/iperidratazione", "Iperventilazione", "Anemia"], answer: 1 },
+    { id: "q26", q: "Per ridurre il rischio di contaminazione nelle emocolture, 猫 fondamentale:", options: ["Guanti sterili sempre", "Disinfezione accurata della cute e del tappo", "Fare 1 sola bottiglia", "Usare sempre ago cannula"], answer: 1 },
+    { id: "q27", q: "Qual 猫 un criterio tipico di SIRS?", options: ["FR < 10", "FC > 90", "Temp < 34", "PAS > 180"], answer: 1 },
+    { id: "q28", q: "In un paziente con dispnea, prima di tutto si valuta:", options: ["PA e temperatura", "Vie aeree e SpO鈧�", "Diuresi", "BMI"], answer: 1 },
+    { id: "q29", q: "Quale valore di glicemia indica ipoglicemia nell鈥檃dulto (in genere)?", options: ["> 140 mg/dl", "< 70 mg/dl", "< 120 mg/dl", "< 90 mg/dl"], answer: 1 },
+    { id: "q30", q: "La noradrenalina 猫 principalmente:", options: ["Un diuretico", "Un vasopressore alfa-adrenergico", "Un antiaritmico classe III", "Un analgesico"], answer: 1 },
     // Difficili
-    { id: "q31", q: "Quale condizione aumenta il rischio di nefrotossicità da aminoglicosidi?", options: ["Età giovane", "Terapia breve", "Insufficienza renale pre-esistente", "Assunzione di vitamina C"], answer: 2 },
-    { id: "q32", q: "Un paziente con pH 7.28 e HCO₃⁻ basso suggerisce:", options: ["Alcalosi respiratoria", "Acidosi metabolica", "Acidosi respiratoria", "Alcalosi metabolica"], answer: 1 },
-    { id: "q33", q: "Qual è la complicanza più temuta di un PICC malposizionato?", options: ["Dolore al braccio", "Aritmie/posizionamento in atrio", "Febbre da fieno", "Cefalea"], answer: 1 },
-    { id: "q34", q: "Quale affermazione su C. difficile è corretta?", options: ["Diarrea sempre virale", "Antibioticoterapia è un fattore di rischio", "Non è contagioso", "Si cura solo con FANS"], answer: 1 },
-    { id: "q35", q: "Nel triage, il 'golden standard' per confermare ipossiemia è:", options: ["SpO₂", "Emogasanalisi arteriosa", "Temperatura", "RX torace"], answer: 1 },
-    { id: "q36", q: "Quale misura riduce più efficacemente il rischio di flebite da infusione periferica?", options: ["Aumentare la velocità", "Sostituire il sito se dolore/rossore", "Usare aghi più grossi", "Non lavare mai"], answer: 1 },
-    { id: "q37", q: "Nella gestione del dolore, la scala NRS misura:", options: ["Il rischio di caduta", "L’intensità soggettiva del dolore", "La saturazione", "La PA"], answer: 1 },
-    { id: "q38", q: "Un segno di reazione trasfusionale acuta è:", options: ["Miglioramento dispnea", "Febbre/brividi e dolore lombare", "Aumento appetito", "Cute secca"], answer: 1 },
-    { id: "q39", q: "Quale parametro è più utile per valutare la perfusione periferica?", options: ["Capillary refill time", "Colore capelli", "Peso", "Altezza"], answer: 0 },
-    { id: "q40", q: "In shock settico, il target MAP comunemente usato è circa:", options: ["45 mmHg", "65 mmHg", "90 mmHg", "110 mmHg"], answer: 1 },
+    { id: "q31", q: "Quale condizione aumenta il rischio di nefrotossicit脿 da aminoglicosidi?", options: ["Et脿 giovane", "Terapia breve", "Insufficienza renale pre-esistente", "Assunzione di vitamina C"], answer: 2 },
+    { id: "q32", q: "Un paziente con pH 7.28 e HCO鈧冣伝 basso suggerisce:", options: ["Alcalosi respiratoria", "Acidosi metabolica", "Acidosi respiratoria", "Alcalosi metabolica"], answer: 1 },
+    { id: "q33", q: "Qual 猫 la complicanza pi霉 temuta di un PICC malposizionato?", options: ["Dolore al braccio", "Aritmie/posizionamento in atrio", "Febbre da fieno", "Cefalea"], answer: 1 },
+    { id: "q34", q: "Quale affermazione su C. difficile 猫 corretta?", options: ["Diarrea sempre virale", "Antibioticoterapia 猫 un fattore di rischio", "Non 猫 contagioso", "Si cura solo con FANS"], answer: 1 },
+    { id: "q35", q: "Nel triage, il 'golden standard' per confermare ipossiemia 猫:", options: ["SpO鈧�", "Emogasanalisi arteriosa", "Temperatura", "RX torace"], answer: 1 },
+    { id: "q36", q: "Quale misura riduce pi霉 efficacemente il rischio di flebite da infusione periferica?", options: ["Aumentare la velocit脿", "Sostituire il sito se dolore/rossore", "Usare aghi pi霉 grossi", "Non lavare mai"], answer: 1 },
+    { id: "q37", q: "Nella gestione del dolore, la scala NRS misura:", options: ["Il rischio di caduta", "L鈥檌ntensit脿 soggettiva del dolore", "La saturazione", "La PA"], answer: 1 },
+    { id: "q38", q: "Un segno di reazione trasfusionale acuta 猫:", options: ["Miglioramento dispnea", "Febbre/brividi e dolore lombare", "Aumento appetito", "Cute secca"], answer: 1 },
+    { id: "q39", q: "Quale parametro 猫 pi霉 utile per valutare la perfusione periferica?", options: ["Capillary refill time", "Colore capelli", "Peso", "Altezza"], answer: 0 },
+    { id: "q40", q: "In shock settico, il target MAP comunemente usato 猫 circa:", options: ["45 mmHg", "65 mmHg", "90 mmHg", "110 mmHg"], answer: 1 },
   ],
   []
 );
@@ -542,7 +571,7 @@ function claimQuizReward() {
   // Modal carta
   const [modalCard, setModalCard] = useState<CardDef | null>(null);
 
-  // Scambio: quantità per carta (solo doppioni)
+  // Scambio: quantit脿 per carta (solo doppioni)
   const [swapQtyById, setSwapQtyById] = useState<Record<string, number>>({});
 
   useEffect(() => {
@@ -580,7 +609,7 @@ function claimQuizReward() {
   }, [selectedPack]);
 
   function pickCardFrom(list: CardDef[]): CardDef {
-    // Distribuzione semplice: pesi per rarità (non mostrati in UI)
+    // Distribuzione semplice: pesi per rarit脿 (non mostrati in UI)
     const weights: Record<RarityKey, number> = {
       comune: 60,
       rara: 25,
@@ -830,7 +859,7 @@ function claimQuizReward() {
                   placeItems: "center",
                 }}
               >
-                <span style={{ fontSize: 48, lineHeight: 1 }}>🔒</span>
+                <span style={{ fontSize: 48, lineHeight: 1 }}>馃敀</span>
               </div>
             </div>
           )}
@@ -1014,7 +1043,7 @@ const Modal = ({ card }: { card: CardDef }) => {
           }}
           title="Pillole"
         >
-          💊 {pillole}
+          馃拪 {pillole}
         </div>
       </div>
 
@@ -1065,7 +1094,7 @@ const Modal = ({ card }: { card: CardDef }) => {
             <div style={{ flex: 1, minWidth: 220 }}>
               <div style={{ color: "white", fontWeight: 1000, fontSize: 16 }}>{selectedPack?.name}</div>
               <div style={{ color: "rgba(255,255,255,0.80)", fontWeight: 700, marginTop: 4 }}>
-                Costo: {selectedPack?.price} 💊
+                Costo: {selectedPack?.price} 馃拪
               </div>
               <div style={{ height: 10 }} />
 
@@ -1141,7 +1170,7 @@ const Modal = ({ card }: { card: CardDef }) => {
               <div style={{ color: "white", fontWeight: 1000 }}>
                 Carte estratte{" "}
                 {activeRarity && (
-                  <span style={{ opacity: 0.85, fontWeight: 800 }}>• {activeRarity.toUpperCase()}</span>
+                  <span style={{ opacity: 0.85, fontWeight: 800 }}>鈥� {activeRarity.toUpperCase()}</span>
                 )}
               </div>
               <div style={{ height: 10 }} />
@@ -1222,7 +1251,7 @@ const Modal = ({ card }: { card: CardDef }) => {
               </div>
 
               <div>
-                <div style={{ color: "rgba(255,255,255,0.85)", fontWeight: 800, fontSize: 12, marginBottom: 6 }}>RARITÀ</div>
+                <div style={{ color: "rgba(255,255,255,0.85)", fontWeight: 800, fontSize: 12, marginBottom: 6 }}>RARIT脌</div>
                 <select
                   value={filterRarity}
                   onChange={(e) => setFilterRarity(e.target.value as any)}
@@ -1276,10 +1305,10 @@ const Modal = ({ card }: { card: CardDef }) => {
                   Sbloccate prima
                 </option>
                 <option value="rarity" style={{ color: "black" }}>
-                  Rarità → Nome
+                  Rarit脿 鈫� Nome
                 </option>
                 <option value="name" style={{ color: "black" }}>
-                  Nome A → Z
+                  Nome A 鈫� Z
                 </option>
               </select>
             </div>
@@ -1338,7 +1367,7 @@ const Modal = ({ card }: { card: CardDef }) => {
                           {card.name}
                         </div>
                         <div style={{ fontSize: 12, opacity: 0.85, color: "white", fontWeight: 800 }}>
-                          Doppioni: {dupes} • {valueEach}💊 ciascuno
+                          Doppioni: {dupes} 鈥� {valueEach}馃拪 ciascuno
                         </div>
                       </div>
 
@@ -1355,7 +1384,7 @@ const Modal = ({ card }: { card: CardDef }) => {
                             fontWeight: 1000,
                           }}
                         >
-                          −
+                          鈭�
                         </button>
                         <div style={{ minWidth: 28, textAlign: "center", color: "white", fontWeight: 1000 }}>{qty}</div>
                         <button
@@ -1392,7 +1421,7 @@ const Modal = ({ card }: { card: CardDef }) => {
                 borderTop: "1px solid rgba(255,255,255,0.10)",
               }}
             >
-              <div style={{ color: "white", fontWeight: 1000 }}>Totale: {swapTotalPills} 💊</div>
+              <div style={{ color: "white", fontWeight: 1000 }}>Totale: {swapTotalPills} 馃拪</div>
               <button
                 onClick={confirmSwap}
                 disabled={swapTotalPills <= 0}
@@ -1426,7 +1455,7 @@ const Modal = ({ card }: { card: CardDef }) => {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div style={{ color: "white", fontWeight: 1000 }}>Guadagna pillole</div>
         <div style={{ opacity: 0.8, fontWeight: 900, color: "white" }}>
-          +2/corretta (daily) • +3/corretta (weekly)
+          +2/corretta (daily) 鈥� +3/corretta (weekly)
         </div>
       </div>
 
@@ -1442,12 +1471,12 @@ const Modal = ({ card }: { card: CardDef }) => {
       {quiz.status === "idle" && (
         <div>
           <div style={{ color: "rgba(255,255,255,0.85)", fontWeight: 900, lineHeight: 1.3 }}>
-            {earnTab === "giornaliero" ? "5 domande • una volta al giorno" : "12 domande • una volta a settimana"}
+            {earnTab === "giornaliero" ? "5 domande 鈥� una volta al giorno" : "12 domande 鈥� una volta a settimana"}
           </div>
           <div style={{ height: 10 }} />
           {quizDoneFor(earnTab) ? (
             <div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 800 }}>
-              ✅ Già completato {earnTab === "giornaliero" ? "oggi" : "questa settimana"}.
+              鉁� Gi脿 completato {earnTab === "giornaliero" ? "oggi" : "questa settimana"}.
             </div>
           ) : (
             <button
@@ -1577,6 +1606,43 @@ export default function Home() {
   const [onlyFavorites, setOnlyFavorites] = useState(false);
 
   const favoritesCount = favorites.size;
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileDraftName, setProfileDraftName] = useState("");
+  const [profileDraftEmail, setProfileDraftEmail] = useState("");
+  const [importJson, setImportJson] = useState("");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = safeJsonParse<UserProfile | null>(localStorage.getItem(LS_PROFILE), null);
+    setProfile(p);
+  }, []);
+
+  const saveProfile = (p: UserProfile | null) => {
+    if (typeof window === "undefined") return;
+    if (!p) {
+      localStorage.removeItem(LS_PROFILE);
+      setProfile(null);
+      return;
+    }
+    localStorage.setItem(LS_PROFILE, JSON.stringify(p));
+    setProfile(p);
+  };
+
+  const loadStats = () => {
+    if (typeof window === "undefined") {
+      return { pills: 0, unlocked: 0, totalCopies: 0, duplicates: 0, dailyDone: false, weeklyDone: false, lastPulls: 0 };
+    }
+    const pills = Number(localStorage.getItem(LS_PILLS) || "0") || 0;
+    const collection = safeJsonParse<Record<string, number>>(localStorage.getItem(LS_COLLECTION), {});
+    const unlocked = Object.values(collection).filter((n) => n >= 1).length;
+    const totalCopies = Object.values(collection).reduce((a, b) => a + (Number(b) || 0), 0);
+    const duplicates = Object.values(collection).reduce((a, b) => a + Math.max(0, (Number(b) || 0) - 1), 0);
+    const dailyDone = localStorage.getItem(LS_QUIZ_DAILY_DONE) === "1";
+    const weeklyDone = localStorage.getItem(LS_QUIZ_WEEKLY_DONE) === "1";
+    const lastPulls = safeJsonParse<any[]>(localStorage.getItem(LS_RECENT_PULLS), []).length;
+    return { pills, unlocked, totalCopies, duplicates, dailyDone, weeklyDone, lastPulls };
+  };
 
   type TabKey = "home" | "contenuti" | "carte" | "profilo";
   const [activeTab, setActiveTab] = useState<TabKey>("home");
@@ -1771,7 +1837,7 @@ export default function Home() {
                     fontSize: 16,
                   }}
                 >
-                  ✕
+                  鉁�
                 </button>
               )}
             </div>
@@ -1818,7 +1884,7 @@ export default function Home() {
                 whiteSpace: "nowrap",
               }}
             >
-              ⭐ Preferiti <span style={{ opacity: 0.85 }}>({favoritesCount})</span>
+              猸� Preferiti <span style={{ opacity: 0.85 }}>({favoritesCount})</span>
             </button>
           </div>
         </div>
@@ -1853,7 +1919,7 @@ export default function Home() {
             {favoriteItems.length > 0 && (
               <div style={{ gridColumn: "1 / -1" }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
-                  <h2 style={{ margin: 0, fontSize: 16 }}>⭐ Preferiti</h2>
+                  <h2 style={{ margin: 0, fontSize: 16 }}>猸� Preferiti</h2>
                   <span style={{ fontSize: 13, opacity: 0.7 }}>{favoriteItems.length}</span>
                 </div>
 
@@ -1937,7 +2003,7 @@ export default function Home() {
               fontSize: 22,
             }}
           >
-            ✨
+            鉁�
           </div>
           <div>
             <h2 style={{ margin: 0, letterSpacing: -0.2 }}>Benvenuto in NurseDiary</h2>
@@ -1995,9 +2061,9 @@ export default function Home() {
               textAlign: "left",
             }}
           >
-            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>🔎 Trova subito quello che ti serve</div>
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>馃攷 Trova subito quello che ti serve</div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-              Apri la ricerca e inizia a digitare (ECG, PEA, accessi venosi…).
+              Apri la ricerca e inizia a digitare (ECG, PEA, accessi venosi鈥�).
             </div>
           </button>
 
@@ -2015,7 +2081,7 @@ export default function Home() {
                 textAlign: "left",
               }}
             >
-              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>⭐ Crea la tua libreria</div>
+              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>猸� Crea la tua libreria</div>
               <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
                 Aggiungi i primi preferiti per ritrovarli al volo.
               </div>
@@ -2037,9 +2103,9 @@ export default function Home() {
                 textAlign: "left",
               }}
             >
-              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>⭐ Apri i tuoi preferiti</div>
+              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>猸� Apri i tuoi preferiti</div>
               <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
-                Vai direttamente alla sezione “Preferiti” già filtrata.
+                Vai direttamente alla sezione 鈥淧referiti鈥� gi脿 filtrata.
               </div>
             </button>
           )}
@@ -2057,7 +2123,7 @@ export default function Home() {
               textAlign: "left",
             }}
           >
-            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>🃏 Scopri la collezione</div>
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>馃儚 Scopri la collezione</div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
               Le carte arriveranno a breve: prepara lo spazio per la raccolta.
             </div>
@@ -2066,19 +2132,276 @@ export default function Home() {
       </div>
 
       <div style={{ marginTop: 14, opacity: 0.75, fontSize: 13, lineHeight: 1.35 }}>
-        Suggerimento: usa ⭐ nei contenuti per creare una “lista rapida” delle cose che ti servono più spesso.
+        Suggerimento: usa 猸� nei contenuti per creare una 鈥渓ista rapida鈥� delle cose che ti servono pi霉 spesso.
       </div>
     </section>
   );
 
   const CarteView = <CarteTab />;
 
-  const ProfiloView = (
-    <section style={{ paddingTop: 6 }}>
-      <h2 style={{ margin: 0, marginBottom: 10 }}>👤 Profilo</h2>
-      <p style={{ margin: 0, opacity: 0.8 }}>Profilo (placeholder, non loggato - scelta B)</p>
-    </section>
-  );
+  const ProfiloView = (() => {
+    const s = loadStats();
+
+    const cardStyle: React.CSSProperties = {
+      border: "1px solid rgba(255,255,255,0.14)",
+      background: "rgba(10,12,18,0.60)",
+      borderRadius: 18,
+      padding: 14,
+      backdropFilter: "blur(10px)",
+      WebkitBackdropFilter: "blur(10px)",
+    };
+
+    const pillPill: React.CSSProperties = {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "10px 12px",
+      borderRadius: 14,
+      border: "1px solid rgba(255,255,255,0.14)",
+      background: "rgba(0,0,0,0.22)",
+      fontWeight: 900,
+      fontSize: 14,
+    };
+
+    const smallLabel: React.CSSProperties = { fontSize: 12, opacity: 0.75, fontWeight: 800 };
+
+    return (
+      <section style={{ paddingTop: 6, paddingBottom: "calc(110px + env(safe-area-inset-bottom))" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+          <h2 style={{ margin: 0 }}>馃懁 Profilo</h2>
+          <div style={pillPill}>
+            <span aria-hidden>馃拪</span>
+            <span>{s.pills}</span>
+          </div>
+        </div>
+
+        {!profile ? (
+          <div style={{ ...cardStyle }}>
+            <div style={{ fontWeight: 900, fontSize: 16, marginBottom: 8 }}>Crea un profilo</div>
+            <div style={{ opacity: 0.8, fontSize: 13, lineHeight: 1.35, marginBottom: 12 }}>
+              Serve solo per salvare progressi (carte, pillole, quiz). Nessuna complessit脿: puoi aggiungere l鈥檈mail pi霉 avanti.
+            </div>
+
+            <label style={{ display: "block", ...smallLabel }}>Nome / Nickname</label>
+            <input
+              value={profileDraftName}
+              onChange={(e) => setProfileDraftName(e.target.value)}
+              placeholder="Es. NurseMario"
+              style={{
+                width: "100%",
+                marginTop: 6,
+                marginBottom: 10,
+                padding: "12px 12px",
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(0,0,0,0.25)",
+                color: "white",
+                outline: "none",
+                fontWeight: 800,
+              }}
+            />
+
+            <label style={{ display: "block", ...smallLabel }}>Email (opzionale)</label>
+            <input
+              value={profileDraftEmail}
+              onChange={(e) => setProfileDraftEmail(e.target.value)}
+              placeholder="email@esempio.it"
+              inputMode="email"
+              style={{
+                width: "100%",
+                marginTop: 6,
+                marginBottom: 12,
+                padding: "12px 12px",
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(0,0,0,0.25)",
+                color: "white",
+                outline: "none",
+                fontWeight: 700,
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => {
+                const name = profileDraftName.trim();
+                if (!name) return;
+                saveProfile({
+                  id: uid("nd"),
+                  displayName: name,
+                  email: profileDraftEmail.trim() || undefined,
+                  createdAt: Date.now(),
+                });
+                setProfileDraftName("");
+                setProfileDraftEmail("");
+              }}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.16)",
+                background: "rgba(255,255,255,0.10)",
+                color: "white",
+                fontWeight: 900,
+              }}
+            >
+              Crea profilo
+            </button>
+          </div>
+        ) : (
+          <>
+            <div style={{ ...cardStyle, marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 1000, fontSize: 18 }}>{profile.displayName}</div>
+                  <div style={{ opacity: 0.7, fontSize: 13, marginTop: 2 }}>
+                    {profile.email ? profile.email : "Email non impostata"} 鈥� Iscritto:{" "}
+                    {new Date(profile.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => saveProfile(null)}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.18)",
+                    color: "white",
+                    fontWeight: 900,
+                  }}
+                >
+                  Esci
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 12 }}>
+              <div style={cardStyle}>
+                <div style={smallLabel}>Carte sbloccate</div>
+                <div style={{ fontWeight: 1000, fontSize: 20 }}>{s.unlocked}</div>
+                <div style={{ opacity: 0.7, fontSize: 12, marginTop: 4 }}>Copie totali: {s.totalCopies}</div>
+              </div>
+              <div style={cardStyle}>
+                <div style={smallLabel}>Doppioni</div>
+                <div style={{ fontWeight: 1000, fontSize: 20 }}>{s.duplicates}</div>
+                <div style={{ opacity: 0.7, fontSize: 12, marginTop: 4 }}>Bruciali in 鈥淪cambia鈥�</div>
+              </div>
+              <div style={cardStyle}>
+                <div style={smallLabel}>Quiz giornaliero</div>
+                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.dailyDone ? "鉁� completato" : "鈴� da fare"}</div>
+              </div>
+              <div style={cardStyle}>
+                <div style={smallLabel}>Quiz settimanale</div>
+                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.weeklyDone ? "鉁� completato" : "鈴� da fare"}</div>
+              </div>
+            </div>
+
+            <div style={{ ...cardStyle, marginBottom: 12 }}>
+              <div style={{ fontWeight: 900, marginBottom: 8 }}>Backup dati</div>
+              <div style={{ opacity: 0.8, fontSize: 13, lineHeight: 1.35, marginBottom: 10 }}>
+                Utile se cambi telefono: esporta e incolla qui per ripristinare. (Solo localStorage, nessun server.)
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (typeof window === "undefined") return;
+                    const payload = {
+                      profile: safeJsonParse(localStorage.getItem(LS_PROFILE), null),
+                      pills: localStorage.getItem(LS_PILLS),
+                      collection: safeJsonParse(localStorage.getItem(LS_COLLECTION), {}),
+                      recentPulls: safeJsonParse(localStorage.getItem(LS_RECENT_PULLS), []),
+                      favorites: safeJsonParse(localStorage.getItem("nd_favorites"), []),
+                      dailyDone: localStorage.getItem(LS_QUIZ_DAILY_DONE),
+                      weeklyDone: localStorage.getItem(LS_QUIZ_WEEKLY_DONE),
+                    };
+                    const str = JSON.stringify(payload);
+                    try {
+                      await navigator.clipboard.writeText(str);
+                      alert("Backup copiato negli appunti 鉁�");
+                    } catch {
+                      setImportJson(str);
+                      alert("Non posso copiare negli appunti: ho messo il backup nel box qui sotto 鉁�");
+                    }
+                  }}
+                  style={{
+                    padding: "12px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    background: "rgba(255,255,255,0.10)",
+                    color: "white",
+                    fontWeight: 900,
+                  }}
+                >
+                  Esporta
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window === "undefined") return;
+                    const payload = safeJsonParse<any>(importJson, null);
+                    if (!payload) {
+                      alert("JSON non valido 鉂�");
+                      return;
+                    }
+                    if (payload.profile) localStorage.setItem(LS_PROFILE, JSON.stringify(payload.profile));
+                    if (typeof payload.pills !== "undefined") localStorage.setItem(LS_PILLS, String(payload.pills));
+                    if (payload.collection) localStorage.setItem(LS_COLLECTION, JSON.stringify(payload.collection));
+                    if (payload.recentPulls) localStorage.setItem(LS_RECENT_PULLS, JSON.stringify(payload.recentPulls));
+                    if (payload.favorites) localStorage.setItem("nd_favorites", JSON.stringify(payload.favorites));
+                    if (typeof payload.dailyDone !== "undefined") localStorage.setItem(LS_QUIZ_DAILY_DONE, String(payload.dailyDone));
+                    if (typeof payload.weeklyDone !== "undefined") localStorage.setItem(LS_QUIZ_WEEKLY_DONE, String(payload.weeklyDone));
+                    // ricarica stato
+                    const p = safeJsonParse<UserProfile | null>(localStorage.getItem(LS_PROFILE), null);
+                    setProfile(p);
+                    alert("Backup importato 鉁�");
+                  }}
+                  style={{
+                    padding: "12px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.16)",
+                    background: "rgba(0,0,0,0.22)",
+                    color: "white",
+                    fontWeight: 900,
+                  }}
+                >
+                  Importa
+                </button>
+              </div>
+
+              <textarea
+                value={importJson}
+                onChange={(e) => setImportJson(e.target.value)}
+                placeholder="Incolla qui il backup JSON鈥�"
+                rows={5}
+                style={{
+                  width: "100%",
+                  padding: 12,
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(0,0,0,0.25)",
+                  color: "white",
+                  outline: "none",
+                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                  fontSize: 12,
+                }}
+              />
+            </div>
+
+            <div style={{ ...cardStyle }}>
+              <div style={{ fontWeight: 900, marginBottom: 6 }}>Premium (bozza)</div>
+              <div style={{ opacity: 0.8, fontSize: 13, lineHeight: 1.35 }}>
+                In futuro: sincronizzazione cloud, pi霉 espansioni carte, quiz avanzati e raccolte 鈥減ocket鈥�. Per ora tutto resta free.
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+    );
+  })(););
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -2113,7 +2436,7 @@ export default function Home() {
           "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
       }}
     >
-      {/* overlay per leggibilità */}
+      {/* overlay per leggibilit脿 */}
       <div
         style={{
           position: "absolute",
@@ -2148,10 +2471,10 @@ export default function Home() {
         }}
       >
         {([
-          ["home", "🏠", "Home"],
-          ["contenuti", "📚", "Contenuti"],
-          ["carte", "🃏", "Carte"],
-          ["profilo", "👤", "Profilo"],
+          ["home", "馃彔", "Home"],
+          ["contenuti", "馃摎", "Contenuti"],
+          ["carte", "馃儚", "Carte"],
+          ["profilo", "馃懁", "Profilo"],
         ] as const).map(([key, icon, label]) => {
           const isActive = activeTab === key;
           return (
