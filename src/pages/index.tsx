@@ -82,6 +82,31 @@ function IconBolt({ size = 18 }: { size?: number }) {
   );
 }
 // Emoji rendered via codepoints to avoid encoding issues in source/control.
+function IconBookmark({
+  size = 18,
+  filled = false,
+}: {
+  size?: number;
+  filled?: boolean;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M7 3.5h10c1.1 0 2 .9 2 2v16l-7-3-7 3v-16c0-1.1.9-2 2-2z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 
 type RarityKey = "comune" | "rara" | "epica" | "leggendaria";
