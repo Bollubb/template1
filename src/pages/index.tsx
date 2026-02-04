@@ -87,31 +87,26 @@ const LS_PILLS = "nd_pillole";
 const LS_RECENT_PULLS = "nd_recent_pulls";
 const LS_QUIZ_DAILY_DONE = "nd_quiz_daily_done";
 const LS_QUIZ_WEEKLY_DONE = "nd_quiz_weekly_done";
+const LS_QUIZ_DAILY_STREAK = "nd_quiz_daily_streak";
+const LS_PILLS_EARNED_DAY = "nd_pills_earned_day";
+const LS_PILLS_EARNED_WEEK = "nd_pills_earned_week";
 
 // Economia (pillole)
 const ECONOMY = {
+  // Core sink: aprire bustine
   packPrice: 60,
-  daily: { perCorrect: 2, completionBonus: 4, perfectBonus: 2, questions: 5 },
-  weekly: { perCorrect: 3, completionBonus: 9, perfectBonus: 6, questions: 12 },
+
+  // Quiz economy (sostenibile: non troppo facile, ma nemmeno impossibile)
+  // - reward per risposta corretta dipende dalla difficolt脿
+  // - cap giornaliero/settimanale impedisce farming infinito
+  // - streak giornaliera d脿 un piccolo boost senza rompere l'economia
+  quiz: {
+    perCorrect: { easy: 2, medium: 3, hard: 5 },
+    daily: { questions: 5, completionBonus: 4, perfectBonus: 3, earnCap: 30 },
+    weekly: { questions: 12, completionBonus: 10, perfectBonus: 8, earnCap: 150 },
+    streak: { maxDays: 7, bonusAt3: 2, bonusAt5: 4, bonusAt7: 6 },
+  },
 } as const;
-
-function safeJsonParse<T>(value: string | null, fallback: T): T {
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-const stripWeirdText = (s: string): string => {
-  // Rimuove caratteri "strani" (CJK / replacement char) che su alcuni device appaiono come "cinesi"
-  return s
-    .replace(/[\u4E00-\u9FFF]/g, "")
-    .replace(/\uFFFD/g, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-};
 
 function sanitizeDeep<T>(value: T): T {
   if (typeof value === "string") return stripWeirdText(value) as unknown as T;
@@ -353,7 +348,7 @@ function ContentCard({
               padding: "8px 10px",
               cursor: "pointer",
             }}
-          >{isFavorite ? EMOJI.saved : EMOJI.save}</button>
+          >{isFavorite ? <IconBookmark filled={true} size={18} /> : <IconBookmark size={18} />}</button>
 
           <button
             type="button"
@@ -368,7 +363,7 @@ function ContentCard({
               padding: "8px 10px",
               cursor: "pointer",
             }}
-          >{EMOJI.share}</button>
+          ><IconShare size={18} /></button>
         </div>
       </div>
 
@@ -436,7 +431,7 @@ function ContentCard({
             borderRadius: 14,
           }}
         >
-          {EMOJI.folder} Apri contenuto
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><IconFolder size={18} /><span>Apri contenuto</span><span aria-hidden="true" style={{ marginLeft: 2 }}>鈫�</span></span>
         </Link>
       </div>
     </article>
@@ -481,7 +476,8 @@ function CarteTab() {
 
 // Guadagna pillole: quiz
 type QuizMode = "giornaliero" | "settimanale";
-type QuizQ = { id: string; q: string; options: string[]; answer: number };
+type QuizDifficulty = "easy" | "medium" | "hard";
+type QuizQ = { id: string; q: string; options: string[]; answer: number; difficulty?: QuizDifficulty };
 
 const QUIZ_BANK: QuizQ[] = useMemo(
   () => [
@@ -528,6 +524,20 @@ const QUIZ_BANK: QuizQ[] = useMemo(
     { id: "q38", q: "Un segno di reazione trasfusionale acuta e:", options: ["Miglioramento dispnea", "Febbre/brividi e dolore lombare", "Aumento appetito", "Cute secca"], answer: 1 },
     { id: "q39", q: "Quale parametro e piu utile per valutare la perfusione periferica?", options: ["Capillary refill time", "Colore capelli", "Peso", "Altezza"], answer: 0 },
     { id: "q40", q: "In shock settico, il target MAP comunemente usato e circa:", options: ["45 mmHg", "65 mmHg", "90 mmHg", "110 mmHg"], answer: 1 },
+    // Medium
+    { id: "q41", difficulty: "medium", q: "Nel paziente con sepsi, quale esame e piu utile per monitorare l'ipoperfusione?", options: ["Creatinina", "Lattato", "PT/INR", "Colesterolo"], answer: 1 },
+    { id: "q42", difficulty: "medium", q: "In caso di iperK+ severa con ECG alterato, la prima terapia da somministrare e:", options: ["Furosemide", "Calcio gluconato EV", "Bicarbonato PO", "Cloruro di sodio"], answer: 1 },
+    { id: "q43", difficulty: "medium", q: "Per ridurre il rischio di aspirazione in nutrizione enterale, e raccomandato:", options: ["Testa letto 30-45掳", "Supino", "Bere acqua subito", "Rimuovere la sonda"], answer: 0 },
+    { id: "q44", difficulty: "medium", q: "Nella gestione del dolore toracico, quale dato e prioritario raccogliere?", options: ["Dolore e irradiamento + ECG", "BMI", "Anamnesi familiare", "Glicemia a digiuno"], answer: 0 },
+    { id: "q45", difficulty: "medium", q: "Nel paziente con dispnea, un segno di lavoro respiratorio aumentato e:", options: ["Uso muscoli accessori", "Bradicardia", "Cute fredda", "Afasia"], answer: 0 },
+
+    // Hard
+    { id: "q46", difficulty: "hard", q: "In PEA, dopo RCP di alta qualita e adrenalina, la priorita e ricercare e trattare:", options: ["Le 4T/4H (cause reversibili)", "Solo la glicemia", "Solo la temperatura", "Solo l'ECG precedente"], answer: 0 },
+    { id: "q47", difficulty: "hard", q: "Un accesso venoso centrale con sospetta infezione: il passo infermieristico piu corretto e:", options: ["Rimuovere subito senza indicazione", "Valutare segni, informare medico, prelievi/colture secondo indicazione", "Aumentare flusso infusione", "Coprire con bendaggio e ignorare"], answer: 1 },
+    { id: "q48", difficulty: "hard", q: "In caso di stravaso di farmaco vescicante da accesso periferico, la prima azione e:", options: ["Rimuovere ago e massaggiare", "Interrompere infusione, lasciare ago/cannula in sede e aspirare se possibile", "Applicare calore sempre", "Continuare infusione lenta"], answer: 1 },
+    { id: "q49", difficulty: "hard", q: "Nel sospetto shock anafilattico, il farmaco di prima linea e:", options: ["Antistaminico", "Adrenalina IM", "Cortisone EV", "Salbutamolo"], answer: 1 },
+    { id: "q50", difficulty: "hard", q: "Quale ritmo e DEFIBRILLABILE?", options: ["Asistolia", "PEA", "Fibrillazione ventricolare", "Bradicardia sinusale"], answer: 2 },
+
   ],
   []
 );
@@ -536,12 +546,14 @@ const [earnTab, setEarnTab] = useState<QuizMode>("giornaliero");
 
 const [dailyDoneKey, setDailyDoneKey] = useState<string>(() => {
   if (typeof window === "undefined") return "";
-  return localStorage.getItem("nd_quiz_daily_done") || "";
+  const v = localStorage.getItem("nd_quiz_daily_done") || "";
+  return v === "1" ? todayKeyISO() : v;
 });
 
 const [weeklyDoneKey, setWeeklyDoneKey] = useState<string>(() => {
   if (typeof window === "undefined") return "";
-  return localStorage.getItem("nd_quiz_weekly_done") || "";
+  const v = localStorage.getItem("nd_quiz_weekly_done") || "";
+  return v === "1" ? isoWeekKey() : v;
 });
 
 const [quiz, setQuiz] = useState<{
@@ -556,6 +568,31 @@ const [quiz, setQuiz] = useState<{
 
 function todayKeyISO() {
   const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function safeGetLS(key: string) {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetLS(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {}
+}
+
+function prevDayKeyISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
@@ -595,14 +632,43 @@ function pickQuizQuestions(mode: QuizMode) {
   const key = mode === "giornaliero" ? todayKeyISO() : isoWeekKey();
   const seed = seedFromString(`${mode}-${key}`);
   const rnd = mulberry32(seed);
-  const arr = [...QUIZ_BANK];
-  // fisher-yates seeded
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
+
+  const all = [...QUIZ_BANK];
+  const easy = all.filter((q) => (q.difficulty ?? "easy") === "easy");
+  const medium = all.filter((q) => (q.difficulty ?? "easy") === "medium");
+  const hard = all.filter((q) => (q.difficulty ?? "easy") === "hard");
+
+  const shuffle = (arr: QuizQ[]) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rnd() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  const pickN = (arr: QuizQ[], n: number) => shuffle(arr).slice(0, Math.max(0, n));
+
+  const plan =
+    mode === "giornaliero"
+      ? { easy: 3, medium: 1, hard: 1, total: ECONOMY.quiz.daily.questions }
+      : { easy: 6, medium: 4, hard: 2, total: ECONOMY.quiz.weekly.questions };
+
+  let picked: QuizQ[] = [
+    ...pickN(easy, plan.easy),
+    ...pickN(medium, plan.medium),
+    ...pickN(hard, plan.hard),
+  ];
+
+  // Se mancano domande (bank troppo piccolo per una difficulty), riempi dal resto
+  if (picked.length < plan.total) {
+    const remaining = shuffle(all).filter((q) => !picked.some((p) => p.id === q.id));
+    picked = [...picked, ...remaining.slice(0, plan.total - picked.length)];
   }
-  const n = mode === "giornaliero" ? 5 : 12;
-  return arr.slice(0, Math.min(n, arr.length));
+
+  // Mischia l'ordine finale
+  const final = shuffle(picked).slice(0, plan.total);
+  return final;
 }
 
 function quizDoneFor(mode: QuizMode) {
@@ -652,26 +718,86 @@ function claimQuizReward() {
   setQuiz((q) => {
     if (q.status !== "done") return q;
 
-    const cfg = q.mode === "giornaliero" ? ECONOMY.daily : ECONOMY.weekly;
-    const perCorrect = cfg.perCorrect;
-    const completionBonus = cfg.completionBonus;
-    const perfectBonus = q.correct === q.questions.length ? cfg.perfectBonus : 0;
-    const earned = q.correct * perCorrect + completionBonus + perfectBonus;
+    const mode = q.mode;
+    const today = todayKeyISO();
+    const week = isoWeekKey();
 
-    const key = q.mode === "giornaliero" ? todayKeyISO() : isoWeekKey();
-    setPillole((p) => p + earned);
-
-    if (typeof window !== "undefined") {
-      if (q.mode === "giornaliero") {
-        setDailyDoneKey(key);
-        localStorage.setItem("nd_quiz_daily_done", key);
-      } else {
-        setWeeklyDoneKey(key);
-        localStorage.setItem("nd_quiz_weekly_done", key);
-      }
+    // Calcolo reward basato su difficolt脿
+    const per = ECONOMY.quiz.perCorrect;
+    let earned = 0;
+    for (let i = 0; i < q.questions.length; i++) {
+      const qq = q.questions[i];
+      const diff = (qq.difficulty ?? "easy") as keyof typeof per;
+      if (q.chosen[i] === qq.answer) earned += per[diff];
     }
 
-    return { ...q, status: "idle", idx: 0, correct: 0, selected: null, questions: [], history: [] };
+    const cfg = mode === "giornaliero" ? ECONOMY.quiz.daily : ECONOMY.quiz.weekly;
+
+    // Bonus completion/perfect
+    earned += cfg.completionBonus;
+    if (q.correct === q.questions.length) earned += cfg.perfectBonus;
+
+    // Streak solo sul giornaliero
+    let streak = 0;
+    if (mode === "giornaliero") {
+      const last = safeGetLS(LS_QUIZ_DAILY_DONE);
+      const prevDay = prevDayKeyISO();
+      if (last === prevDay) streak = Number(safeGetLS(LS_QUIZ_DAILY_STREAK) || "0") + 1;
+      else if (last === today) streak = Number(safeGetLS(LS_QUIZ_DAILY_STREAK) || "0");
+      else streak = 1;
+
+      streak = Math.min(streak, ECONOMY.quiz.streak.maxDays);
+
+      const bonus =
+        streak >= 7
+          ? ECONOMY.quiz.streak.bonusAt7
+          : streak >= 5
+            ? ECONOMY.quiz.streak.bonusAt5
+            : streak >= 3
+              ? ECONOMY.quiz.streak.bonusAt3
+              : 0;
+
+      earned += bonus;
+
+      safeSetLS(LS_QUIZ_DAILY_STREAK, String(streak));
+    }
+
+    // Cap (giornaliero/settimanale)
+    const cap = mode === "giornaliero" ? ECONOMY.quiz.daily.earnCap : ECONOMY.quiz.weekly.earnCap;
+    const capKey = mode === "giornaliero" ? today : week;
+    const earnedKey = mode === "giornaliero" ? LS_PILLS_EARNED_DAY : LS_PILLS_EARNED_WEEK;
+
+    const prev = safeGetLS(earnedKey);
+    const prevParts = prev ? prev.split("|") : [];
+    const prevK = prevParts[0];
+    const prevV = Number(prevParts[1] || "0");
+    const already = prevK === capKey ? prevV : 0;
+
+    const remaining = Math.max(0, cap - already);
+    const granted = Math.min(earned, remaining);
+
+    safeSetLS(earnedKey, `${capKey}|${already + granted}`);
+
+    // Segna completato
+    if (mode === "giornaliero") safeSetLS(LS_QUIZ_DAILY_DONE, today);
+    else safeSetLS(LS_QUIZ_WEEKLY_DONE, week);
+
+    // Accredita pillole
+    setPills((p) => p + granted);
+
+    // Refresh badge UI
+    setDailyDoneKey(safeGetLS(LS_QUIZ_DAILY_DONE));
+    setWeeklyDoneKey(safeGetLS(LS_QUIZ_WEEKLY_DONE));
+
+    // feedback
+    const note =
+      granted < earned
+        ? `Hai guadagnato +${granted} pillole (cap raggiunto: ${cap}/periodo).`
+        : `Hai guadagnato +${granted} pillole.`;
+
+    setToast({ show: true, type: "success", message: note });
+
+    return { ...q, status: "claimed", reward: granted, streak };
   });
 }
 
@@ -1818,14 +1944,60 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
     const unlocked = Object.values(collection).filter((n) => n >= 1).length;
     const totalCopies = Object.values(collection).reduce((a, b) => a + (Number(b) || 0), 0);
     const duplicates = Object.values(collection).reduce((a, b) => a + Math.max(0, (Number(b) || 0) - 1), 0);
-    const dailyDone = localStorage.getItem(LS_QUIZ_DAILY_DONE) === "1";
-    const weeklyDone = localStorage.getItem(LS_QUIZ_WEEKLY_DONE) === "1";
+    const dailyDone = localStorage.getItem(LS_QUIZ_DAILY_DONE) === todayKeyISO;
+    const weeklyDone = localStorage.getItem(LS_QUIZ_WEEKLY_DONE) === weekKeyISO;
     const lastPulls = safeJsonParse<any[]>(localStorage.getItem(LS_RECENT_PULLS), []).length;
     return { pills, unlocked, totalCopies, duplicates, dailyDone, weeklyDone, lastPulls };
   };
 
   type TabKey = "home" | "contenuti" | "carte" | "profilo";
   const [activeTab, setActiveTab] = useState<TabKey>("home");
+
+  const [viewportWidth, setViewportWidth] = useState<number>(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handle = () => setViewportWidth(window.innerWidth || 0);
+    handle();
+    window.addEventListener("resize", handle);
+    return () => window.removeEventListener("resize", handle);
+  }, []);
+
+  const isCompactNav = viewportWidth > 0 && viewportWidth < 360;
+
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const formatCountdown = (ms: number) => {
+    const total = Math.max(0, Math.floor(ms / 1000));
+    const hh = String(Math.floor(total / 3600)).padStart(2, "0");
+    const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+    const ss = String(total % 60).padStart(2, "0");
+    return `${hh}:${mm}:${ss}`;
+  };
+
+  const nextDailyResetMs = (() => {
+    const d = new Date(nowMs);
+    const next = new Date(d);
+    next.setHours(24, 0, 0, 0); // next local midnight
+    return next.getTime();
+  })();
+
+  const nextWeeklyResetMs = (() => {
+    const d = new Date(nowMs);
+    const next = new Date(d);
+    next.setHours(0, 0, 0, 0);
+    const day = next.getDay(); // 0=Sun ... 1=Mon
+    const daysToMon = (8 - day) % 7; // Sun->1, Mon->0, Tue->6 ...
+    next.setDate(next.getDate() + (daysToMon === 0 ? 7 : daysToMon));
+    return next.getTime();
+  })();
+
+
 
   useEffect(() => {
     // Home resta sempre default, ma se arriva un deep-link tipo /#contenuti lo rispettiamo
@@ -2668,11 +2840,19 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
               </div>
               <div style={cardStyle}>
                 <div style={smallLabel}>Quiz giornaliero</div>
-                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.dailyDone ? "OK completato" : "Da fare da fare"}</div>
+                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.dailyDone ? "OK completato" : "Disponibile"}</div>
+                <div style={{ opacity: 0.78, fontSize: 12, marginTop: 6 }}>
+                  {s.dailyDone ? "Prossimo quiz tra: " : "Reset tra: "}
+                  <span style={{ fontWeight: 900 }}>{formatCountdown(nextDailyResetMs - nowMs)}</span>
+                </div>
               </div>
               <div style={cardStyle}>
                 <div style={smallLabel}>Quiz settimanale</div>
-                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.weeklyDone ? "OK completato" : "Da fare da fare"}</div>
+                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.weeklyDone ? "OK completato" : "Disponibile"}</div>
+                <div style={{ opacity: 0.78, fontSize: 12, marginTop: 6 }}>
+                  {s.weeklyDone ? "Prossimo quiz tra: " : "Reset tra: "}
+                  <span style={{ fontWeight: 900 }}>{formatCountdown(nextWeeklyResetMs - nowMs)}</span>
+                </div>
               </div>
             </div>
 
@@ -2815,68 +2995,69 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
           "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
       }}
     >
-      {/* overlay per leggibilita */}
-      <div
+      {/* overlay per leggibilita *<nav
+  aria-label="Navigazione principale"
+  style={{
+    position: "fixed",
+    left: "50%",
+    transform: "translateX(-50%)",
+    bottom: "calc(12px + env(safe-area-inset-bottom))",
+    width: "min(560px, calc(100% - 24px))",
+    zIndex: 50,
+    background: "rgba(18, 20, 26, 0.78)",
+    backdropFilter: "blur(10px)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    borderRadius: 24,
+    padding: 8,
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 8,
+    boxShadow: "0 16px 50px rgba(0,0,0,0.55)",
+  }}
+>
+  {tabs.map((t) => {
+    const isActive = activeTab === t.id;
+    return (
+      <button
+        key={t.id}
+        type="button"
+        onClick={() => setActiveTab(t.id)}
+        aria-current={isActive ? "page" : undefined}
         style={{
-          position: "absolute",
-          inset: 0,
-          background: "linear-gradient(180deg, rgba(10,12,18,0.72), rgba(10,12,18,0.55))",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div style={{ position: "relative", zIndex: 1 }}>{renderActiveTab()}</div>
-
-      <nav
-        aria-label="Navigazione principale"
-        style={{
-          position: "fixed",
-          left: "50%",
-          transform: "translateX(-50%)",
-          bottom: 14,
-          width: "min(1080px, calc(100% - 24px))",
-          zIndex: 50,
+          appearance: "none",
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: isActive ? "rgba(120, 220, 255, 0.18)" : "rgba(0,0,0,0.18)",
+          color: "white",
           borderRadius: 18,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(255,255,255,0.08)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
-          padding: 10,
-          display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 8,
+          padding: isCompactNav ? "8px 6px" : "10px 8px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 4,
+          fontSize: isCompactNav ? 11 : 12,
+          lineHeight: 1.1,
+          fontWeight: isActive ? 900 : 800,
+          width: "100%",
+          minWidth: 0,
         }}
       >
-        {([
-          ["home", <IconHome size={18} />, "Home"],
-          ["contenuti", <IconSearch size={18} />, "Contenuti"],
-          ["carte", <IconCards size={18} />, "Carte"],
-          ["profilo", <IconUser size={18} />, "Profilo"],
-        ] as const).map(([key, icon, label]) => {
-          const isActive = activeTab === key;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setActiveTab(key)}
-              style={{
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: isActive ? "rgba(91,217,255,0.18)" : "rgba(255,255,255,0.06)",
-                color: "white",
-                borderRadius: 14,
-                padding: "10px 8px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                fontSize: 14,
-                lineHeight: 1,
-                whiteSpace: "nowrap",
-              }}
-              aria-current={isActive ? "page" : undefined}
+        <span style={{ display: "grid", placeItems: "center" }}>{t.icon}</span>
+        <span
+          style={{
+            opacity: isActive ? 1 : 0.92,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: "100%",
+          }}
+        >
+          {t.label}
+        </span>
+      </button>
+    );
+  })}
+</nav>              aria-current={isActive ? "page" : undefined}
               aria-label={label}
               title={label}
             >
@@ -2888,4 +3069,108 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
       </nav>
     </main>
   );
+function IconBookmark({
+  size = 18,
+  filled = false,
+}: {
+  size?: number;
+  filled?: boolean;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M7 3.5h10c1.1 0 2 .9 2 2v16l-7-3-7 3v-16c0-1.1.9-2 2-2z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconShare({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M15 8l-6 4 6 4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18 6.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM6 10.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM18 12.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function IconFolder({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M3.5 6.5h6l2 2h9c.6 0 1 .4 1 1v9.5c0 .8-.7 1.5-1.5 1.5H5c-.8 0-1.5-.7-1.5-1.5V7.5c0-.6.4-1 1-1z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconPills({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M8.2 15.8l-1.9 1.9a4 4 0 1 1-5.6-5.6l1.9-1.9a4 4 0 0 1 5.6 5.6z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15.8 8.2l1.9-1.9a4 4 0 1 1 5.6 5.6l-1.9 1.9a4 4 0 0 1-5.6-5.6z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.6 15.4l6.8-6.8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 }
