@@ -594,15 +594,16 @@ const [weeklyDoneKey, setWeeklyDoneKey] = useState<string>(() => {
   return v === "1" ? isoWeekKey() : v;
 });
 
-const [quiz, setQuiz] = useState<{
-  mode: QuizMode;
-  status: "idle" | "running" | "done";
-  idx: number;
-  correct: number;
-  selected: number | null;
-  questions: QuizQ[];
-  history: { id: string; q: string; options: string[]; answer: number; selected: number }[];
-}>({ mode: "giornaliero", status: "idle", idx: 0, correct: 0, selected: null, questions: [], history: [] });
+  const [quiz, setQuiz] = useState<{
+    mode: QuizMode;
+    status: "idle" | "running" | "done";
+    idx: number;
+    correct: number;
+    selected: number | null;
+    questions: QuizQ[];
+    history: { id: string; q: string; options: string[]; answer: number; selected: number }[];
+    claimed: boolean;
+  }>({ mode: "giornaliero", status: "idle", idx: 0, correct: 0, selected: null, questions: [], history: [], claimed: false });
 
 function todayKeyISO() {
   const d = new Date();
@@ -717,7 +718,7 @@ function quizDoneFor(mode: QuizMode) {
 function startQuiz(mode: QuizMode) {
   if (quizDoneFor(mode)) return;
   const questions = pickQuizQuestions(mode);
-  setQuiz({ mode, status: "running", idx: 0, correct: 0, selected: null, questions, history: [] });
+  setQuiz({ mode, status: "running", idx: 0, correct: 0, selected: null, questions, history: [], claimed: false });
 }
 
 function selectAnswer(choiceIdx: number) {
@@ -739,6 +740,7 @@ function nextQuestion() {
         correct: q.correct + (isCorrect ? 1 : 0),
         selected: null,
         idx: q.idx,
+        claimed: false,
         history: [...q.history, historyItem],
       };
     }
@@ -754,7 +756,7 @@ function nextQuestion() {
 
 function claimQuizReward() {
   setQuiz((q) => {
-    if (q.status !== "done") return q;
+    if (q.status !== "done" || q.claimed) return q;
 
     const mode = q.mode;
     const today = todayKeyISO();
@@ -835,7 +837,7 @@ function claimQuizReward() {
 
     setToast({ show: true, type: "success", message: note });
 
-    return { ...q, status: "claimed", reward: granted, streak };
+    return { ...q, claimed: true };
   });
 }
 
