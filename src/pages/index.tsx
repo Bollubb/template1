@@ -42,6 +42,50 @@ function safeJsonParse<T>(value: string | null, fallback: T): T {
   }
 }
 
+const stripWeirdText = (s: string): string => {
+  // Rimuove caratteri "strani" (CJK / replacement char) che su alcuni device appaiono come "cinesi"
+  return s
+    .replace(/[\u4E00-\u9FFF]/g, "")
+    .replace(/\uFFFD/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+};
+
+function sanitizeDeep<T>(value: T): T {
+  if (typeof value === "string") return stripWeirdText(value) as unknown as T;
+  if (Array.isArray(value)) return value.map((v) => sanitizeDeep(v)) as unknown as T;
+  if (value && typeof value === "object") {
+    const out: any = Array.isArray(value) ? [] : {};
+    for (const [k, v] of Object.entries(value as any)) out[k] = sanitizeDeep(v);
+    return out as T;
+  }
+  return value;
+}
+
+function sanitizeLegacyLocalStorage(): void {
+  if (typeof window === "undefined") return;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (!key.startsWith("nd_")) continue; // NurseDiary keys
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      // prova JSON
+      try {
+        const parsed = JSON.parse(raw);
+        const cleaned = sanitizeDeep(parsed);
+        localStorage.setItem(key, JSON.stringify(cleaned));
+      } catch {
+        const cleaned = stripWeirdText(raw);
+        if (cleaned !== raw) localStorage.setItem(key, cleaned);
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
 function uid(prefix = "u") {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
 }
@@ -607,6 +651,7 @@ function claimQuizReward() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    sanitizeLegacyLocalStorage();
     localStorage.setItem("nd_pillole", String(pillole));
   }, [pillole]);
 
@@ -2737,7 +2782,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
           zIndex: 50,
           borderRadius: 18,
           border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(10,12,18,0.65)",
+          background: "rgba(255,255,255,0.08)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
           padding: 10,
@@ -2760,7 +2805,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
               onClick={() => setActiveTab(key)}
               style={{
                 border: "1px solid rgba(255,255,255,0.10)",
-                background: isActive ? "rgba(91,217,255,0.18)" : "rgba(0,0,0,0.18)",
+                background: isActive ? "rgba(91,217,255,0.18)" : "rgba(255,255,255,0.06)",
                 color: "white",
                 borderRadius: 14,
                 padding: "10px 8px",
