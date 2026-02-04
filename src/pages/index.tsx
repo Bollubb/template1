@@ -107,8 +107,36 @@ function IconBookmark({
     </svg>
   );
 }
-
-
+function IconShare({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M15 8l-6 4 6 4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18 6.5a2.5 2.5 0 1 1 0 5
+           2.5 2.5 0 0 1 0-5z
+           M6 10.5a2.5 2.5 0 1 1 0 5
+           2.5 2.5 0 0 1 0-5z
+           M18 12.5a2.5 2.5 0 1 1 0 5
+           2.5 2.5 0 0 1 0-5z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
 type RarityKey = "comune" | "rara" | "epica" | "leggendaria";
 
 type CardDef = {
