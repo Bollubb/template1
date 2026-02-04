@@ -130,6 +130,16 @@ const LS_QUIZ_DAILY_STREAK = "nd_quiz_daily_streak";
 const LS_PILLS_EARNED_DAY = "nd_pills_earned_day";
 const LS_PILLS_EARNED_WEEK = "nd_pills_earned_week";
 
+function safeJsonParse<T>(value: string | null, fallback: T): T {
+  try {
+    if (!value) return fallback;
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+
 // Economia (pillole)
 const ECONOMY = {
   // Core sink: aprire bustine
