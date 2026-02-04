@@ -1,8 +1,10 @@
 import Head from 'next/head';
 import React from 'react';
 
-// Niente alias: import relativo stabile
-import { BottomNav, Footer, Header } from '../components';
+// Import diretti (niente barrel ../components che usa alias @components)
+import BottomNav from '../components/BottomNav';
+import Footer from '../components/Footer';
+import Header from '../components/Header';
 
 export type PageProps = {
   title: string;
