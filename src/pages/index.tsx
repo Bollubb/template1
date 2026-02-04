@@ -3192,3 +3192,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
     );
   })}
 </nav>
+
+    </main>
+  );
+}
