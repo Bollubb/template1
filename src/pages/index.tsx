@@ -17,11 +17,15 @@ const safe = (v: unknown) => (v == null ? "" : String(v));
 export default function Home(): JSX.Element {
   const [activeTab, setActiveTab] = useState<NurseTab>("didattica");
 
-  // Didattica
+  // Didattica data
   const [items, setItems] = useState<ContentItem[]>([]);
   const [categoria, setCategoria] = useState("Tutte");
 
-  // Preferiti (come ieri: nd_favorites)
+  // Search + only favorites
+  const [query, setQuery] = useState("");
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+
+  // Favorites storage (nd_favorites)
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   const onToggleFavorite = (id: string) => {
@@ -33,7 +37,7 @@ export default function Home(): JSX.Element {
     });
   };
 
-  // Carica contenuti da CSV (ripreso dal vecchio index)
+  // Load content CSV
   useEffect(() => {
     (async () => {
       try {
@@ -46,7 +50,7 @@ export default function Home(): JSX.Element {
     })();
   }, []);
 
-  // Carica preferiti da localStorage (una sola volta)
+  // Load favorites once
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
@@ -58,7 +62,7 @@ export default function Home(): JSX.Element {
     }
   }, []);
 
-  // Salva preferiti in localStorage (ogni volta che cambiano)
+  // Persist favorites
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
@@ -78,9 +82,30 @@ export default function Home(): JSX.Element {
   }, [items]);
 
   const filtered = useMemo(() => {
-    if (categoria === "Tutte") return items;
-    return items.filter((i) => safe((i as any).categoria).trim() === categoria);
-  }, [items, categoria]);
+    const q = query.trim().toLowerCase();
+
+    return items.filter((i) => {
+      // 1) categoria
+      if (categoria !== "Tutte" && safe((i as any).categoria).trim() !== categoria) return false;
+
+      // 2) solo preferiti
+      if (onlyFavorites && !favoriteIds.has(i.id)) return false;
+
+      // 3) search
+      if (!q) return true;
+
+      const hay = [
+        safe((i as any).titolo),
+        safe((i as any).descrizione),
+        safe((i as any).categoria),
+        safe((i as any).tags),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return hay.includes(q);
+    });
+  }, [items, categoria, query, onlyFavorites, favoriteIds]);
 
   return (
     <Page title="Home">
@@ -97,6 +122,38 @@ export default function Home(): JSX.Element {
         <Section>
           <h2>Didattica</h2>
 
+          {/* Controls */}
+          <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cerca (titolo, descrizione, categoria...)"
+              style={{
+                width: "100%",
+                padding: "12px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(0,0,0,0.15)",
+                outline: "none",
+              }}
+            />
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={onlyFavorites}
+                  onChange={(e) => setOnlyFavorites(e.target.checked)}
+                />
+                <span>Solo preferiti</span>
+              </label>
+
+              <div style={{ color: "rgba(0,0,0,0.6)" }}>
+                Risultati: <b>{filtered.length}</b>
+              </div>
+            </div>
+          </div>
+
+          {/* Category chips */}
           <div className={styles.filters}>
             {categorie.map((c) => (
               <button
@@ -114,7 +171,7 @@ export default function Home(): JSX.Element {
             <div style={{ padding: 12, border: "1px solid rgba(0,0,0,0.10)", borderRadius: 12 }}>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>Nessun contenuto trovato</div>
               <div style={{ color: "rgba(0,0,0,0.65)" }}>
-                Controlla che <code>/public/contenuti.csv</code> esista e sia raggiungibile.
+                Controlla che <code>/public/contenuti.csv</code> esista e sia raggiungibile, oppure modifica filtri/ricerca.
               </div>
             </div>
           ) : (
