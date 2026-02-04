@@ -1,5 +1,53 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+/** Simple inline icons (no emoji to avoid rendering issues on some Android builds) */
+function IconStar({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 17.27l5.18 3.12-1.4-5.98L20.5 10l-6.17-.53L12 3.8 9.67 9.47 3.5 10l4.72 4.41-1.4 5.98L12 17.27z" />
+    </svg>
+  );
+}
+function IconSearch({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.5-3.5" />
+    </svg>
+  );
+}
+function IconCards({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M7 7h14v14H7z" />
+      <path d="M3 3h14v14" />
+    </svg>
+  );
+}
+function IconUser({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M20 21a8 8 0 0 0-16 0" />
+      <circle cx="12" cy="8" r="4" />
+    </svg>
+  );
+}
+function IconHome({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M3 11l9-8 9 8" />
+      <path d="M9 22V12h6v10" />
+    </svg>
+  );
+}
+function IconBolt({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M13 2L3 14h7l-1 8 12-14h-7l-1-6z" />
+    </svg>
+  );
+}
+
 type RarityKey = "comune" | "rara" | "epica" | "leggendaria";
 
 type CardDef = {
@@ -292,7 +340,7 @@ function ContentCard({
               cursor: "pointer",
             }}
           >
-            猸�
+            
           </button>
 
           <button
@@ -2006,7 +2054,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                 whiteSpace: "nowrap",
               }}
             >
-              猸� Preferiti <span style={{ opacity: 0.85 }}>({favoritesCount})</span>
+               Preferiti <span style={{ opacity: 0.85 }}>({favoritesCount})</span>
             </button>
           </div>
         </div>
@@ -2041,7 +2089,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
             {favoriteItems.length > 0 && (
               <div style={{ gridColumn: "1 / -1" }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
-                  <h2 style={{ margin: 0, fontSize: 16 }}>猸� Preferiti</h2>
+                  <h2 style={{ margin: 0, fontSize: 16 }}> Preferiti</h2>
                   <span style={{ fontSize: 13, opacity: 0.7 }}>{favoriteItems.length}</span>
                 </div>
 
@@ -2125,7 +2173,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
               fontSize: 22,
             }}
           >
-            鉁�
+            
           </div>
           <div>
             <h2 style={{ margin: 0, letterSpacing: -0.2 }}>Benvenuto in NurseDiary</h2>
@@ -2203,7 +2251,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                 textAlign: "left",
               }}
             >
-              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>猸� Crea la tua libreria</div>
+              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> Crea la tua libreria</div>
               <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
                 Aggiungi i primi preferiti per ritrovarli al volo.
               </div>
@@ -2225,7 +2273,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                 textAlign: "left",
               }}
             >
-              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>猸� Apri i tuoi preferiti</div>
+              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> Apri i tuoi preferiti</div>
               <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
                 Vai direttamente alla sezione 鈥淧referiti鈥� gi脿 filtrata.
               </div>
@@ -2254,7 +2302,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
       </div>
 
       <div style={{ marginTop: 14, opacity: 0.75, fontSize: 13, lineHeight: 1.35 }}>
-        Suggerimento: usa 猸� nei contenuti per creare una 鈥渓ista rapida鈥� delle cose che ti servono pi霉 spesso.
+        Suggerimento: usa  nei contenuti per creare una 鈥渓ista rapida鈥� delle cose che ti servono pi霉 spesso.
       </div>
     </section>
   );
@@ -2665,7 +2713,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                     if (typeof window === "undefined") return;
                     const payload = safeJsonParse<any>(importJson, null);
                     if (!payload) {
-                      alert("JSON non valido 鉂�");
+                      alert("JSON non valido");
                       return;
                     }
                     if (payload.profile) localStorage.setItem(LS_PROFILE, JSON.stringify(payload.profile));
@@ -2792,10 +2840,10 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
         }}
       >
         {([
-          ["home", "", "Home"],
-          ["contenuti", "", "Contenuti"],
-          ["carte", "", "Carte"],
-          ["profilo", "", "Profilo"],
+          ["home", <IconHome size={18} />, "Home"],
+          ["contenuti", <IconSearch size={18} />, "Contenuti"],
+          ["carte", <IconCards size={18} />, "Carte"],
+          ["profilo", <IconUser size={18} />, "Profilo"],
         ] as const).map(([key, icon, label]) => {
           const isActive = activeTab === key;
           return (
@@ -2813,6 +2861,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                gap: 6,
                 gap: 8,
                 fontSize: 14,
                 lineHeight: 1,
@@ -2822,8 +2871,8 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
               aria-label={label}
               title={label}
             >
-              <span style={{ fontSize: 18 }}>{icon}</span>
-              {isActive && <span style={{ fontSize: 13, opacity: 0.95 }}>{label}</span>}
+              <span style={{ display: "inline-flex", marginRight: 6 }}>{icon}</span>
+              <span style={{ fontSize: 13, opacity: isActive ? 1 : 0.85, fontWeight: isActive ? 800 : 600 }}>{label}</span>
             </button>
           );
         })}
