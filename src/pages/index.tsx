@@ -32,6 +32,40 @@ function IconUser({ size = 18 }: { size?: number }) {
     </svg>
   );
 }
+
+
+function IconBook({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 5a2 2 0 0 1 2-2h14v18H6a2 2 0 0 0-2 2V5Z" />
+      <path d="M8 7h8" />
+      <path d="M8 11h8" />
+      <path d="M4 19a2 2 0 0 0 2 2" />
+    </svg>
+  );
+}
+
+function IconSparkles({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 2l1.2 3.6L16.8 7 13.2 8.4 12 12l-1.2-3.6L7.2 7l3.6-1.4L12 2Z" />
+      <path d="M5 13l.8 2.4L8.2 16l-2.4.6L5 19l-.8-2.4L1.8 16l2.4-.6L5 13Z" />
+      <path d="M19 12l.9 2.7L22.6 15l-2.7.6L19 18l-.9-2.4L15.4 15l2.7-.3L19 12Z" />
+    </svg>
+  );
+}
+
+function IconTimer({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 2h4" />
+      <path d="M12 14l3-3" />
+      <path d="M12 22a8 8 0 1 0-8-8 8 8 0 0 0 8 8Z" />
+      <path d="M17 6l1.5-1.5" />
+    </svg>
+  );
+}
+
 function IconHome({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -48,18 +82,6 @@ function IconBolt({ size = 18 }: { size?: number }) {
   );
 }
 // Emoji rendered via codepoints to avoid encoding issues in source/control.
-const EMOJI = {
-  search: String.fromCodePoint(0x1F50D), // 馃攳
-  star: String.fromCodePoint(0x2B50), // 猸�
-  cards: String.fromCodePoint(0x1F0CF), // 馃儚
-  pill: String.fromCodePoint(0x1F48A), // 馃拪
-  sparkles: String.fromCodePoint(0x2728), // 鉁�
-  folder: String.fromCodePoint(0x1F4C1), // 馃搧
-  library: String.fromCodePoint(0x1F4DA), // 馃摎
-  save: String.fromCodePoint(0x1F516), // 馃敄
-  saved: String.fromCodePoint(0x2705), // 鉁�
-  share: String.fromCodePoint(0x1F4E4), // 馃摛
-};
 
 
 type RarityKey = "comune" | "rara" | "epica" | "leggendaria";
@@ -97,9 +119,9 @@ const ECONOMY = {
   packPrice: 60,
 
   // Quiz economy (sostenibile: non troppo facile, ma nemmeno impossibile)
-  // - reward per risposta corretta dipende dalla difficolt脿
+  // - reward per risposta corretta dipende dalla difficoltà
   // - cap giornaliero/settimanale impedisce farming infinito
-  // - streak giornaliera d脿 un piccolo boost senza rompere l'economia
+  // - streak giornaliera dà un piccolo boost senza rompere l'economia
   quiz: {
     perCorrect: { easy: 2, medium: 3, hard: 5 },
     daily: { questions: 5, completionBonus: 4, perfectBonus: 3, earnCap: 30 },
@@ -107,6 +129,22 @@ const ECONOMY = {
     streak: { maxDays: 7, bonusAt3: 2, bonusAt5: 4, bonusAt7: 6 },
   },
 } as const;
+
+
+function stripWeirdText(input: string): string {
+  // Remove common mojibake artifacts that appeared when emoji were rendered as unknown glyphs.
+  // - U+FFFD is the replacement character (�)
+  // - Some devices showed stray CJK chars (e.g., 鈿, 猟) around replacement glyphs
+  let s = input.replace(/\uFFFD/g, "");
+  // Remove zero-width / BOM chars
+  s = s.replace(/[\u200B-\u200D\uFEFF]/g, "");
+  // If any CJK ideographs remain from previous bad renders, drop them only when they are isolated
+  // (surrounded by spaces/punctuation or start/end), to avoid touching legitimate text.
+  s = s.replace(/(^|[\s\-–—:;,.!?()\[\]{}<>"'“”‘’/\\])([\u4E00-\u9FFF]{1,3})(?=([\s\-–—:;,.!?()\[\]{}<>"'“”‘’/\\]|$))/g, "$1");
+  // Collapse double spaces introduced by removals
+  s = s.replace(/\s{2,}/g, " ");
+  return s;
+}
 
 function sanitizeDeep<T>(value: T): T {
   if (typeof value === "string") return stripWeirdText(value) as unknown as T;
@@ -431,7 +469,7 @@ function ContentCard({
             borderRadius: 14,
           }}
         >
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><IconFolder size={18} /><span>Apri contenuto</span><span aria-hidden="true" style={{ marginLeft: 2 }}>鈫�</span></span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><IconFolder size={18} /><span>Apri contenuto</span><span aria-hidden="true" style={{ marginLeft: 2 }}>→</span></span>
         </Link>
       </div>
     </article>
@@ -527,7 +565,7 @@ const QUIZ_BANK: QuizQ[] = useMemo(
     // Medium
     { id: "q41", difficulty: "medium", q: "Nel paziente con sepsi, quale esame e piu utile per monitorare l'ipoperfusione?", options: ["Creatinina", "Lattato", "PT/INR", "Colesterolo"], answer: 1 },
     { id: "q42", difficulty: "medium", q: "In caso di iperK+ severa con ECG alterato, la prima terapia da somministrare e:", options: ["Furosemide", "Calcio gluconato EV", "Bicarbonato PO", "Cloruro di sodio"], answer: 1 },
-    { id: "q43", difficulty: "medium", q: "Per ridurre il rischio di aspirazione in nutrizione enterale, e raccomandato:", options: ["Testa letto 30-45掳", "Supino", "Bere acqua subito", "Rimuovere la sonda"], answer: 0 },
+    { id: "q43", difficulty: "medium", q: "Per ridurre il rischio di aspirazione in nutrizione enterale, e raccomandato:", options: ["Testa letto 30-45°", "Supino", "Bere acqua subito", "Rimuovere la sonda"], answer: 0 },
     { id: "q44", difficulty: "medium", q: "Nella gestione del dolore toracico, quale dato e prioritario raccogliere?", options: ["Dolore e irradiamento + ECG", "BMI", "Anamnesi familiare", "Glicemia a digiuno"], answer: 0 },
     { id: "q45", difficulty: "medium", q: "Nel paziente con dispnea, un segno di lavoro respiratorio aumentato e:", options: ["Uso muscoli accessori", "Bradicardia", "Cute fredda", "Afasia"], answer: 0 },
 
@@ -722,7 +760,7 @@ function claimQuizReward() {
     const today = todayKeyISO();
     const week = isoWeekKey();
 
-    // Calcolo reward basato su difficolt脿
+    // Calcolo reward basato su difficoltà
     const per = ECONOMY.quiz.perCorrect;
     let earned = 0;
     for (let i = 0; i < q.questions.length; i++) {
@@ -1303,7 +1341,7 @@ const Modal = ({ card }: { card: CardDef }) => {
           }}
           title="Pillole"
         >
-           {EMOJI.pill} {pillole}
+           <IconPills size={18} /> {pillole}
         </div>
       </div>
 
@@ -1565,10 +1603,10 @@ const Modal = ({ card }: { card: CardDef }) => {
                   Sbloccate prima
                 </option>
                 <option value="rarity" style={{ color: "black" }}>
-                  Rarita 鈫� Nome
+                  Rarita → Nome
                 </option>
                 <option value="name" style={{ color: "black" }}>
-                  Nome A 鈫� Z
+                  Nome A → Z
                 </option>
               </select>
             </div>
@@ -2413,7 +2451,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
               textAlign: "left",
             }}
           >
-            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> {EMOJI.search} Trova subito quello che ti serve</div>
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> <IconSearch size={18} /> Trova subito quello che ti serve</div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
               Apri la ricerca e inizia a digitare (ECG, PEA, accessi venosi...).
             </div>
@@ -2433,7 +2471,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                 textAlign: "left",
               }}
             >
-              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> {EMOJI.library} Crea la tua libreria</div>
+              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> <IconBook size={18} /> Crea la tua libreria</div>
               <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
                 Aggiungi i primi preferiti per ritrovarli al volo.
               </div>
@@ -2475,7 +2513,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
               textAlign: "left",
             }}
           >
-            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> {EMOJI.cards} Scopri la collezione</div>
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> <IconCards size={18} /> Scopri la collezione</div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
               Le carte arriveranno a breve: prepara lo spazio per la raccolta.
             </div>
