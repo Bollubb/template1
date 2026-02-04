@@ -15,6 +15,7 @@ type UserProfile = {
   id: string;
   displayName: string;
   email?: string;
+  avatarDataUrl?: string;
   createdAt: number; // epoch ms
 };
 
