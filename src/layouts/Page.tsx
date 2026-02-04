@@ -1,20 +1,12 @@
 import Head from 'next/head';
 import React from 'react';
 
-// Import diretti (niente barrel ../components che usa alias @components)
-import BottomNav from '../components/BottomNav';
-import Footer from '../components/Footer';
-import Header from '../components/Header';
-
 export type PageProps = {
   title: string;
   className?: string;
   children: React.ReactNode;
 };
 
-/**
- * Layout di pagina: header + contenuto + bottom nav + footer
- */
 function Page({ title, className, children }: PageProps): JSX.Element {
   const pageTitle = title === 'Home' ? 'Cats Realm' : `Cats Realm | ${title}`;
 
@@ -24,14 +16,21 @@ function Page({ title, className, children }: PageProps): JSX.Element {
         <title>{pageTitle}</title>
       </Head>
 
-      <Header />
+      {/* Header minimale (senza dipendenze da src/components) */}
+      <header style={{ padding: '16px 16px 0 16px' }}>
+        <a href="/" style={{ textDecoration: 'none', fontWeight: 700 }}>
+          Cats Realm
+        </a>
+      </header>
 
       <main>
         <article className={className}>{children}</article>
       </main>
 
-      <BottomNav />
-      <Footer />
+      {/* Footer minimale */}
+      <footer style={{ padding: '24px 16px' }}>
+        <small>© {new Date().getFullYear()} Cats Realm</small>
+      </footer>
     </>
   );
 }
