@@ -1,9 +1,11 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+
+export type Headers = Record<string, string>;
 
 class ApiClient {
   private client: AxiosInstance;
 
-  constructor(baseURL: string, headers: cat.Headers) {
+  constructor(baseURL: string, headers: Headers) {
     this.client = axios.create({
       baseURL,
       headers,
@@ -11,8 +13,8 @@ class ApiClient {
     });
   }
 
-  get(path: string, config?: AxiosRequestConfig): Promise<AxiosResponse> {
-    return this.client.get(path, config);
+  get<T = unknown>(path: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    return this.client.get<T>(path, config);
   }
 }
 
