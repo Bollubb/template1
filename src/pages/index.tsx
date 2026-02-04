@@ -2369,8 +2369,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
           <>
             <div style={{ ...cardStyle, marginBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
                   <div
                     style={{
                       width: 52,
@@ -2387,21 +2386,26 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                   >
                     {profile.avatarDataUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={profile.avatarDataUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img
+                        src={profile.avatarDataUrl}
+                        alt="Avatar"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
                     ) : (
                       <span style={{ opacity: 0.9 }}>{profile.displayName.slice(0, 2).toUpperCase()}</span>
                     )}
                   </div>
 
-                  <div style={{ fontWeight: 1000, fontSize: 18 }}>{profile.displayName}</div>
-                  <div style={{ opacity: 0.7, fontSize: 13, marginTop: 2 }}>
-                    {profile.email ? profile.email : "Email non impostata"} 鈥� Iscritto:{" "}
-                    {new Date(profile.createdAt).toLocaleDateString()}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 1000, fontSize: 18, lineHeight: 1.15 }}>{profile.displayName}</div>
+                    <div style={{ opacity: 0.7, fontSize: 13, marginTop: 4 }}>
+                      {profile.email ? profile.email : "Email non impostata"} 鈥� Iscritto:{" "}
+                      {new Date(profile.createdAt).toLocaleDateString()}
+                    </div>
                   </div>
                 </div>
-                                </div>
-                
-<button
+
+                <button
                   type="button"
                   onClick={() => {
                     setIsEditingProfile(true);
@@ -2416,12 +2420,13 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                     background: "rgba(0,0,0,0.18)",
                     color: "white",
                     fontWeight: 900,
+                    flex: "0 0 auto",
                   }}
                 >
-                  Esci
+                  Modifica
                 </button>
               </div>
-            </div>
+</div>
 
             {isEditingProfile && (
               <div style={{ ...cardStyle, marginBottom: 12 }}>
