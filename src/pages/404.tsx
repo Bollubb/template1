@@ -19,7 +19,9 @@ export default function FourOFour(): JSX.Element {
         <p className={styles.bigText}>Page Not Found</p>
         <p className={styles.paragraph}>Sorry, the page you are looking for doesn&lsquo;t exist.</p>
         <Link href="/" className={styles.btn} title="Return Home">
-          <BackArrowSvg className="h-5 w-5" />
+          <span className="h-5 w-5 inline-flex">
+  <BackArrowSvg />
+</span>
           <span>Return Home</span>
         </Link>
       </div>
