@@ -2401,7 +2401,7 @@ export default function Home() {
         )}
       </section>
     );
-  })(););
+ })();
 
   const renderActiveTab = () => {
     switch (activeTab) {
