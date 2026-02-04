@@ -140,6 +140,52 @@ function safeJsonParse<T>(value: string | null, fallback: T): T {
 }
 
 
+function pad2(n: number) {
+  return String(n).padStart(2, "0");
+}
+
+function todayKeyISO(d = new Date()) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function prevDayKeyISO() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return todayKeyISO(d);
+}
+
+/**
+ * Chiave settimana ISO-like (YYYY-Www).
+ * - Settimana inizia di lunedì
+ * - Stabile per gating "settimanale"
+ */
+function isoWeekKey(date = new Date()) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7; // 1..7 (Mon..Sun)
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum); // nearest Thursday
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${d.getUTCFullYear()}-W${pad2(weekNo)}`;
+}
+
+function safeGetLS(key: string) {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSetLS(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {}
+}
+
+
+
 // Economia (pillole)
 const ECONOMY = {
   // Core sink: aprire bustine
@@ -685,49 +731,6 @@ const [weeklyDoneKey, setWeeklyDoneKey] = useState<string>(() => {
     claimed: boolean;
   }>({ mode: "giornaliero", status: "idle", idx: 0, correct: 0, selected: null, questions: [], history: [], claimed: false });
 
-function todayKeyISO() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function safeGetLS(key: string) {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function safeSetLS(key: string, value: string) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {}
-}
-
-function prevDayKeyISO() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function isoWeekKey() {
-  const d = new Date();
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  const y = date.getUTCFullYear();
-  return `${y}-W${String(weekNo).padStart(2, "0")}`;
-}
 
 function mulberry32(seed: number) {
   return function () {
