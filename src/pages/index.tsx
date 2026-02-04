@@ -3125,6 +3125,8 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
           "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
       }}
     >
+      {renderActiveTab()}
+
       {/* overlay per leggibilità */}
 <nav
   aria-label="Navigazione principale"
