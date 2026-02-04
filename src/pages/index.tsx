@@ -12,18 +12,26 @@ import { CarteTab } from "../components/nursediary/CarteTab";
 import { DOCS_URL, GITHUB_URL } from "../constants";
 import type { ContentItem } from "../types/nursediary/types";
 
-// =======================
 // helper
-// =======================
 const safe = (v: unknown) => (v == null ? "" : String(v));
 
 export default function Home(): JSX.Element {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [categoria, setCategoria] = useState("Tutte");
 
-  // Mantieni la tua logica reale: qui è placeholder.
-  // Importante: quando carichi items, assicurati che ContentItem abbia
-  // le stringhe obbligatorie (es. titolo).
+  // Preferiti (minimo indispensabile per soddisfare ContentCard)
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
+  const onToggleFavorite = (id: string) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Placeholder: mantieni la tua logica reale qui
   useEffect(() => {
     setItems([]);
   }, []);
@@ -80,7 +88,12 @@ export default function Home(): JSX.Element {
 
         <div className={styles.grid}>
           {filtered.map((item) => (
-            <ContentCard key={item.id} item={item} />
+            <ContentCard
+              key={item.id}
+              item={item}
+              isFavorite={favoriteIds.has(item.id)}
+              onToggleFavorite={onToggleFavorite}
+            />
           ))}
         </div>
       </Section>
