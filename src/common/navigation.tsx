@@ -1,24 +1,26 @@
-import { DOCS_URL, GITHUB_URL } from '@constants/index';
+// src/common/navigation.tsx
 
-const bottomNavigation: cat.BottomNavigation = [
+// Evita alias non configurati in build: usa path relativo affidabile
+import { DOCS_URL, GITHUB_URL } from '../constants';
+
+export type BottomNavigationItem = {
+  title: string;
+  href: string;
+  external?: boolean;
+  icon?: React.ReactNode;
+};
+
+const bottomNavigation: BottomNavigationItem[] = [
   {
-    id: 1,
-    label: 'Home',
-    href: '/',
-    icon: <span style={{ fontSize: 20 }}>🏠</span>,
+    title: 'Docs',
+    href: DOCS_URL,
+    external: true,
   },
   {
-    id: 2,
-    label: 'Facts',
-    href: '/facts',
-    icon: <span style={{ fontSize: 20 }}>📚</span>,
+    title: 'GitHub',
+    href: GITHUB_URL,
+    external: true,
   },
 ];
 
-const navBar: cat.Navbar = [
-  { id: 1, label: 'Docs', href: DOCS_URL, external: true },
-  { id: 2, label: 'Github', href: GITHUB_URL, external: true },
-  { id: 3, label: 'Facts', href: '/facts', external: false },
-];
-
-export { bottomNavigation, navBar };
+export default bottomNavigation;
