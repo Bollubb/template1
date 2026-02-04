@@ -1,3 +1,4 @@
+/// <reference path="../types/index.d.ts" />
 const facts: cat.Facts = {
   data: [
     'Lorem Ipsum is simply dummy text of the printing and typesetting industry.',
