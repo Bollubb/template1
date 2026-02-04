@@ -828,14 +828,7 @@ function claimQuizReward() {
     // Refresh badge UI
     setDailyDoneKey(safeGetLS(LS_QUIZ_DAILY_DONE) ?? "");
     setWeeklyDoneKey(safeGetLS(LS_QUIZ_WEEKLY_DONE) ?? "");
-
-    // feedback
-    const note =
-      granted < earned
-        ? `Hai guadagnato +${granted} pillole (cap raggiunto: ${cap}/periodo).`
-        : `Hai guadagnato +${granted} pillole.`;
-
-    setToast({ show: true, type: "success", message: note });
+    // feedback (toast UI not enabled in this build)
 
     return { ...q, claimed: true };
   });
