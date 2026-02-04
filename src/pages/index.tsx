@@ -49,13 +49,16 @@ function IconBolt({ size = 18 }: { size?: number }) {
 }
 // Emoji rendered via codepoints to avoid encoding issues in source/control.
 const EMOJI = {
-  search: String.fromCodePoint(0x1F50D),
-  star: String.fromCodePoint(0x2B50),
-  cards: String.fromCodePoint(0x1F0CF),
-  pill: String.fromCodePoint(0x1F48A),
-  sparkles: String.fromCodePoint(0x2728),
-  folder: String.fromCodePoint(0x1F4C1),
-  heart: String.fromCodePoint(0x2764, 0xFE0F),
+  search: String.fromCodePoint(0x1F50D), // 馃攳
+  star: String.fromCodePoint(0x2B50), // 猸�
+  cards: String.fromCodePoint(0x1F0CF), // 馃儚
+  pill: String.fromCodePoint(0x1F48A), // 馃拪
+  sparkles: String.fromCodePoint(0x2728), // 鉁�
+  folder: String.fromCodePoint(0x1F4C1), // 馃搧
+  library: String.fromCodePoint(0x1F4DA), // 馃摎
+  save: String.fromCodePoint(0x1F516), // 馃敄
+  saved: String.fromCodePoint(0x2705), // 鉁�
+  share: String.fromCodePoint(0x1F4E4), // 馃摛
 };
 
 
@@ -350,9 +353,7 @@ function ContentCard({
               padding: "8px 10px",
               cursor: "pointer",
             }}
-          >
-            
-          </button>
+          >{isFavorite ? EMOJI.saved : EMOJI.save}</button>
 
           <button
             type="button"
@@ -367,9 +368,7 @@ function ContentCard({
               padding: "8px 10px",
               cursor: "pointer",
             }}
-          >
-            
-          </button>
+          >{EMOJI.share}</button>
         </div>
       </div>
 
@@ -437,7 +436,7 @@ function ContentCard({
             borderRadius: 14,
           }}
         >
-          {EMOJI.folder} Apri contenuto 鈫�
+          {EMOJI.folder} Apri contenuto
         </Link>
       </div>
     </article>
@@ -1178,7 +1177,7 @@ const Modal = ({ card }: { card: CardDef }) => {
           }}
           title="Pillole"
         >
-           {pillole}
+           {EMOJI.pill} {pillole}
         </div>
       </div>
 
@@ -2262,7 +2261,7 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
                 textAlign: "left",
               }}
             >
-              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> {EMOJI.heart} Crea la tua libreria</div>
+              <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> {EMOJI.library} Crea la tua libreria</div>
               <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
                 Aggiungi i primi preferiti per ritrovarli al volo.
               </div>
