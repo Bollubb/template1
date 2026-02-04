@@ -1,12 +1,19 @@
 import Head from 'next/head';
-import { BottomNav, Footer, Header } from '@components/index';
+import React from 'react';
+
+// Niente alias: import relativo stabile
+import { BottomNav, Footer, Header } from '../components';
+
+export type PageProps = {
+  title: string;
+  className?: string;
+  children: React.ReactNode;
+};
 
 /**
- * It's a React component that renders a page with a header, footer, and bottom navigation
- * @param  - title - The title of the page.
- * @returns A React component that renders a header, footer, and main content.
+ * Layout di pagina: header + contenuto + bottom nav + footer
  */
-function Page({ title, className, children }: cat.PageProps): JSX.Element {
+function Page({ title, className, children }: PageProps): JSX.Element {
   const pageTitle = title === 'Home' ? 'Cats Realm' : `Cats Realm | ${title}`;
 
   return (
@@ -14,10 +21,13 @@ function Page({ title, className, children }: cat.PageProps): JSX.Element {
       <Head>
         <title>{pageTitle}</title>
       </Head>
+
       <Header />
+
       <main>
         <article className={className}>{children}</article>
       </main>
+
       <BottomNav />
       <Footer />
     </>
