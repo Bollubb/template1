@@ -914,24 +914,41 @@ const Modal = ({ card }: { card: CardDef }) => {
           <div style={{ height: 10 }} />
 
           <div
-  style={{
-    borderRadius: 22,
-    padding: 10,
-    background: "rgba(0,0,0,0.18)",
-    boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 0 48px 14px ${aura}`,
-  }}
->
-  <div
-    style={{
-      borderRadius: 18,
-      overflow: "hidden",
-      border: "1px solid rgba(255,255,255,0.12)",
-      background: "rgba(0,0,0,0.25)",
-    }}
-  >
-    <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
-  </div>
-</div>
+            style={{
+              borderRadius: 22,
+              padding: 12,
+              background: "rgba(0,0,0,0.18)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {/* Aura SOLO intorno: glow dietro, non copre l'immagine */}
+            <div
+              aria-hidden
+              style={{
+                position: "absolute",
+                inset: 16,
+                borderRadius: 18,
+                boxShadow: `0 0 0 2px ${aura}55, 0 0 30px 12px ${aura}55, 0 0 80px 24px ${aura}33`,
+                pointerEvents: "none",
+                zIndex: 0,
+              }}
+            />
+
+            <div
+              style={{
+                position: "relative",
+                zIndex: 1,
+                borderRadius: 18,
+                overflow: "hidden",
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(0,0,0,0.25)",
+              }}
+            >
+              <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
+            </div>
+          </div>
 
           <div style={{ height: 12 }} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -969,7 +986,7 @@ const Modal = ({ card }: { card: CardDef }) => {
 
   // ---- Render ----
   return (
-    <div style={{ padding: "14px 12px 90px" }}>
+    <div style={{ padding: "14px 12px", paddingBottom: "calc(130px + env(safe-area-inset-bottom))" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ color: "white", fontWeight: 1000, fontSize: 18 }}>Carte</div>
         <div
