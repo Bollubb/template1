@@ -437,7 +437,7 @@ function ContentCard({
             borderRadius: 14,
           }}
         >
-          {EMOJI.folder} Apri contenuto ->
+          {EMOJI.folder} Apri contenuto 鈫�
         </Link>
       </div>
     </article>
@@ -1440,10 +1440,10 @@ const Modal = ({ card }: { card: CardDef }) => {
                   Sbloccate prima
                 </option>
                 <option value="rarity" style={{ color: "black" }}>
-                  Rarita -> Nome
+                  Rarita 鈫� Nome
                 </option>
                 <option value="name" style={{ color: "black" }}>
-                  Nome A -> Z
+                  Nome A 鈫� Z
                 </option>
               </select>
             </div>
