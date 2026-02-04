@@ -826,8 +826,8 @@ function claimQuizReward() {
     setPillole((p) => p + granted);
 
     // Refresh badge UI
-    setDailyDoneKey(safeGetLS(LS_QUIZ_DAILY_DONE));
-    setWeeklyDoneKey(safeGetLS(LS_QUIZ_WEEKLY_DONE));
+    setDailyDoneKey(safeGetLS(LS_QUIZ_DAILY_DONE) ?? "");
+    setWeeklyDoneKey(safeGetLS(LS_QUIZ_WEEKLY_DONE) ?? "");
 
     // feedback
     const note =
