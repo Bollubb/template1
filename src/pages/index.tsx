@@ -1,13 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 /** Simple inline icons (no emoji to avoid rendering issues on some Android builds) */
-function IconStar({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M12 17.27l5.18 3.12-1.4-5.98L20.5 10l-6.17-.53L12 3.8 9.67 9.47 3.5 10l4.72 4.41-1.4 5.98L12 17.27z" />
-    </svg>
-  );
-}
 function IconSearch({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -24,16 +17,6 @@ function IconCards({ size = 18 }: { size?: number }) {
     </svg>
   );
 }
-function IconUser({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M20 21a8 8 0 0 0-16 0" />
-      <circle cx="12" cy="8" r="4" />
-    </svg>
-  );
-}
-
-
 function IconBook({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -45,43 +28,6 @@ function IconBook({ size = 18 }: { size?: number }) {
   );
 }
 
-function IconSparkles({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 2l1.2 3.6L16.8 7 13.2 8.4 12 12l-1.2-3.6L7.2 7l3.6-1.4L12 2Z" />
-      <path d="M5 13l.8 2.4L8.2 16l-2.4.6L5 19l-.8-2.4L1.8 16l2.4-.6L5 13Z" />
-      <path d="M19 12l.9 2.7L22.6 15l-2.7.6L19 18l-.9-2.4L15.4 15l2.7-.3L19 12Z" />
-    </svg>
-  );
-}
-
-function IconTimer({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M10 2h4" />
-      <path d="M12 14l3-3" />
-      <path d="M12 22a8 8 0 1 0-8-8 8 8 0 0 0 8 8Z" />
-      <path d="M17 6l1.5-1.5" />
-    </svg>
-  );
-}
-
-function IconHome({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M3 11l9-8 9 8" />
-      <path d="M9 22V12h6v10" />
-    </svg>
-  );
-}
-function IconBolt({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M13 2L3 14h7l-1 8 12-14h-7l-1-6z" />
-    </svg>
-  );
-}
-// Emoji rendered via codepoints to avoid encoding issues in source/control.
 function IconBookmark({
   size = 18,
   filled = false,
@@ -137,6 +83,27 @@ function IconShare({ size = 18 }: { size?: number }) {
     </svg>
   );
 }
+
+function IconFolder({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M3.5 6.5h6l2 2h9c.6 0 1 .4 1 1v9.5c0 .8-.7 1.5-1.5 1.5H5c-.8 0-1.5-.7-1.5-1.5V7.5c0-.6.4-1 1-1z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 type RarityKey = "comune" | "rara" | "epica" | "leggendaria";
 
 type CardDef = {
