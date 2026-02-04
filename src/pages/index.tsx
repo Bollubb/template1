@@ -2553,7 +2553,6 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
             )}
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 12 }}>
-: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 12 }}>
               <div style={cardStyle}>
                 <div style={smallLabel}>Carte sbloccate</div>
                 <div style={{ fontWeight: 1000, fontSize: 20 }}>{s.unlocked}</div>
