@@ -366,6 +366,29 @@ const QUIZ_BANK: QuizQ[] = useMemo(
     { id: "q18", q: "Un segno compatibile con extravasazione è:", options: ["Gonfiore e dolore nel sito", "Aumento appetito", "Visione migliore", "Riduzione sete"], answer: 0 },
     { id: "q19", q: "L’obiettivo principale della medicazione sterile è:", options: ["Decorare il sito", "Ridurre rischio infezione e proteggere il punto di inserzione", "Aumentare la pressione", "Ridurre la glicemia"], answer: 1 },
     { id: "q20", q: "In triage/urgenza, il dolore (NRS) è:", options: ["Un parametro non necessario", "Un parametro da rilevare e rivalutare", "Solo per bambini", "Solo per sportivi"], answer: 1 },
+
+    // --- Domande aggiuntive (alcune più difficili) ---
+    { id: "q21", q: "Qual è il range di pH normale nel sangue arterioso?", options: ["7.10–7.20", "7.35–7.45", "7.50–7.60", "6.90–7.00"], answer: 1 },
+    { id: "q22", q: "Nel lavaggio di un CVC, la tecnica push-pause è utile perché:", options: ["Aumenta la coagulazione", "Riduce la turbolenza", "Crea turbolenza che aiuta a prevenire depositi", "Sostituisce l’eparina sempre"], answer: 2 },
+    { id: "q23", q: "Quale segno è più suggestivo di extravasazione durante infusione EV?", options: ["Bradicardia", "Dolore/bruciore e tumefazione locale", "Miosi", "Tosse"], answer: 1 },
+    { id: "q24", q: "In presenza di iperkaliemia severa con ECG alterato, la priorità è:", options: ["Diuretico", "Calcio gluconato EV", "Antibiotico", "Paracetamolo"], answer: 1 },
+    { id: "q25", q: "Una PVC (pressione venosa centrale) elevata può essere associata a:", options: ["Ipovolemia", "Scompenso destro/iperidratazione", "Iperventilazione", "Anemia"], answer: 1 },
+    { id: "q26", q: "Per ridurre il rischio di contaminazione nelle emocolture, è fondamentale:", options: ["Guanti sterili sempre", "Disinfezione accurata della cute e del tappo", "Fare 1 sola bottiglia", "Usare sempre ago cannula"], answer: 1 },
+    { id: "q27", q: "Qual è un criterio tipico di SIRS?", options: ["FR < 10", "FC > 90", "Temp < 34", "PAS > 180"], answer: 1 },
+    { id: "q28", q: "In un paziente con dispnea, prima di tutto si valuta:", options: ["PA e temperatura", "Vie aeree e SpO₂", "Diuresi", "BMI"], answer: 1 },
+    { id: "q29", q: "Quale valore di glicemia indica ipoglicemia nell’adulto (in genere)?", options: ["> 140 mg/dl", "< 70 mg/dl", "< 120 mg/dl", "< 90 mg/dl"], answer: 1 },
+    { id: "q30", q: "La noradrenalina è principalmente:", options: ["Un diuretico", "Un vasopressore alfa-adrenergico", "Un antiaritmico classe III", "Un analgesico"], answer: 1 },
+    // Difficili
+    { id: "q31", q: "Quale condizione aumenta il rischio di nefrotossicità da aminoglicosidi?", options: ["Età giovane", "Terapia breve", "Insufficienza renale pre-esistente", "Assunzione di vitamina C"], answer: 2 },
+    { id: "q32", q: "Un paziente con pH 7.28 e HCO₃⁻ basso suggerisce:", options: ["Alcalosi respiratoria", "Acidosi metabolica", "Acidosi respiratoria", "Alcalosi metabolica"], answer: 1 },
+    { id: "q33", q: "Qual è la complicanza più temuta di un PICC malposizionato?", options: ["Dolore al braccio", "Aritmie/posizionamento in atrio", "Febbre da fieno", "Cefalea"], answer: 1 },
+    { id: "q34", q: "Quale affermazione su C. difficile è corretta?", options: ["Diarrea sempre virale", "Antibioticoterapia è un fattore di rischio", "Non è contagioso", "Si cura solo con FANS"], answer: 1 },
+    { id: "q35", q: "Nel triage, il 'golden standard' per confermare ipossiemia è:", options: ["SpO₂", "Emogasanalisi arteriosa", "Temperatura", "RX torace"], answer: 1 },
+    { id: "q36", q: "Quale misura riduce più efficacemente il rischio di flebite da infusione periferica?", options: ["Aumentare la velocità", "Sostituire il sito se dolore/rossore", "Usare aghi più grossi", "Non lavare mai"], answer: 1 },
+    { id: "q37", q: "Nella gestione del dolore, la scala NRS misura:", options: ["Il rischio di caduta", "L’intensità soggettiva del dolore", "La saturazione", "La PA"], answer: 1 },
+    { id: "q38", q: "Un segno di reazione trasfusionale acuta è:", options: ["Miglioramento dispnea", "Febbre/brividi e dolore lombare", "Aumento appetito", "Cute secca"], answer: 1 },
+    { id: "q39", q: "Quale parametro è più utile per valutare la perfusione periferica?", options: ["Capillary refill time", "Colore capelli", "Peso", "Altezza"], answer: 0 },
+    { id: "q40", q: "In shock settico, il target MAP comunemente usato è circa:", options: ["45 mmHg", "65 mmHg", "90 mmHg", "110 mmHg"], answer: 1 },
   ],
   []
 );
@@ -748,7 +771,7 @@ function claimQuizReward() {
           cursor: locked ? "default" : "pointer",
         }}
       >
-        <div style={{ position: "relative", width: "100%", paddingTop: "133%" }}>
+        <div style={{ position: "relative", width: "100%", paddingTop: "140%" }}>
           {/* aura leggera solo per sbloccate (preview) - dietro l'immagine */}
           {!locked && (
             <div
@@ -770,10 +793,11 @@ function claimQuizReward() {
             alt={locked ? "Carta bloccata" : card.name}
             style={{
               position: "absolute",
-              inset: 10,
-              width: "calc(100% - 20px)",
-              height: "calc(100% - 20px)",
+              inset: 0,
+              width: "100%",
+              height: "100%",
               objectFit: "contain",
+              transform: "scale(1.02)",
               display: "block",
               filter: locked ? "grayscale(1) blur(0.25px)" : "none",
               opacity: locked ? 0.18 : 1,
@@ -813,7 +837,7 @@ function claimQuizReward() {
         </div>
 
         {/* badges */}
-        <div style={{ position: "absolute", left: 10, top: 10, display: "flex", gap: 8 }}>
+        <div style={{ position: "absolute", left: 10, top: 10, display: "flex", gap: 8, zIndex: 6 }}>
           {!locked && (
             <span
               style={{
@@ -858,6 +882,7 @@ function claimQuizReward() {
               "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.68) 55%, rgba(0,0,0,0.82) 100%)",
             color: "white",
             fontWeight: 800,
+            zIndex: 5,
           }}
         >
           {locked ? "???" : card.name}
@@ -881,6 +906,7 @@ const Modal = ({ card }: { card: CardDef }) => {
           justifyContent: "center",
           zIndex: 50,
           padding: 18,
+          paddingBottom: "calc(18px + 92px)",
         }}
       >
         <div
@@ -892,6 +918,8 @@ const Modal = ({ card }: { card: CardDef }) => {
             background: "rgba(10,10,10,0.88)",
             padding: 14,
             boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 50px 12px ${aura}`,
+            maxHeight: "calc(100vh - 140px)",
+            overflowY: "auto",
           }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
@@ -911,44 +939,29 @@ const Modal = ({ card }: { card: CardDef }) => {
             </button>
           </div>
 
+
+
           <div style={{ height: 10 }} />
 
           <div
-            style={{
-              borderRadius: 22,
-              padding: 12,
-              background: "rgba(0,0,0,0.18)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* Aura SOLO intorno: glow dietro, non copre l'immagine */}
-            <div
-              aria-hidden
-              style={{
-                position: "absolute",
-                inset: 16,
-                borderRadius: 18,
-                boxShadow: `0 0 0 2px ${aura}55, 0 0 30px 12px ${aura}55, 0 0 80px 24px ${aura}33`,
-                pointerEvents: "none",
-                zIndex: 0,
-              }}
-            />
-
-            <div
-              style={{
-                position: "relative",
-                zIndex: 1,
-                borderRadius: 18,
-                overflow: "hidden",
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(0,0,0,0.25)",
-              }}
-            >
-              <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
-            </div>
-          </div>
+  style={{
+    borderRadius: 22,
+    padding: 0,
+    background: "transparent",
+    boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 0 48px 14px ${aura}`,
+  }}
+>
+  <div
+    style={{
+      borderRadius: 18,
+      overflow: "hidden",
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: "rgba(0,0,0,0.25)",
+    }}
+  >
+    <img src={card.image} alt={card.name} style={{ width: "100%", height: "auto", display: "block" }} />
+  </div>
+</div>
 
           <div style={{ height: 12 }} />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -986,7 +999,7 @@ const Modal = ({ card }: { card: CardDef }) => {
 
   // ---- Render ----
   return (
-    <div style={{ padding: "14px 12px", paddingBottom: "calc(130px + env(safe-area-inset-bottom))" }}>
+    <div style={{ padding: "14px 12px 90px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div style={{ color: "white", fontWeight: 1000, fontSize: 18 }}>Carte</div>
         <div
