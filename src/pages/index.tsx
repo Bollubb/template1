@@ -17,6 +17,16 @@ function IconCards({ size = 18 }: { size?: number }) {
     </svg>
   );
 }
+function IconUser({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M20 21a8 8 0 0 0-16 0" />
+      <circle cx="12" cy="8" r="4" />
+    </svg>
+  );
+}
+
+
 function IconBook({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -28,6 +38,14 @@ function IconBook({ size = 18 }: { size?: number }) {
   );
 }
 
+function IconHome({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M3 11l9-8 9 8" />
+      <path d="M9 22V12h6v10" />
+    </svg>
+  );
+}
 function IconBookmark({
   size = 18,
   filled = false,
@@ -83,27 +101,6 @@ function IconShare({ size = 18 }: { size?: number }) {
     </svg>
   );
 }
-
-function IconFolder({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M3.5 6.5h6l2 2h9c.6 0 1 .4 1 1v9.5c0 .8-.7 1.5-1.5 1.5H5c-.8 0-1.5-.7-1.5-1.5V7.5c0-.6.4-1 1-1z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 type RarityKey = "comune" | "rara" | "epica" | "leggendaria";
 
 type CardDef = {
@@ -150,6 +147,59 @@ const ECONOMY = {
   },
 } as const;
 
+
+
+function IconFolder({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M3.5 6.5h6l2 2h9c.6 0 1 .4 1 1v9.5c0 .8-.7 1.5-1.5 1.5H5c-.8 0-1.5-.7-1.5-1.5V7.5c0-.6.4-1 1-1z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconPills({ size = 18 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M8.2 15.8l-1.9 1.9a4 4 0 1 1-5.6-5.6l1.9-1.9a4 4 0 0 1 5.6 5.6z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15.8 8.2l1.9-1.9a4 4 0 1 1 5.6 5.6l-1.9 1.9a4 4 0 0 1-5.6-5.6z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.6 15.4l6.8-6.8"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 function stripWeirdText(input: string): string {
   // Remove common mojibake artifacts that appeared when emoji were rendered as unknown glyphs.
@@ -3035,6 +3085,14 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
         return HomeView;
     }
   };
+
+
+  const tabs: Array<{ id: TabKey; label: string; icon: React.ReactNode }> = [
+    { id: "home", label: "Home", icon: <IconHome size={20} /> },
+    { id: "contenuti", label: "Contenuti", icon: <IconBook size={20} /> },
+    { id: "carte", label: "Carte", icon: <IconCards size={20} /> },
+    { id: "profilo", label: "Profilo", icon: <IconUser size={20} /> },
+  ];
 
   return (
     <main
