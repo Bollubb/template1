@@ -10,6 +10,7 @@ import { CarteTab } from "../components/nursediary/CarteTab";
 import NurseBottomNav, { type NurseTab } from "../components/nursediary/NurseBottomNav";
 
 import type { ContentItem } from "../types/nursediary/types";
+import { fetchContentItems } from "../utils/nursediary/contentCsv";
 
 const safe = (v: unknown) => (v == null ? "" : String(v));
 
@@ -20,8 +21,9 @@ export default function Home(): JSX.Element {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [categoria, setCategoria] = useState("Tutte");
 
-  // Preferiti minimi per ContentCard
+  // Preferiti (come ieri: nd_favorites)
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
   const onToggleFavorite = (id: string) => {
     setFavoriteIds((prev) => {
       const next = new Set(prev);
@@ -31,15 +33,45 @@ export default function Home(): JSX.Element {
     });
   };
 
-  // TODO: qui dobbiamo re-inserire il caricamento reale che avevi nell’index vecchio
+  // Carica contenuti da CSV (ripreso dal vecchio index)
   useEffect(() => {
-    setItems([]); // <-- placeholder
+    (async () => {
+      try {
+        const parsed = await fetchContentItems();
+        setItems(parsed);
+      } catch (e) {
+        console.error("Errore caricamento contenuti CSV", e);
+        setItems([]);
+      }
+    })();
   }, []);
+
+  // Carica preferiti da localStorage (una sola volta)
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      const raw = localStorage.getItem("nd_favorites");
+      const arr = raw ? (JSON.parse(raw) as string[]) : [];
+      setFavoriteIds(new Set(arr));
+    } catch (e) {
+      console.error("Errore lettura preferiti", e);
+    }
+  }, []);
+
+  // Salva preferiti in localStorage (ogni volta che cambiano)
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem("nd_favorites", JSON.stringify(Array.from(favoriteIds)));
+    } catch (e) {
+      console.error("Errore salvataggio preferiti", e);
+    }
+  }, [favoriteIds]);
 
   const categorie = useMemo(() => {
     const set = new Set<string>();
     items.forEach((i) => {
-      const c = safe(i.categoria).trim();
+      const c = safe((i as any).categoria).trim();
       if (c) set.add(c);
     });
     return ["Tutte", ...Array.from(set).sort()];
@@ -47,7 +79,7 @@ export default function Home(): JSX.Element {
 
   const filtered = useMemo(() => {
     if (categoria === "Tutte") return items;
-    return items.filter((i) => safe(i.categoria).trim() === categoria);
+    return items.filter((i) => safe((i as any).categoria).trim() === categoria);
   }, [items, categoria]);
 
   return (
@@ -80,10 +112,9 @@ export default function Home(): JSX.Element {
 
           {filtered.length === 0 ? (
             <div style={{ padding: 12, border: "1px solid rgba(0,0,0,0.10)", borderRadius: 12 }}>
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Contenuti vuoti</div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>Nessun contenuto trovato</div>
               <div style={{ color: "rgba(0,0,0,0.65)" }}>
-                I contenuti erano nel vecchio <code>index.tsx</code>. Li recuperiamo dalla history GitHub e li
-                rimettiamo qui (senza tornare a 3000 righe).
+                Controlla che <code>/public/contenuti.csv</code> esista e sia raggiungibile.
               </div>
             </div>
           ) : (
@@ -111,14 +142,14 @@ export default function Home(): JSX.Element {
       {activeTab === "opzioni" && (
         <Section>
           <h2>Opzioni</h2>
-          <p style={{ color: "rgba(0,0,0,0.7)" }}>Work in progress (qui metteremo settings, tema, import/export, ecc.).</p>
+          <p style={{ color: "rgba(0,0,0,0.7)" }}>Work in progress.</p>
         </Section>
       )}
 
       {activeTab === "profilo" && (
         <Section>
           <h2>Profilo</h2>
-          <p style={{ color: "rgba(0,0,0,0.7)" }}>Work in progress (login, progressi, preferiti, collezione).</p>
+          <p style={{ color: "rgba(0,0,0,0.7)" }}>Work in progress.</p>
         </Section>
       )}
 
