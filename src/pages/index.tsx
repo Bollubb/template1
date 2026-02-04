@@ -25,6 +25,13 @@ const LS_RECENT_PULLS = "nd_recent_pulls";
 const LS_QUIZ_DAILY_DONE = "nd_quiz_daily_done";
 const LS_QUIZ_WEEKLY_DONE = "nd_quiz_weekly_done";
 
+// Economia (pillole)
+const ECONOMY = {
+  packPrice: 60,
+  daily: { perCorrect: 2, completionBonus: 4, perfectBonus: 2, questions: 5 },
+  weekly: { perCorrect: 3, completionBonus: 9, perfectBonus: 6, questions: 12 },
+} as const;
+
 function safeJsonParse<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
   try {
@@ -139,7 +146,7 @@ async function shareOrCopy(url: string) {
 
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(url);
-      alert("Link copiato negli appunti 鉁�");
+      alert("Link copiato negli appunti OK");
       return;
     }
 
@@ -150,7 +157,7 @@ async function shareOrCopy(url: string) {
     ta.select();
     document.execCommand("copy");
     document.body.removeChild(ta);
-    alert("Link copiato negli appunti 鉁�");
+    alert("Link copiato negli appunti OK");
   } catch (e) {
     // non errore grave
     console.log("Share/copy annullato o fallito", e);
@@ -257,7 +264,7 @@ function ContentCard({
               cursor: "pointer",
             }}
           >
-            馃敆
+            
           </button>
         </div>
       </div>
@@ -441,7 +448,8 @@ const [quiz, setQuiz] = useState<{
   correct: number;
   selected: number | null;
   questions: QuizQ[];
-}>({ mode: "giornaliero", status: "idle", idx: 0, correct: 0, selected: null, questions: [] });
+  history: { id: string; q: string; options: string[]; answer: number; selected: number }[];
+}>({ mode: "giornaliero", status: "idle", idx: 0, correct: 0, selected: null, questions: [], history: [] });
 
 function todayKeyISO() {
   const d = new Date();
@@ -502,7 +510,7 @@ function quizDoneFor(mode: QuizMode) {
 function startQuiz(mode: QuizMode) {
   if (quizDoneFor(mode)) return;
   const questions = pickQuizQuestions(mode);
-  setQuiz({ mode, status: "running", idx: 0, correct: 0, selected: null, questions });
+  setQuiz({ mode, status: "running", idx: 0, correct: 0, selected: null, questions, history: [] });
 }
 
 function selectAnswer(choiceIdx: number) {
@@ -513,22 +521,43 @@ function nextQuestion() {
   setQuiz((q) => {
     if (q.status !== "running") return q;
     const current = q.questions[q.idx];
-    const isCorrect = q.selected === current.answer;
+    const selectedIdx = q.selected ?? -1;
+    const isCorrect = selectedIdx === current.answer;
     const nextIdx = q.idx + 1;
+    const historyItem = { ...current, selected: selectedIdx };
     if (nextIdx >= q.questions.length) {
-      return { ...q, status: "done", correct: q.correct + (isCorrect ? 1 : 0), selected: null, idx: q.idx };
+      return {
+        ...q,
+        status: "done",
+        correct: q.correct + (isCorrect ? 1 : 0),
+        selected: null,
+        idx: q.idx,
+        history: [...q.history, historyItem],
+      };
     }
-    return { ...q, idx: nextIdx, correct: q.correct + (isCorrect ? 1 : 0), selected: null };
+    return {
+      ...q,
+      idx: nextIdx,
+      correct: q.correct + (isCorrect ? 1 : 0),
+      selected: null,
+      history: [...q.history, historyItem],
+    };
   });
 }
 
 function claimQuizReward() {
   setQuiz((q) => {
     if (q.status !== "done") return q;
-    const perCorrect = q.mode === "giornaliero" ? 2 : 3;
-    const earned = q.correct * perCorrect;
+
+    const cfg = q.mode === "giornaliero" ? ECONOMY.daily : ECONOMY.weekly;
+    const perCorrect = cfg.perCorrect;
+    const completionBonus = cfg.completionBonus;
+    const perfectBonus = q.correct === q.questions.length ? cfg.perfectBonus : 0;
+    const earned = q.correct * perCorrect + completionBonus + perfectBonus;
+
     const key = q.mode === "giornaliero" ? todayKeyISO() : isoWeekKey();
     setPillole((p) => p + earned);
+
     if (typeof window !== "undefined") {
       if (q.mode === "giornaliero") {
         setDailyDoneKey(key);
@@ -538,7 +567,8 @@ function claimQuizReward() {
         localStorage.setItem("nd_quiz_weekly_done", key);
       }
     }
-    return { ...q, status: "idle", idx: 0, correct: 0, selected: null, questions: [] };
+
+    return { ...q, status: "idle", idx: 0, correct: 0, selected: null, questions: [], history: [] };
   });
 }
 
@@ -559,7 +589,7 @@ function claimQuizReward() {
 
   const PACKS: PackDef[] = useMemo(
     () => [
-      { id: "pack-antibiotici", name: "Bustina Antibiotici", price: 30, image: "/packs/pack-antibiotici.png", set: "antibiotici" },
+      { id: "pack-antibiotici", name: "Bustina Antibiotici", price: ECONOMY.packPrice, image: "/packs/pack-antibiotici.png", set: "antibiotici" },
     ],
     []
   );
@@ -859,7 +889,7 @@ function claimQuizReward() {
                   placeItems: "center",
                 }}
               >
-                <span style={{ fontSize: 48, lineHeight: 1 }}>馃敀</span>
+                <span style={{ fontSize: 48, lineHeight: 1 }}></span>
               </div>
             </div>
           )}
@@ -1043,7 +1073,7 @@ const Modal = ({ card }: { card: CardDef }) => {
           }}
           title="Pillole"
         >
-          馃拪 {pillole}
+           {pillole}
         </div>
       </div>
 
@@ -1094,7 +1124,7 @@ const Modal = ({ card }: { card: CardDef }) => {
             <div style={{ flex: 1, minWidth: 220 }}>
               <div style={{ color: "white", fontWeight: 1000, fontSize: 16 }}>{selectedPack?.name}</div>
               <div style={{ color: "rgba(255,255,255,0.80)", fontWeight: 700, marginTop: 4 }}>
-                Costo: {selectedPack?.price} 馃拪
+                Costo: {selectedPack?.price} 
               </div>
               <div style={{ height: 10 }} />
 
@@ -1367,7 +1397,7 @@ const Modal = ({ card }: { card: CardDef }) => {
                           {card.name}
                         </div>
                         <div style={{ fontSize: 12, opacity: 0.85, color: "white", fontWeight: 800 }}>
-                          Doppioni: {dupes} 鈥� {valueEach}馃拪 ciascuno
+                          Doppioni: {dupes} 鈥� {valueEach} ciascuno
                         </div>
                       </div>
 
@@ -1421,7 +1451,7 @@ const Modal = ({ card }: { card: CardDef }) => {
                 borderTop: "1px solid rgba(255,255,255,0.10)",
               }}
             >
-              <div style={{ color: "white", fontWeight: 1000 }}>Totale: {swapTotalPills} 馃拪</div>
+              <div style={{ color: "white", fontWeight: 1000 }}>Totale: {swapTotalPills} </div>
               <button
                 onClick={confirmSwap}
                 disabled={swapTotalPills <= 0}
@@ -1455,7 +1485,7 @@ const Modal = ({ card }: { card: CardDef }) => {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div style={{ color: "white", fontWeight: 1000 }}>Guadagna pillole</div>
         <div style={{ opacity: 0.8, fontWeight: 900, color: "white" }}>
-          +2/corretta (daily) 鈥� +3/corretta (weekly)
+          Ricompense bilanciate (pillole)
         </div>
       </div>
 
@@ -1476,7 +1506,7 @@ const Modal = ({ card }: { card: CardDef }) => {
           <div style={{ height: 10 }} />
           {quizDoneFor(earnTab) ? (
             <div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 800 }}>
-              鉁� Gi脿 completato {earnTab === "giornaliero" ? "oggi" : "questa settimana"}.
+              OK Gi脿 completato {earnTab === "giornaliero" ? "oggi" : "questa settimana"}.
             </div>
           ) : (
             <button
@@ -1565,6 +1595,50 @@ const Modal = ({ card }: { card: CardDef }) => {
             Risposte corrette: {quiz.correct}/{quiz.questions.length}
           </div>
           <div style={{ height: 10 }} />
+
+          {quiz.history.filter((h) => h.selected !== h.answer).length > 0 && (
+            <div style={{
+              padding: 12,
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(0,0,0,0.18)",
+              color: "rgba(255,255,255,0.9)",
+            }}>
+              <div style={{ fontWeight: 1000, marginBottom: 8 }}>Correzione errori</div>
+              <div style={{ display: "grid", gap: 10 }}>
+                {quiz.history
+                  .filter((h) => h.selected !== h.answer)
+                  .map((h) => (
+                    <div key={h.id} style={{
+                      padding: 10,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.06)",
+                    }}>
+                      <div style={{ fontWeight: 900, marginBottom: 6 }}>{h.q}</div>
+                      <div style={{ fontSize: 13, opacity: 0.85, lineHeight: 1.35 }}>
+                        Tua risposta: <span style={{ fontWeight: 900 }}>{h.selected >= 0 ? h.options[h.selected] : "(nessuna)"}</span>
+                      </div>
+                      <div style={{ fontSize: 13, opacity: 0.95, lineHeight: 1.35, marginTop: 2 }}>
+                        Corretta: <span style={{ fontWeight: 1000 }}>{h.options[h.answer]}</span>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ height: 10 }} />
+          <div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 900, fontSize: 13 }}>
+            Premio: {(() => {
+              const cfg = quiz.mode === "giornaliero" ? ECONOMY.daily : ECONOMY.weekly;
+              const completion = cfg.completionBonus;
+              const perfect = quiz.correct === quiz.questions.length ? cfg.perfectBonus : 0;
+              return quiz.correct * cfg.perCorrect + completion + perfect;
+            })()} pillole
+
+          </div>
+          <div style={{ height: 10 }} />
           <button
             type="button"
             onClick={claimQuizReward}
@@ -1608,6 +1682,8 @@ export default function Home() {
   const favoritesCount = favorites.size;
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
+const [isEditingProfile, setIsEditingProfile] = useState(false);
+const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
   const [profileDraftName, setProfileDraftName] = useState("");
   const [profileDraftEmail, setProfileDraftEmail] = useState("");
   const [importJson, setImportJson] = useState("");
@@ -2061,7 +2137,7 @@ export default function Home() {
               textAlign: "left",
             }}
           >
-            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>馃攷 Trova subito quello che ti serve</div>
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> Trova subito quello che ti serve</div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
               Apri la ricerca e inizia a digitare (ECG, PEA, accessi venosi鈥�).
             </div>
@@ -2123,7 +2199,7 @@ export default function Home() {
               textAlign: "left",
             }}
           >
-            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}>馃儚 Scopri la collezione</div>
+            <div style={{ fontWeight: 800, letterSpacing: -0.1 }}> Scopri la collezione</div>
             <div style={{ fontSize: 13, opacity: 0.85, marginTop: 4 }}>
               Le carte arriveranno a breve: prepara lo spazio per la raccolta.
             </div>
@@ -2168,9 +2244,9 @@ export default function Home() {
     return (
       <section style={{ paddingTop: 6, paddingBottom: "calc(110px + env(safe-area-inset-bottom))" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
-          <h2 style={{ margin: 0 }}>馃懁 Profilo</h2>
+          <h2 style={{ margin: 0 }}>Profilo</h2>
           <div style={pillPill}>
-            <span aria-hidden>馃拪</span>
+            <span aria-hidden></span>
             <span>{s.pills}</span>
           </div>
         </div>
@@ -2221,6 +2297,45 @@ export default function Home() {
               }}
             />
 
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div
+                style={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: "rgba(255,255,255,0.06)",
+                  overflow: "hidden",
+                  display: "grid",
+                  placeItems: "center",
+                  fontWeight: 1000,
+                }}
+              >
+                {avatarDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarDataUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ opacity: 0.9 }}>{(profileDraftName.trim() || "ND").slice(0, 2).toUpperCase()}</span>
+                )}
+              </div>
+              <label style={{ flex: 1, cursor: "pointer" }}>
+                <div style={{ ...smallLabel, marginBottom: 6 }}>Immagine profilo (opzionale)</div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "block", width: "100%", color: "rgba(255,255,255,0.8)" }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => setAvatarDataUrl(String(reader.result || ""));
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+            </div>
+
+
             <button
               type="button"
               onClick={() => {
@@ -2231,6 +2346,7 @@ export default function Home() {
                   displayName: name,
                   email: profileDraftEmail.trim() || undefined,
                   createdAt: Date.now(),
+                  avatarDataUrl: avatarDataUrl || undefined,
                 });
                 setProfileDraftName("");
                 setProfileDraftEmail("");
@@ -2252,16 +2368,46 @@ export default function Home() {
           <>
             <div style={{ ...cardStyle, marginBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <div>
+                
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div
+                    style={{
+                      width: 52,
+                      height: 52,
+                      borderRadius: 16,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(255,255,255,0.06)",
+                      overflow: "hidden",
+                      display: "grid",
+                      placeItems: "center",
+                      fontWeight: 1000,
+                      flex: "0 0 auto",
+                    }}
+                  >
+                    {profile.avatarDataUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={profile.avatarDataUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ opacity: 0.9 }}>{profile.displayName.slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+
                   <div style={{ fontWeight: 1000, fontSize: 18 }}>{profile.displayName}</div>
                   <div style={{ opacity: 0.7, fontSize: 13, marginTop: 2 }}>
                     {profile.email ? profile.email : "Email non impostata"} 鈥� Iscritto:{" "}
                     {new Date(profile.createdAt).toLocaleDateString()}
                   </div>
                 </div>
-                <button
+                                </div>
+                
+<button
                   type="button"
-                  onClick={() => saveProfile(null)}
+                  onClick={() => {
+                    setIsEditingProfile(true);
+                    setProfileDraftName(profile.displayName);
+                    setProfileDraftEmail(profile.email || "");
+                    setAvatarDataUrl(profile.avatarDataUrl || null);
+                  }}
                   style={{
                     padding: "10px 12px",
                     borderRadius: 14,
@@ -2276,7 +2422,132 @@ export default function Home() {
               </div>
             </div>
 
+            {isEditingProfile && (
+              <div style={{ ...cardStyle, marginBottom: 12 }}>
+                <div style={{ fontWeight: 900, marginBottom: 8 }}>Modifica profilo</div>
+
+                <label style={{ display: "block", ...smallLabel }}>Nome / Nickname</label>
+                <input
+                  value={profileDraftName}
+                  onChange={(e) => setProfileDraftName(e.target.value)}
+                  placeholder="Nome"
+                  style={{
+                    width: "100%",
+                    marginTop: 6,
+                    marginBottom: 10,
+                    padding: "12px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.25)",
+                    color: "white",
+                    outline: "none",
+                    fontWeight: 800,
+                  }}
+                />
+
+                <label style={{ display: "block", ...smallLabel }}>Email (opzionale)</label>
+                <input
+                  value={profileDraftEmail}
+                  onChange={(e) => setProfileDraftEmail(e.target.value)}
+                  placeholder="email@esempio.it"
+                  inputMode="email"
+                  style={{
+                    width: "100%",
+                    marginTop: 6,
+                    marginBottom: 12,
+                    padding: "12px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.25)",
+                    color: "white",
+                    outline: "none",
+                    fontWeight: 700,
+                  }}
+                />
+
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                  <div
+                    style={{
+                      width: 46,
+                      height: 46,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: "rgba(255,255,255,0.06)",
+                      overflow: "hidden",
+                      display: "grid",
+                      placeItems: "center",
+                      fontWeight: 1000,
+                    }}
+                  >
+                    {avatarDataUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarDataUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <span style={{ opacity: 0.9 }}>{(profileDraftName.trim() || "ND").slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <label style={{ flex: 1, cursor: "pointer" }}>
+                    <div style={{ ...smallLabel, marginBottom: 6 }}>Aggiorna immagine</div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "block", width: "100%", color: "rgba(255,255,255,0.8)" }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => setAvatarDataUrl(String(reader.result || ""));
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const name = profileDraftName.trim();
+                      if (!name) return;
+                      saveProfile({
+                        ...profile,
+                        displayName: name,
+                        email: profileDraftEmail.trim() || undefined,
+                        avatarDataUrl: avatarDataUrl || undefined,
+                      });
+                      setIsEditingProfile(false);
+                    }}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.16)",
+                      background: "rgba(91,217,255,0.18)",
+                      color: "white",
+                      fontWeight: 900,
+                    }}
+                  >
+                    Salva
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.16)",
+                      background: "rgba(0,0,0,0.18)",
+                      color: "white",
+                      fontWeight: 900,
+                    }}
+                  >
+                    Annulla
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 12 }}>
+: "repeat(2, minmax(0, 1fr))", gap: 10, marginBottom: 12 }}>
               <div style={cardStyle}>
                 <div style={smallLabel}>Carte sbloccate</div>
                 <div style={{ fontWeight: 1000, fontSize: 20 }}>{s.unlocked}</div>
@@ -2289,11 +2560,11 @@ export default function Home() {
               </div>
               <div style={cardStyle}>
                 <div style={smallLabel}>Quiz giornaliero</div>
-                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.dailyDone ? "鉁� completato" : "鈴� da fare"}</div>
+                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.dailyDone ? "OK completato" : "Da fare da fare"}</div>
               </div>
               <div style={cardStyle}>
                 <div style={smallLabel}>Quiz settimanale</div>
-                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.weeklyDone ? "鉁� completato" : "鈴� da fare"}</div>
+                <div style={{ fontWeight: 1000, fontSize: 16, marginTop: 4 }}>{s.weeklyDone ? "OK completato" : "Da fare da fare"}</div>
               </div>
             </div>
 
@@ -2320,10 +2591,10 @@ export default function Home() {
                     const str = JSON.stringify(payload);
                     try {
                       await navigator.clipboard.writeText(str);
-                      alert("Backup copiato negli appunti 鉁�");
+                      alert("Backup copiato negli appunti OK");
                     } catch {
                       setImportJson(str);
-                      alert("Non posso copiare negli appunti: ho messo il backup nel box qui sotto 鉁�");
+                      alert("Non posso copiare negli appunti: ho messo il backup nel box qui sotto OK");
                     }
                   }}
                   style={{
@@ -2357,7 +2628,7 @@ export default function Home() {
                     // ricarica stato
                     const p = safeJsonParse<UserProfile | null>(localStorage.getItem(LS_PROFILE), null);
                     setProfile(p);
-                    alert("Backup importato 鉁�");
+                    alert("Backup importato OK");
                   }}
                   style={{
                     padding: "12px 12px",
@@ -2401,7 +2672,7 @@ export default function Home() {
         )}
       </section>
     );
- })();
+  })();
 
   const renderActiveTab = () => {
     switch (activeTab) {
@@ -2471,10 +2742,10 @@ export default function Home() {
         }}
       >
         {([
-          ["home", "馃彔", "Home"],
-          ["contenuti", "馃摎", "Contenuti"],
-          ["carte", "馃儚", "Carte"],
-          ["profilo", "馃懁", "Profilo"],
+          ["home", "", "Home"],
+          ["contenuti", "", "Contenuti"],
+          ["carte", "", "Carte"],
+          ["profilo", "", "Profilo"],
         ] as const).map(([key, icon, label]) => {
           const isActive = activeTab === key;
           return (
