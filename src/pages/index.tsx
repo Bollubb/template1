@@ -763,12 +763,12 @@ function claimQuizReward() {
     const week = isoWeekKey();
 
     // Calcolo reward basato su difficoltà
+    // Usiamo la history (contiene selected) invece di un array separato.
     const per = ECONOMY.quiz.perCorrect;
     let earned = 0;
-    for (let i = 0; i < q.questions.length; i++) {
-      const qq = q.questions[i];
-      const diff = (qq.difficulty ?? "easy") as keyof typeof per;
-      if (q.chosen[i] === qq.answer) earned += per[diff];
+    for (const h of q.history) {
+      const diff = ((h as any).difficulty ?? "easy") as keyof typeof per;
+      if (h.selected === h.answer) earned += per[diff];
     }
 
     const cfg = mode === "giornaliero" ? ECONOMY.quiz.daily : ECONOMY.quiz.weekly;
