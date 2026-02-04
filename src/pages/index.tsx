@@ -1894,10 +1894,16 @@ const Modal = ({ card }: { card: CardDef }) => {
           <div style={{ height: 10 }} />
           <div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 900, fontSize: 13 }}>
             Premio: {(() => {
-              const cfg = quiz.mode === "giornaliero" ? ECONOMY.daily : ECONOMY.weekly;
-              const completion = cfg.completionBonus;
-              const perfect = quiz.correct === quiz.questions.length ? cfg.perfectBonus : 0;
-              return quiz.correct * cfg.perCorrect + completion + perfect;
+              const cfg = quiz.mode === "giornaliero" ? ECONOMY.quiz.daily : ECONOMY.quiz.weekly;
+              const per = ECONOMY.quiz.perCorrect;
+              let earned = 0;
+              for (const h of quiz.history) {
+                const diff = ((h as any).difficulty ?? "easy") as keyof typeof per;
+                if (h.selected === h.answer) earned += per[diff];
+              }
+              earned += cfg.completionBonus;
+              if (quiz.correct === quiz.questions.length) earned += cfg.perfectBonus;
+              return earned;
             })()} pillole
 
           </div>
@@ -3028,7 +3034,8 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
           "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
       }}
     >
-      {/* overlay per leggibilita *<nav
+      {/* overlay per leggibilità */}
+<nav
   aria-label="Navigazione principale"
   style={{
     position: "fixed",
@@ -3050,12 +3057,15 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
 >
   {tabs.map((t) => {
     const isActive = activeTab === t.id;
+
     return (
       <button
         key={t.id}
         type="button"
         onClick={() => setActiveTab(t.id)}
         aria-current={isActive ? "page" : undefined}
+        aria-label={t.label}
+        title={t.label}
         style={{
           appearance: "none",
           border: "1px solid rgba(255,255,255,0.10)",
@@ -3090,120 +3100,4 @@ const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
       </button>
     );
   })}
-</nav>              aria-current={isActive ? "page" : undefined}
-              aria-label={label}
-              title={label}
-            >
-              <span style={{ display: "inline-flex", marginRight: 6 }}>{icon}</span>
-              <span style={{ fontSize: 13, opacity: isActive ? 1 : 0.85, fontWeight: isActive ? 800 : 600 }}>{label}</span>
-            </button>
-          );
-        })}
-      </nav>
-    </main>
-  );
-function IconBookmark({
-  size = 18,
-  filled = false,
-}: {
-  size?: number;
-  filled?: boolean;
-}) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill={filled ? "currentColor" : "none"}
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M7 3.5h10c1.1 0 2 .9 2 2v16l-7-3-7 3v-16c0-1.1.9-2 2-2z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IconShare({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M15 8l-6 4 6 4"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M18 6.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM6 10.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM18 12.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function IconFolder({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M3.5 6.5h6l2 2h9c.6 0 1 .4 1 1v9.5c0 .8-.7 1.5-1.5 1.5H5c-.8 0-1.5-.7-1.5-1.5V7.5c0-.6.4-1 1-1z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IconPills({ size = 18 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden="true"
-    >
-      <path
-        d="M8.2 15.8l-1.9 1.9a4 4 0 1 1-5.6-5.6l1.9-1.9a4 4 0 0 1 5.6 5.6z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M15.8 8.2l1.9-1.9a4 4 0 1 1 5.6 5.6l-1.9 1.9a4 4 0 0 1-5.6-5.6z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M8.6 15.4l6.8-6.8"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-}
+</nav>
