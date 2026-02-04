@@ -823,7 +823,7 @@ function claimQuizReward() {
     else safeSetLS(LS_QUIZ_WEEKLY_DONE, week);
 
     // Accredita pillole
-    setPills((p) => p + granted);
+    setPillole((p) => p + granted);
 
     // Refresh badge UI
     setDailyDoneKey(safeGetLS(LS_QUIZ_DAILY_DONE));
