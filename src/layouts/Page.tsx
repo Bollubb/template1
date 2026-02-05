@@ -13,18 +13,24 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
     <>
       <Head>
         <title>{pageTitle}</title>
-        <meta name="theme-color" content="#020617" />
+        <meta name="theme-color" content="#0b1220" />
       </Head>
 
       <div
         style={{
           minHeight: "100vh",
           overflowX: "hidden",
-          backgroundColor: "rgb(2,6,23)", // ✅ sfondo pieno, definitivo
+          backgroundColor: "rgb(2,6,23)",
+          // ✅ NIENTE background-main.png => sparisce l’arco/cerchio
+          backgroundImage:
+            "radial-gradient(1200px 700px at 50% -10%, rgba(59,130,246,0.30), rgba(2,6,23,1) 55%)," +
+            "radial-gradient(900px 600px at 15% 20%, rgba(16,185,129,0.10), rgba(2,6,23,0) 60%)," +
+            "radial-gradient(900px 600px at 85% 35%, rgba(168,85,247,0.10), rgba(2,6,23,0) 60%)",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "cover",
           color: "rgba(255,255,255,0.92)",
         }}
       >
-        {/* HEADER */}
         <header
           style={{
             position: "sticky",
@@ -32,7 +38,7 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
             zIndex: 50,
             padding: "10px 14px",
             borderBottom: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(2,6,23,0.85)",
+            background: "rgba(2,6,23,0.65)",
             backdropFilter: "blur(10px)",
           }}
         >
@@ -44,18 +50,18 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
               height={28}
               style={{ borderRadius: 8 }}
             />
-            <div style={{ fontWeight: 800, fontSize: 18 }}>NurseDiary</div>
+            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: 0.2 }}>
+              NurseDiary
+            </div>
           </div>
         </header>
 
-        {/* CONTENUTO */}
         <main style={{ paddingBottom: 96 }}>
           <div style={{ maxWidth: 520, margin: "0 auto", padding: "16px 14px" }}>
             {children}
           </div>
         </main>
 
-        {/* FOOTER */}
         <footer style={{ padding: "18px 16px", color: "rgba(255,255,255,0.55)" }}>
           <small>© {new Date().getFullYear()} NurseDiary</small>
         </footer>
@@ -63,3 +69,4 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
     </>
   );
 }
+
