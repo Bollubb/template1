@@ -6,6 +6,7 @@ import { getDuplicates, openPack, type CardCollection } from "@/features/cards/c
 const LS_COLLECTION = "nd_card_collection";
 
 type View = "apri" | "collezione" | "scambia";
+type OpenStage = "idle" | "opening" | "reveal";
 
 export function CarteTab({
   pills,
@@ -19,6 +20,7 @@ export function CarteTab({
   const [view, setView] = useState<View>("apri");
   const [collection, setCollection] = useState<CardCollection>({});
   const [opened, setOpened] = useState<NurseCard[]>([]);
+  const [openStage, setOpenStage] = useState<OpenStage>("idle");
   const [selectedDup, setSelectedDup] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<string | null>(null);
 
@@ -63,19 +65,33 @@ export function CarteTab({
   }, [selectedDup]);
 
   const openOnePack = () => {
+    if (openStage === "opening") return;
     if (pills < packCost) {
       setToast("Pillole insufficienti per aprire una bustina.");
       return;
     }
-    const drawn = openPack(NURSE_CARDS);
-    setOpened(drawn);
-    setPills(pills - packCost);
-    setCollection((prev) => {
-      const next = { ...prev };
-      for (const c of drawn) next[c.id] = (next[c.id] ?? 0) + 1;
-      return next;
-    });
-    setToast(drawn.length === 2 ? "Bustina aperta: 2 carte trovate!" : "Bustina aperta: 1 carta trovata!");
+
+    // Reset UI + avvio animazione
+    setToast(null);
+    setOpened([]);
+    setOpenStage("opening");
+
+    // Piccolo delay per far vedere l'animazione prima del reveal
+    window.setTimeout(() => {
+      const drawn = openPack(NURSE_CARDS);
+      setOpened(drawn);
+
+      // Economia + collezione
+      setPills(pills - packCost);
+      setCollection((prev) => {
+        const next = { ...prev };
+        for (const c of drawn) next[c.id] = (next[c.id] ?? 0) + 1;
+        return next;
+      });
+
+      setOpenStage("reveal");
+      setToast(drawn.length === 2 ? "Bustina aperta: 2 carte trovate!" : "Bustina aperta: 1 carta trovata!");
+    }, 900);
   };
 
   const toggleDup = (id: string) => {
@@ -110,6 +126,42 @@ export function CarteTab({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      {/* Animazioni locali (NO stili globali) */}
+      <style jsx>{`
+        .ndPack {
+          transform: translateZ(0);
+          will-change: transform, filter, opacity;
+          transition: transform 220ms ease, filter 220ms ease, opacity 220ms ease;
+        }
+        .ndPack.opening {
+          animation: ndPackWiggle 900ms ease-in-out 1;
+          filter: drop-shadow(0 10px 20px rgba(14, 165, 233, 0.25));
+        }
+        .ndPack.reveal {
+          transform: scale(0.98);
+          opacity: 0.95;
+        }
+        @keyframes ndPackWiggle {
+          0% {
+            transform: rotate(0deg) scale(1);
+          }
+          18% {
+            transform: rotate(-4deg) scale(1.02);
+          }
+          36% {
+            transform: rotate(4deg) scale(1.02);
+          }
+          54% {
+            transform: rotate(-3deg) scale(1.02);
+          }
+          72% {
+            transform: rotate(3deg) scale(1.02);
+          }
+          100% {
+            transform: rotate(0deg) scale(1);
+          }
+        }
+      `}</style>
       {/* Header Cards */}
       <div
         style={{
@@ -161,13 +213,27 @@ export function CarteTab({
                 <div style={{ fontWeight: 800, color: "rgba(255,255,255,0.92)" }}>Apri una bustina</div>
                 <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 13 }}>Ogni bustina contiene 1–2 carte.</div>
               </div>
-              <img
-                src="/packs/pack-antibiotici.png"
-                alt="Bustina"
-                width={72}
-                height={72}
-                style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)" }}
-              />
+              <div
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 16,
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  overflow: "hidden",
+                  background: "rgba(2,6,23,0.35)",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <img
+                  src="/packs/pack-antibiotici.png"
+                  alt="Bustina"
+                  width={80}
+                  height={80}
+                  className={`ndPack ${openStage === "opening" ? "opening" : openStage === "reveal" ? "reveal" : ""}`}
+                  style={{ width: 80, height: 80 }}
+                />
+              </div>
             </div>
 
             <button
@@ -179,15 +245,19 @@ export function CarteTab({
                 padding: "12px 14px",
                 borderRadius: 14,
                 border: "1px solid rgba(255,255,255,0.14)",
-                background: pills >= packCost ? "rgba(14,165,233,0.18)" : "rgba(255,255,255,0.06)",
-                color: pills >= packCost ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.65)",
+                background:
+                  pills >= packCost && openStage !== "opening" ? "rgba(14,165,233,0.18)" : "rgba(255,255,255,0.06)",
+                color:
+                  pills >= packCost && openStage !== "opening" ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.65)",
                 fontWeight: 800,
-                cursor: pills >= packCost ? "pointer" : "not-allowed",
+                cursor: pills >= packCost && openStage !== "opening" ? "pointer" : "not-allowed",
               }}
-              disabled={pills < packCost}
+              disabled={pills < packCost || openStage === "opening"}
             >
-              Apri bustina ({packCost} pillole)
+              {openStage === "opening" ? "Apertura..." : `Apri bustina (${packCost} pillole)`}
             </button>
+
+
           </div>
 
           {opened.length > 0 ? (
@@ -341,6 +411,29 @@ function NavBtn({
 }
 
 function rarityBadge(rarity: string) {
+  const map: Record<string, React.CSSProperties> = {
+    comune: {
+      border: "1px solid rgba(255,255,255,0.12)",
+      background: "rgba(255,255,255,0.06)",
+      color: "rgba(255,255,255,0.85)",
+    },
+    rara: {
+      border: "1px solid rgba(14,165,233,0.28)",
+      background: "rgba(14,165,233,0.12)",
+      color: "rgba(255,255,255,0.92)",
+    },
+    epica: {
+      border: "1px solid rgba(167,139,250,0.30)",
+      background: "rgba(167,139,250,0.12)",
+      color: "rgba(255,255,255,0.92)",
+    },
+    leggendaria: {
+      border: "1px solid rgba(234,179,8,0.32)",
+      background: "rgba(234,179,8,0.14)",
+      color: "rgba(255,255,255,0.95)",
+    },
+  };
+
   const base: React.CSSProperties = {
     padding: "4px 8px",
     borderRadius: 999,
@@ -350,7 +443,7 @@ function rarityBadge(rarity: string) {
     background: "rgba(255,255,255,0.06)",
     color: "rgba(255,255,255,0.85)",
   };
-  return base;
+  return { ...base, ...(map[rarity] ?? {}) };
 }
 
 function OpenedCard({ card }: { card: NurseCard }) {
