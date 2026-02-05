@@ -80,3 +80,14 @@
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.95);
 }
+/* FIX: evita forme/overlay strani dentro la hero */
+.hero {
+  position: relative;
+}
+
+.hero::before,
+.hero::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
