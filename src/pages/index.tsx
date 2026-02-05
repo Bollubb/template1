@@ -1,4 +1,3 @@
-
 import Head from "next/head";
 import React, { useEffect, useMemo, useState } from "react";
 
@@ -146,7 +145,7 @@ export default function Home(): JSX.Element {
         <meta name="description" content="NurseDiary – didattica, quiz e carte formative" />
       </Head>
 
-      {/* ✅ HERO SOLO IN DIDATTICA (fix overlay/blur sugli altri tab) */}
+      {/* ✅ HERO SOLO IN DIDATTICA */}
       {activeTab === "didattica" && (
         <Section className={styles.hero}>
           <h1 className={styles.title}>NurseDiary</h1>
@@ -186,50 +185,64 @@ export default function Home(): JSX.Element {
       {/* DIDATTICA */}
       {activeTab === "didattica" && (
         <Section>
-          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Didattica</h2>
+          {/* ✅ SCUDO: copre lo sfondo “cerchio” dietro la didattica */}
+          <div
+            style={{
+              background: "linear-gradient(to bottom, rgba(2,6,23,0.78), rgba(2,6,23,0.92))",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 20,
+              padding: 14,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+              overflow: "hidden",
+            }}
+          >
+            <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Didattica</h2>
 
-          <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cerca (titolo, descrizione, categoria...)"
-              style={{
-                width: "100%",
-                padding: "12px 12px",
-                borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.92)",
-                outline: "none",
-              }}
-            />
+            <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Cerca (titolo, descrizione, categoria...)"
+                style={{
+                  width: "100%",
+                  padding: "12px 12px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(255,255,255,0.06)",
+                  color: "rgba(255,255,255,0.92)",
+                  outline: "none",
+                }}
+              />
 
-            <div className={styles.filters}>
-              {categorie.map((c) => (
-                <button key={c} data-active={categoria === c} onClick={() => setCategoria(c)}>
-                  {c}
-                </button>
-              ))}
+              <div className={styles.filters}>
+                {categorie.map((c) => (
+                  <button key={c} data-active={categoria === c} onClick={() => setCategoria(c)}>
+                    {c}
+                  </button>
+                ))}
+              </div>
+
+              <label style={{ display: "flex", gap: 10, alignItems: "center", color: "rgba(255,255,255,0.8)" }}>
+                <input type="checkbox" checked={onlyFavorites} onChange={(e) => setOnlyFavorites(e.target.checked)} />
+                Solo preferiti <span style={{ opacity: 0.7 }}>— Risultati: {filtered.length}</span>
+              </label>
             </div>
 
-            <label style={{ display: "flex", gap: 10, alignItems: "center", color: "rgba(255,255,255,0.8)" }}>
-              <input type="checkbox" checked={onlyFavorites} onChange={(e) => setOnlyFavorites(e.target.checked)} />
-              Solo preferiti <span style={{ opacity: 0.7 }}>— Risultati: {filtered.length}</span>
-            </label>
-          </div>
-
-          <div style={{ display: "grid", gap: 12 }}>
-            {filtered.map((it) => {
-              const id = safe((it as any).id);
-              return (
-                <ContentCard
-                  key={id}
-                  item={it}
-                  isFavorite={favoriteIds.has(id)}
-                  onToggleFavorite={(cardId) => onToggleFavorite(cardId)}
-                />
-              );
-            })}
+            <div style={{ display: "grid", gap: 12 }}>
+              {filtered.map((it) => {
+                const id = safe((it as any).id);
+                return (
+                  <ContentCard
+                    key={id}
+                    item={it}
+                    isFavorite={favoriteIds.has(id)}
+                    onToggleFavorite={(cardId) => onToggleFavorite(cardId)}
+                  />
+                );
+              })}
+            </div>
           </div>
         </Section>
       )}
@@ -257,7 +270,7 @@ export default function Home(): JSX.Element {
         </Section>
       )}
 
-      {/* ✅ BOTTOM NAV RIPRISTINATO */}
+      {/* ✅ BOTTOM NAV */}
       <NurseBottomNav active={activeTab} onChange={setActiveTab} />
     </Page>
   );
