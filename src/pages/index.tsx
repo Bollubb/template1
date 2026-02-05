@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Page from "@/layouts/Page";
 import styles from "@/styles/Home.module.css";
-import ContentCard from "@/components/nursediary/ContentCard";
-import CarteTab from "@/components/nursediary/CarteTab";
+import { ContentCard } from "@/components/nursediary/ContentCard";
+import { CarteTab } from "@/components/nursediary/CarteTab";
 import { loadContentsFromCsv } from "@/utils/nursediary/contentCsv";
 
 type TabKey = "didattica" | "carte" | "opzioni" | "profilo";
