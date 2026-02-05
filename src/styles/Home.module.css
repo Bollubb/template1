@@ -1,6 +1,6 @@
 /* =========================
    Legacy / landing classes
-   (lasciate ma rese innocue)
+   (rese innocue)
    ========================= */
 
 .containers {
@@ -8,7 +8,7 @@
 }
 
 .heading {
-  @apply text-5xl py-6 text-center animate-text bg-gradient-to-r from-teal-500 via-purple-500 to-orange-500 bg-clip-text text-transparent font-black md:text-6xl mt-14;
+  @apply text-5xl py-6 text-center font-black md:text-6xl mt-14;
 }
 
 .content {
@@ -16,11 +16,11 @@
 }
 
 .link {
-  @apply relative p-0.5 inline-flex items-center justify-center font-semibold overflow-hidden rounded-lg shadow-2xl;
+  @apply relative p-0.5 inline-flex items-center justify-center font-semibold rounded-lg shadow-2xl;
 }
 
 .border {
-  @apply w-full h-full animate-text bg-gradient-to-r from-teal-500 via-purple-500 to-orange-500 absolute;
+  @apply w-full h-full absolute;
 }
 
 .btn {
@@ -41,23 +41,13 @@
 }
 
 /* =========================
-   HERO CARD (OPACA, NIENTE BLUR)
+   HERO CARD (OPACA, PULITA)
    ========================= */
 
 .hero {
-  @apply w-full max-w-md mx-auto mt-4 p-4 rounded-3xl border relative;
-  background: rgba(11, 18, 32, 0.95); /* #0b1220 quasi opaco */
-  border-color: rgba(255, 255, 255, 0.10);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
-/* sicurezza: nessun pseudo-elemento */
-.hero::before,
-.hero::after {
-  content: none !important;
-  display: none !important;
-  background: none !important;
+  @apply w-full max-w-md mx-auto mt-4 p-4 rounded-3xl border;
+  background-color: #0b1220; /* opaco */
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* =========================
@@ -71,7 +61,7 @@
 
 .subtitle {
   @apply mt-1 text-sm;
-  color: rgba(255, 255, 255, 0.70);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* =========================
@@ -80,53 +70,17 @@
 
 .filters {
   @apply w-full max-w-md mx-auto mt-3 flex flex-wrap gap-2 px-4;
-  background: none;
 }
 
 .filters button {
   @apply rounded-full border px-3 py-1.5 text-sm;
-  border-color: rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* stato attivo */
-.filters button[data-active="true"],
-.active {
+.filters button[data-active="true"] {
   border-color: rgba(255, 255, 255, 0.22);
-  background: rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.95);
 }
-
-/* =========================
-   🔥 KILL DEFINITIVO ANIMAZIONI LEGACY
-   (CERCHIO / ARCO / OVERLAY)
-   ========================= */
-
-/* qualunque classe generata da Home.module.css */
-/* =========================
-   🔥 KILL DEFINITIVO ANIMAZIONI LEGACY (CSS MODULE SAFE)
-   ========================= */
-
-:global([class^="Home_"]),
-:global([class*=" Home_"]) {
-  animation: none !important;
-  background-image: none !important;
-}
-
-.filters,
-.filters * {
-  animation: none !important;
-  background-image: none !important;
-}
-
-.filters::before,
-.filters::after {
-  content: none !important;
-  display: none !important;
-}
-
-  
-
-
-
