@@ -296,7 +296,7 @@ export default function Home(): JSX.Element {
             </div>
           </div>
 
-          <CarteTab />
+          <CarteTab pills={pills} setPills={setPills} packCost={packCost} />
         </Section>
       )}
 
