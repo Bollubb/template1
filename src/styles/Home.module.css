@@ -1,86 +1,63 @@
 /* =========================
-   Legacy / landing classes
-   (rese innocue)
+   NurseDiary – SAFE VERSION
    ========================= */
 
-.containers {
-  @apply w-full px-4 py-10 flex flex-col items-center;
-}
-
-.heading {
-  @apply text-5xl py-6 text-center font-black md:text-6xl mt-14;
-}
-
-.content {
-  @apply text-center text-xl font-mono;
-}
-
-.link {
-  @apply relative p-0.5 inline-flex items-center justify-center font-semibold rounded-lg shadow-2xl;
-}
-
-.border {
-  @apply w-full h-full absolute;
-}
-
-.btn {
-  @apply relative px-6 py-3 transition-all ease-out bg-white dark:bg-gray-900 rounded-md;
-}
-
-.text {
-  @apply relative text-[#111] dark:text-white;
-}
-
-/* =========================
-   NurseDiary Home
-   ========================= */
-
-/* container mobile-first */
+/* Layout */
 .grid {
-  @apply w-full max-w-md mx-auto px-4 pb-24 flex flex-col gap-4;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 16px;
+  padding-bottom: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-/* =========================
-   HERO CARD (OPACA, PULITA)
-   ========================= */
-
+/* HERO */
 .hero {
-  @apply w-full max-w-md mx-auto mt-4 p-4 rounded-3xl border;
-  background-color: #0b1220; /* opaco */
-  border-color: rgba(255, 255, 255, 0.1);
+  width: 100%;
+  max-width: 520px;
+  margin: 12px auto 0;
+  padding: 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background-color: #0b1220; /* OPACO */
 }
 
-/* =========================
-   TITOLI
-   ========================= */
-
+/* Titoli */
 .title {
-  @apply text-xl font-bold;
-  color: rgba(255, 255, 255, 0.92);
+  font-size: 20px;
+  font-weight: 800;
+  color: rgba(255,255,255,0.95);
 }
 
 .subtitle {
-  @apply mt-1 text-sm;
-  color: rgba(255, 255, 255, 0.7);
+  margin-top: 4px;
+  font-size: 14px;
+  color: rgba(255,255,255,0.70);
 }
 
-/* =========================
-   FILTRI DIDATTICA (STATICI)
-   ========================= */
-
+/* Filtri */
 .filters {
-  @apply w-full max-w-md mx-auto mt-3 flex flex-wrap gap-2 px-4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .filters button {
-  @apply rounded-full border px-3 py-1.5 text-sm;
-  border-color: rgba(255, 255, 255, 0.1);
-  background-color: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background-color: #020617;
+  color: rgba(255,255,255,0.85);
 }
 
+/* Stato attivo */
 .filters button[data-active="true"] {
-  border-color: rgba(255, 255, 255, 0.22);
-  background-color: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.95);
+  background-color: #0ea5e9;
+  color: #020617;
+  font-weight: 700;
+  border-color: transparent;
 }
