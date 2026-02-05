@@ -23,8 +23,8 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("nd_favorites", JSON.stringify([...favoriteIds]));
-  }, [favoriteIds]);
+  localStorage.setItem("nd_favorites", JSON.stringify(Array.from(favoriteIds)));
+
 
   const categories = useMemo(() => {
     const set = new Set<string>();
