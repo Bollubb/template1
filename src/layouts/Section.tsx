@@ -1,13 +1,24 @@
 import React from "react";
 
-export type SectionProps = {
-  className?: string;
+type Props = {
   children: React.ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
 };
 
-/**
- * A React component that renders a section element.
- */
-export default function Section({ className, children }: SectionProps): JSX.Element {
-  return <section className={className}>{children}</section>;
+export default function Section({ children, className, style }: Props): JSX.Element {
+  return (
+    <section
+      className={className}
+      style={{
+        width: "100%",
+        maxWidth: 520,
+        margin: "0 auto",
+        padding: "12px 14px",
+        ...style,
+      }}
+    >
+      {children}
+    </section>
+  );
 }
