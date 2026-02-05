@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import { ALL_CARDS } from "../../features/cards/cards.data";
-import { openPack, type CardRarity } from "../../features/cards/cards.logic";
+import { NURSE_CARDS, type CardRarity, type NurseCard } from "../../features/cards/cards.data";
+import { openPack } from "../../features/cards/cards.logic";
 
 import { CardCollection, type CardCollectionItem } from "./CardCollection";
 import { CardModal, type CardModalItem } from "./CardModal";
@@ -29,13 +29,14 @@ function rarityLabel(r: CardRarity) {
 
 function rarityTextStyle(r: CardRarity): React.CSSProperties {
   if (r === "epica") return { color: "#a855f7", fontWeight: 900 };
-  if (r === "leggendaria")
+  if (r === "leggendaria") {
     return {
       backgroundImage: "linear-gradient(90deg,#facc15,#f59e0b,#facc15)",
       WebkitBackgroundClip: "text",
       WebkitTextFillColor: "transparent",
       fontWeight: 950,
     };
+  }
   if (r === "rara") return { color: "#60a5fa", fontWeight: 900 };
   return { color: "#9ca3af", fontWeight: 900 };
 }
@@ -51,7 +52,7 @@ export function CarteTab({
 }) {
   const [owned, setOwned] = useState<Record<string, number>>({});
   const [opening, setOpening] = useState(false);
-  const [lastPull, setLastPull] = useState<any[] | null>(null);
+  const [lastPull, setLastPull] = useState<NurseCard[] | null>(null);
 
   // ✅ FREE PACKS
   const [freePacks, setFreePacks] = useState<number>(0);
@@ -59,7 +60,7 @@ export function CarteTab({
   // modal
   const [modalCard, setModalCard] = useState<CardModalItem | null>(null);
 
-  // bootstrap collection + free packs
+  // bootstrap
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -87,7 +88,7 @@ export function CarteTab({
   }, [freePacks]);
 
   const cards: CardCollectionItem[] = useMemo(() => {
-    return ALL_CARDS.map((c: any) => ({
+    return NURSE_CARDS.map((c) => ({
       id: c.id,
       name: c.name,
       image: c.image,
@@ -95,30 +96,37 @@ export function CarteTab({
     }));
   }, []);
 
-  function addToCollection(pulls: any[]) {
+  function addToCollection(pulls: NurseCard[]) {
     setOwned((prev) => {
       const next = { ...prev };
-      for (const p of pulls) {
-        next[p.id] = (next[p.id] || 0) + 1;
-      }
+      for (const p of pulls) next[p.id] = (next[p.id] || 0) + 1;
       return next;
     });
   }
 
-  function startOpen(pullsCount: number, costPills: number, isFree: boolean) {
-    if (opening) return;
-
+  function startOpenPaid() {
+    if (opening || pills < packCost) return;
     setOpening(true);
 
-    // anim opening
     window.setTimeout(() => {
-      const pulls = openPack(pullsCount);
+      const pulls = openPack(NURSE_CARDS);
       addToCollection(pulls);
       setLastPull(pulls);
+      setPills((p) => p - packCost);
+      setOpening(false);
+    }, 850);
+  }
 
-      if (!isFree) setPills((p) => p - costPills);
-      else setFreePacks((n) => Math.max(0, n - 1));
+  function startOpenFree() {
+    if (opening || freePacks <= 0) return;
+    setOpening(true);
 
+    window.setTimeout(() => {
+      // Free pack: 1–2 carte come openPack (già 70/30)
+      const pulls = openPack(NURSE_CARDS);
+      addToCollection(pulls);
+      setLastPull(pulls);
+      setFreePacks((n) => Math.max(0, n - 1));
       setOpening(false);
     }, 850);
   }
@@ -175,7 +183,7 @@ export function CarteTab({
           <button
             type="button"
             disabled={opening || pills < packCost}
-            onClick={() => startOpen(1, packCost, false)}
+            onClick={startOpenPaid}
             style={{
               padding: "12px 14px",
               borderRadius: 16,
@@ -192,11 +200,7 @@ export function CarteTab({
           <button
             type="button"
             disabled={opening || freePacks <= 0}
-            onClick={() => {
-              if (freePacks <= 0) return;
-              // 1–2 carte free
-              startOpen(1 + Math.floor(Math.random() * 2), 0, true);
-            }}
+            onClick={startOpenFree}
             style={{
               padding: "12px 14px",
               borderRadius: 16,
@@ -237,7 +241,6 @@ export function CarteTab({
               transition: "transform 240ms ease, box-shadow 240ms ease",
             }}
           >
-            {/* If you have a pack image, put it here; otherwise placeholder */}
             <div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 950, letterSpacing: 1 }}>
               {opening ? "APERTURA..." : "BUSTINA"}
             </div>
@@ -257,7 +260,7 @@ export function CarteTab({
         >
           <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950, marginBottom: 10 }}>Hai trovato</div>
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(3, lastPull.length)}, 1fr)`, gap: 12 }}>
-            {lastPull.map((c: any) => (
+            {lastPull.map((c) => (
               <button
                 key={c.id}
                 type="button"
@@ -266,7 +269,6 @@ export function CarteTab({
                     id: c.id,
                     name: c.name,
                     image: c.image,
-                    description: c.description,
                     rarity: c.rarity,
                   })
                 }
