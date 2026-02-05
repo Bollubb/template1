@@ -1,5 +1,11 @@
+/* =========================
+   Legacy / landing classes
+   (lasciate ma rese innocue)
+   ========================= */
+
 .containers {
-  @apply container py-24 px-10 mx-0 min-w-full flex flex-col items-center;
+  /* ❗ tolto min-w-full (causava full-bleed) */
+  @apply w-full px-4 py-10 flex flex-col items-center;
 }
 
 .heading {
@@ -19,46 +25,58 @@
 }
 
 .btn {
-  @apply relative px-24 py-3 transition-all ease-out bg-white dark:bg-gray-900 rounded-md;
+  @apply relative px-6 py-3 transition-all ease-out bg-white dark:bg-gray-900 rounded-md;
 }
 
 .text {
-  @apply relative text-[#111] dark:text-white dark:group-hover:text-[#fffbf9];
+  @apply relative text-[#111] dark:text-white;
 }
-/* ===== Layout base ===== */
+
+/* =========================
+   NurseDiary Home
+   ========================= */
 
 .grid {
-  @apply mx-auto max-w-md w-full px-4 pb-24 flex flex-col gap-4;
+  /* container mobile-first */
+  @apply w-full max-w-md mx-auto px-4 pb-24 flex flex-col gap-4;
 }
 
-
-/* ===== Hero ===== */
-
+/* Hero card */
 .hero {
-  @apply relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 mt-4 w-full max-w-full;
+  @apply w-full max-w-md mx-auto mt-4 p-4 rounded-3xl border overflow-hidden relative;
+  /* evito bg-white/5 e border-white/10 in @apply per compatibilità build */
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(10px);
 }
 
-
-
+/* Titoli */
 .title {
-  @apply text-xl font-bold text-white;
+  @apply text-xl font-bold;
+  color: rgba(255, 255, 255, 0.92);
 }
 
 .subtitle {
-  @apply mt-1 text-sm text-white/70;
+  @apply mt-1 text-sm;
+  color: rgba(255, 255, 255, 0.70);
 }
 
-/* ===== Filtri ===== */
-
+/* Filtri */
 .filters {
-  @apply flex flex-wrap gap-2 mt-3;
+  @apply w-full max-w-md mx-auto mt-3 flex flex-wrap gap-2 px-4;
 }
 
 .filters button {
-  @apply rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/80;
+  @apply rounded-full border px-3 py-1.5 text-sm;
+  border-color: rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.filters button[data-active="true"] {
-  @apply bg-white/10 border-white/20 text-white;
+/* Stato attivo: supporta sia data-active che classe .active */
+.filters button[data-active="true"],
+.active {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.95);
 }
-
