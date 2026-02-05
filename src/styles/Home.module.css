@@ -35,8 +35,9 @@
 /* ===== Hero ===== */
 
 .hero {
-  @apply relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 mt-4;
+  @apply relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl p-4 mt-4 w-full max-w-full;
 }
+
 
 
 .title {
