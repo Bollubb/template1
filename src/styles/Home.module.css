@@ -104,22 +104,29 @@
    ========================= */
 
 /* qualunque classe generata da Home.module.css */
-[class^="Home_"],
-[class*=" Home_"] {
+/* =========================
+   🔥 KILL DEFINITIVO ANIMAZIONI LEGACY (CSS MODULE SAFE)
+   ========================= */
+
+:global([class^="Home_"]),
+:global([class*=" Home_"]) {
   animation: none !important;
   background-image: none !important;
 }
 
-/* filtri e figli */
 .filters,
 .filters * {
   animation: none !important;
   background-image: none !important;
 }
 
-/* doppia sicurezza */
 .filters::before,
 .filters::after {
   content: none !important;
   display: none !important;
 }
+
+  
+
+
+
