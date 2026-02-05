@@ -1,6 +1,7 @@
 import React from "react";
 
-export type NurseTab = "didattica" | "carte" | "opzioni" | "profilo";
+// ✅ Bottom bar: Home / Didattica / Carte / Profilo
+export type NurseTab = "home" | "didattica" | "carte" | "profilo";
 
 export default function NurseBottomNav({
   active,
@@ -10,9 +11,9 @@ export default function NurseBottomNav({
   onChange: (tab: NurseTab) => void;
 }) {
   const items: { key: NurseTab; label: string; icon: React.ReactNode }[] = [
+    { key: "home", label: "Home", icon: <IconHome /> },
     { key: "didattica", label: "Didattica", icon: <IconBook /> },
     { key: "carte", label: "Carte", icon: <IconCards /> },
-    { key: "opzioni", label: "Opzioni", icon: <IconCog /> },
     { key: "profilo", label: "Profilo", icon: <IconUser /> },
   ];
 
@@ -29,7 +30,7 @@ export default function NurseBottomNav({
         borderRadius: 18,
         boxShadow: "0 10px 25px rgba(0,0,0,0.10)",
         padding: 8,
-        backdropFilter: "blur(10px)",
+        // ❗️No backdrop-filter (evitiamo effetti indesiderati / overlay)
       }}
       aria-label="NurseDiary Bottom Navigation"
     >
@@ -66,6 +67,20 @@ export default function NurseBottomNav({
   );
 }
 
+function IconHome() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M4 10.5 12 4l8 6.5V20a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 20v-9.5Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M9.5 21.5v-6h5v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function IconBook() {
   return (
     <svg viewBox="0 0 24 24" fill="none" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -80,23 +95,6 @@ function IconCards() {
     <svg viewBox="0 0 24 24" fill="none" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <path d="M7 7h12v14H7V7Z" stroke="currentColor" strokeWidth="2" />
       <path d="M5 17H4a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-function IconCog() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path
-        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      <path
-        d="M19.4 15a8 8 0 0 0 .1-6l-2 .5a6.2 6.2 0 0 0-1.2-1.2l.5-2a8 8 0 0 0-6-.1l.5 2a6.2 6.2 0 0 0-1.2 1.2l-2-.5a8 8 0 0 0-.1 6l2-.5c.36.46.76.86 1.2 1.2l-.5 2a8 8 0 0 0 6 .1l-.5-2c.46-.36.86-.76 1.2-1.2l2 .5Z"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
     </svg>
   );
 }
