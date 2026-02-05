@@ -1,67 +1,54 @@
-import type { QuizQuestion } from "./quizBank";
+export type QuizMode = "daily" | "weekly";
 
-export type QuizKind = "daily" | "weekly";
-
-export type QuizSession = {
-  kind: QuizKind;
-  startedAt: number;
-  questions: QuizQuestion[];
+export type QuizRunState = {
+  mode: QuizMode;
+  status: "running" | "done";
   idx: number;
   correct: number;
   selected: number | null;
-  done: boolean;
+  questions: any[];
+  history: any[];
 };
 
-export function pickQuestions(bank: QuizQuestion[], n: number, rng: () => number = Math.random): QuizQuestion[] {
-  const copy = [...bank];
-  // Fisher–Yates shuffle
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy.slice(0, Math.min(n, copy.length));
+const LS_DAILY = "nd_quiz_daily";
+const LS_WEEKLY = "nd_quiz_weekly";
+
+export function getDailyState() {
+  return JSON.parse(localStorage.getItem(LS_DAILY) || '{"status":"idle","streak":0}');
 }
 
-export function calcDailyReward(correct: number, total: number, streak: number): number {
-  const base = 40;
-  const perCorrect = 5;
-  const streakBonus = Math.min(50, Math.max(0, streak - 1) * 10);
-  // bonus precisione: 100% -> +20
-  const perfect = correct === total ? 20 : 0;
-  return base + correct * perCorrect + streakBonus + perfect;
+export function getWeeklyState() {
+  return JSON.parse(localStorage.getItem(LS_WEEKLY) || '{"status":"idle"}');
 }
 
-export function calcWeeklyReward(correct: number, total: number): number {
-  const base = 150;
-  const perCorrect = 10;
-  const perfect = correct === total ? 60 : 0;
-  return base + correct * perCorrect + perfect;
+export function setDailyState(v: any) {
+  localStorage.setItem(LS_DAILY, JSON.stringify(v));
 }
 
-// Helpers date
-export function startOfToday(ts = Date.now()): number {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
+export function setWeeklyState(v: any) {
+  localStorage.setItem(LS_WEEKLY, JSON.stringify(v));
 }
 
-export function startOfNextDay(ts = Date.now()): number {
-  const d = new Date(ts);
-  d.setHours(24, 0, 0, 0);
-  return d.getTime();
+export function calcDailyReward(correct: number, total: number, perfect: boolean, streak: number) {
+  return 20 + correct * 5 + (perfect ? 10 : 0) + streak * 2;
 }
 
-// Monday 00:00
-export function startOfWeek(ts = Date.now()): number {
-  const d = new Date(ts);
-  const day = (d.getDay() + 6) % 7; // Monday=0
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - day);
-  return d.getTime();
+export function calcWeeklyReward(correct: number, total: number, perfect: boolean) {
+  return 60 + correct * 8 + (perfect ? 20 : 0);
 }
 
-export function startOfNextWeek(ts = Date.now()): number {
-  const d = new Date(startOfWeek(ts));
-  d.setDate(d.getDate() + 7);
-  return d.getTime();
+export function getNextDailyResetMs() {
+  const now = new Date();
+  const next = new Date();
+  next.setHours(24, 0, 0, 0);
+  return next.getTime() - now.getTime();
+}
+
+export function getNextWeeklyResetMs() {
+  const now = new Date();
+  const next = new Date(now);
+  const day = now.getDay() || 7;
+  if (day !== 1) next.setDate(now.getDate() + (8 - day));
+  next.setHours(0, 0, 0, 0);
+  return next.getTime() - now.getTime();
 }
