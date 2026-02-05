@@ -23,7 +23,7 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
           backgroundColor: "rgb(2,6,23)",
           // ✅ sfondo "come prima": niente cover (che ingigantisce l'arco/cerchio)
           backgroundImage:
-            "linear-gradient(rgba(2,6,23,0.82), rgba(2,6,23,0.92)), url('/background-main.png')",
+  "radial-gradient(1200px 700px at 50% -10%, rgba(59,130,246,0.25), rgba(2,6,23,1) 60%)",
           backgroundRepeat: "no-repeat",
           backgroundPosition: "center top",
           // invece di cover: dimensione controllata per non “sparare” il cerchio
