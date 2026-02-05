@@ -4,7 +4,6 @@
    ========================= */
 
 .containers {
-  /* ❗ tolto min-w-full (causava full-bleed) */
   @apply w-full px-4 py-10 flex flex-col items-center;
 }
 
@@ -36,12 +35,15 @@
    NurseDiary Home
    ========================= */
 
+/* container mobile-first */
 .grid {
-  /* container mobile-first */
   @apply w-full max-w-md mx-auto px-4 pb-24 flex flex-col gap-4;
 }
 
-/* Hero card (OPACA: niente blur, niente effetto cerchio) */
+/* =========================
+   HERO CARD (OPACA, NIENTE BLUR)
+   ========================= */
+
 .hero {
   @apply w-full max-w-md mx-auto mt-4 p-4 rounded-3xl border relative;
   background: rgba(11, 18, 32, 0.95); /* #0b1220 quasi opaco */
@@ -50,8 +52,18 @@
   -webkit-backdrop-filter: none;
 }
 
+/* sicurezza: nessun pseudo-elemento */
+.hero::before,
+.hero::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
 
-/* Titoli */
+/* =========================
+   TITOLI
+   ========================= */
+
 .title {
   @apply text-xl font-bold;
   color: rgba(255, 255, 255, 0.92);
@@ -62,9 +74,13 @@
   color: rgba(255, 255, 255, 0.70);
 }
 
-/* Filtri */
+/* =========================
+   FILTRI DIDATTICA (STATICI)
+   ========================= */
+
 .filters {
   @apply w-full max-w-md mx-auto mt-3 flex flex-wrap gap-2 px-4;
+  background: none;
 }
 
 .filters button {
@@ -74,47 +90,36 @@
   color: rgba(255, 255, 255, 0.85);
 }
 
-/* Stato attivo: supporta sia data-active che classe .active */
+/* stato attivo */
 .filters button[data-active="true"],
 .active {
   border-color: rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.95);
 }
-/* FIX: evita forme/overlay strani dentro la hero */
-.hero {
-  position: relative;
-}
 
-.hero::before,
-.hero::after {
-  content: none !important;
-  display: none !important;
-  background: none !important;
-}
-  /* =========================
-   KILL DEFINITIVO ANIMAZIONI LEGACY (CERCHIO)
+/* =========================
+   🔥 KILL DEFINITIVO ANIMAZIONI LEGACY
+   (CERCHIO / ARCO / OVERLAY)
    ========================= */
 
-/* qualunque classe Home_* che aveva animazioni */
+/* qualunque classe generata da Home.module.css */
 [class^="Home_"],
 [class*=" Home_"] {
   animation: none !important;
   background-image: none !important;
 }
 
-/* nello specifico i filtri */
+/* filtri e figli */
 .filters,
 .filters * {
   animation: none !important;
   background-image: none !important;
 }
 
-/* sicurezza extra */
+/* doppia sicurezza */
 .filters::before,
 .filters::after {
   content: none !important;
   display: none !important;
 }
-
-
