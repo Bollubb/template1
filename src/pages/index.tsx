@@ -16,12 +16,13 @@ const safe = (v: unknown) => (v == null ? "" : String(v));
 
 const LS = {
   favorites: "nd_favorites",
+  read: "nd_read",
   pills: "nd_pills",
   packCost: "nd_pack_cost",
 };
 
 export default function Home(): JSX.Element {
-  const [activeTab, setActiveTab] = useState<NurseTab>("didattica");
+  const [activeTab, setActiveTab] = useState<NurseTab>("home");
 
   // Didattica data
   const [items, setItems] = useState<ContentItem[]>([]);
@@ -30,9 +31,14 @@ export default function Home(): JSX.Element {
   // Search + only favorites
   const [query, setQuery] = useState("");
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [onlyUnread, setOnlyUnread] = useState(false);
+  const [sortMode, setSortMode] = useState<"rilevanza" | "az" | "categoria" | "preferiti">("rilevanza");
 
   // Favorites storage
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
+  // Letto / non letto (Didattica)
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
   // Cards economy (base)
   const [pills, setPills] = useState<number>(0);
@@ -43,6 +49,15 @@ export default function Home(): JSX.Element {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  };
+
+  const onMarkRead = (id: string) => {
+    setReadIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
       return next;
     });
   };
@@ -60,7 +75,7 @@ export default function Home(): JSX.Element {
     })();
   }, []);
 
-  // Load favorites + cards economy once
+  // Load favorites + read + cards economy once
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
@@ -70,6 +85,20 @@ export default function Home(): JSX.Element {
       if (rawFav) {
         const arr = JSON.parse(rawFav) as string[];
         setFavoriteIds(new Set(arr));
+      }
+
+      // read ids
+      const rawRead = localStorage.getItem(LS.read);
+      if (rawRead) {
+        const arr = JSON.parse(rawRead) as string[];
+        setReadIds(new Set(arr));
+      }
+
+      // read
+      const rawRead = localStorage.getItem(LS.read);
+      if (rawRead) {
+        const arr = JSON.parse(rawRead) as string[];
+        setReadIds(new Set(arr));
       }
 
       // pills
@@ -93,6 +122,16 @@ export default function Home(): JSX.Element {
       console.error("Errore salvataggio preferiti", e);
     }
   }, [favoriteIds]);
+
+  // Persist read state
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(LS.read, JSON.stringify(Array.from(readIds)));
+    } catch (e) {
+      console.error("Errore salvataggio stato letto", e);
+    }
+  }, [readIds]);
 
   // Persist cards economy
   useEffect(() => {
@@ -119,7 +158,7 @@ export default function Home(): JSX.Element {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    return items.filter((it) => {
+    const base = items.filter((it) => {
       const id = safe((it as any).id);
       const title = safe((it as any).titolo || (it as any).title).toLowerCase();
       const desc = safe((it as any).descrizione || (it as any).description).toLowerCase();
@@ -128,6 +167,7 @@ export default function Home(): JSX.Element {
       const tags = Array.isArray(tagsRaw) ? tagsRaw.join(" ").toLowerCase() : safe(tagsRaw).toLowerCase();
 
       if (onlyFavorites && !favoriteIds.has(id)) return false;
+      if (onlyUnread && readIds.has(id)) return false;
 
       if (categoria !== "Tutte") {
         const current = safe((it as any).categoria || (it as any).category);
@@ -137,13 +177,203 @@ export default function Home(): JSX.Element {
       if (!q) return true;
       return title.includes(q) || desc.includes(q) || cat.includes(q) || tags.includes(q);
     });
-  }, [items, query, categoria, onlyFavorites, favoriteIds]);
+
+    const sorted = [...base];
+
+    // Rilevanza: preferiti e non letti in alto, poi titolo
+    if (sortMode === "rilevanza") {
+      sorted.sort((a, b) => {
+        const ida = safe((a as any).id);
+        const idb = safe((b as any).id);
+        const fa = favoriteIds.has(ida) ? 1 : 0;
+        const fb = favoriteIds.has(idb) ? 1 : 0;
+        if (fa !== fb) return fb - fa;
+        const ra = readIds.has(ida) ? 1 : 0;
+        const rb = readIds.has(idb) ? 1 : 0;
+        if (ra !== rb) return ra - rb; // non letti (0) prima
+        const ta = safe((a as any).titolo || (a as any).title).toLowerCase();
+        const tb = safe((b as any).titolo || (b as any).title).toLowerCase();
+        return ta.localeCompare(tb);
+      });
+      return sorted;
+    }
+
+    if (sortMode === "preferiti") {
+      sorted.sort((a, b) => {
+        const ida = safe((a as any).id);
+        const idb = safe((b as any).id);
+        const fa = favoriteIds.has(ida) ? 1 : 0;
+        const fb = favoriteIds.has(idb) ? 1 : 0;
+        if (fa !== fb) return fb - fa;
+        const ta = safe((a as any).titolo || (a as any).title).toLowerCase();
+        const tb = safe((b as any).titolo || (b as any).title).toLowerCase();
+        return ta.localeCompare(tb);
+      });
+      return sorted;
+    }
+
+    if (sortMode === "categoria") {
+      sorted.sort((a, b) => {
+        const ca = safe((a as any).categoria || (a as any).category).toLowerCase();
+        const cb = safe((b as any).categoria || (b as any).category).toLowerCase();
+        if (ca !== cb) return ca.localeCompare(cb);
+        const ta = safe((a as any).titolo || (a as any).title).toLowerCase();
+        const tb = safe((b as any).titolo || (b as any).title).toLowerCase();
+        return ta.localeCompare(tb);
+      });
+      return sorted;
+    }
+
+    // A-Z
+    sorted.sort((a, b) => {
+      const ta = safe((a as any).titolo || (a as any).title).toLowerCase();
+      const tb = safe((b as any).titolo || (b as any).title).toLowerCase();
+      return ta.localeCompare(tb);
+    });
+    return sorted;
+  }, [items, query, categoria, onlyFavorites, onlyUnread, favoriteIds, readIds, sortMode]);
 
   return (
     <Page title="Home">
       <Head>
         <meta name="description" content="NurseDiary – didattica, quiz e carte formative" />
       </Head>
+
+      {/* HOME */}
+      {activeTab === "home" && (
+        <Section>
+          <div
+            style={{
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "#0b1220",
+              borderRadius: 20,
+              padding: 14,
+            }}
+          >
+            <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Home</h2>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 16,
+                    padding: 12,
+                    background: "#0f172a",
+                  }}
+                >
+                  <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 700 }}>Preferiti</div>
+                  <div style={{ color: "rgba(255,255,255,0.96)", fontSize: 22, fontWeight: 900 }}>
+                    {favoriteIds.size}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    borderRadius: 16,
+                    padding: 12,
+                    background: "#0f172a",
+                  }}
+                >
+                  <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 700 }}>Non letti</div>
+                  <div style={{ color: "rgba(255,255,255,0.96)", fontSize: 22, fontWeight: 900 }}>
+                    {Math.max(0, items.length - readIds.size)}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 16,
+                  padding: 12,
+                  background: "#0f172a",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <div>
+                  <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 700 }}>Pillole</div>
+                  <div style={{ color: "rgba(255,255,255,0.96)", fontSize: 22, fontWeight: 900 }}>{pills}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("carte")}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "#0ea5e9",
+                    color: "#020617",
+                    fontWeight: 900,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Vai alle carte
+                </button>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("didattica")}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "#111827",
+                    color: "rgba(255,255,255,0.92)",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Apri Didattica
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("didattica");
+                    setOnlyFavorites(true);
+                  }}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "#111827",
+                    color: "rgba(255,255,255,0.92)",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Solo Preferiti
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("didattica");
+                    setOnlyUnread(true);
+                  }}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "#111827",
+                    color: "rgba(255,255,255,0.92)",
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Non letti
+                </button>
+              </div>
+            </div>
+          </div>
+        </Section>
+      )}
 
       {/* ✅ HERO SOLO IN DIDATTICA */}
       {activeTab === "didattica" && (
@@ -188,13 +418,11 @@ export default function Home(): JSX.Element {
           {/* ✅ SCUDO: copre lo sfondo “cerchio” dietro la didattica */}
           <div
             style={{
-              background: "linear-gradient(to bottom, rgba(2,6,23,0.78), rgba(2,6,23,0.92))",
+              background: "#0b1220",
               border: "1px solid rgba(255,255,255,0.08)",
               borderRadius: 20,
               padding: 14,
               boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
               overflow: "hidden",
             }}
           >
@@ -228,6 +456,34 @@ export default function Home(): JSX.Element {
                 <input type="checkbox" checked={onlyFavorites} onChange={(e) => setOnlyFavorites(e.target.checked)} />
                 Solo preferiti <span style={{ opacity: 0.7 }}>— Risultati: {filtered.length}</span>
               </label>
+
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+                <label style={{ display: "flex", gap: 10, alignItems: "center", color: "rgba(255,255,255,0.8)" }}>
+                  <input type="checkbox" checked={onlyUnread} onChange={(e) => setOnlyUnread(e.target.checked)} />
+                  Solo non letti
+                </label>
+
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 700 }}>Ordina</span>
+                  <select
+                    value={sortMode}
+                    onChange={(e) => setSortMode(e.target.value as any)}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.06)",
+                      color: "rgba(255,255,255,0.92)",
+                      outline: "none",
+                    }}
+                  >
+                    <option value="rilevanza">Rilevanza</option>
+                    <option value="preferiti">Preferiti</option>
+                    <option value="categoria">Categoria</option>
+                    <option value="az">A-Z</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div style={{ display: "grid", gap: 12 }}>
@@ -238,7 +494,9 @@ export default function Home(): JSX.Element {
                     key={id}
                     item={it}
                     isFavorite={favoriteIds.has(id)}
+                    isRead={readIds.has(id)}
                     onToggleFavorite={(cardId) => onToggleFavorite(cardId)}
+                    onMarkRead={(cardId) => onMarkRead(cardId)}
                   />
                 );
               })}
@@ -251,14 +509,6 @@ export default function Home(): JSX.Element {
       {activeTab === "carte" && (
         <Section>
           <CarteTab pills={pills} setPills={setPills} packCost={packCost} />
-        </Section>
-      )}
-
-      {/* OPZIONI */}
-      {activeTab === "opzioni" && (
-        <Section>
-          <h2 style={{ color: "rgba(255,255,255,0.92)" }}>Opzioni</h2>
-          <p style={{ color: "rgba(255,255,255,0.70)" }}>Work in progress.</p>
         </Section>
       )}
 
