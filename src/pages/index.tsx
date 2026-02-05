@@ -1,193 +1,264 @@
-import { useEffect, useMemo, useState } from "react";
-import Page from "@/layouts/Page";
-import styles from "@/styles/Home.module.css";
-import { ContentCard } from "@/components/nursediary/ContentCard";
-import { CarteTab } from "@/components/nursediary/CarteTab";
+
+import Head from "next/head";
+import React, { useEffect, useMemo, useState } from "react";
+
+import Page from "../layouts/Page";
+import Section from "../layouts/Section";
+import styles from "../styles/Home.module.css";
+
+import { ContentCard } from "../components/nursediary/ContentCard";
+import { CarteTab } from "../components/nursediary/CarteTab";
+import NurseBottomNav, { type NurseTab } from "../components/nursediary/NurseBottomNav";
+
+import type { ContentItem } from "../types/nursediary/types";
 import { fetchContentItems } from "../utils/nursediary/contentCsv";
 
-type TabKey = "didattica" | "carte" | "opzioni" | "profilo";
+const safe = (v: unknown) => (v == null ? "" : String(v));
 
-export default function HomePage() {
-  const [activeTab, setActiveTab] = useState<TabKey>("didattica");
+const LS = {
+  favorites: "nd_favorites",
+  pills: "nd_pills",
+  packCost: "nd_pack_cost",
+};
 
-  const [items, setItems] = useState<any[]>([]);
+export default function Home(): JSX.Element {
+  const [activeTab, setActiveTab] = useState<NurseTab>("didattica");
+
+  // Didattica data
+  const [items, setItems] = useState<ContentItem[]>([]);
+  const [categoria, setCategoria] = useState("Tutte");
+
+  // Search + only favorites
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<string>("all");
-  const [onlyFav, setOnlyFav] = useState(false);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+
+  // Favorites storage
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
-  // 💊 SISTEMA CARTE (obbligatorio per CarteTab)
+  // Cards economy (base)
   const [pills, setPills] = useState<number>(0);
-  const packCost = 30;
+  const [packCost, setPackCost] = useState<number>(30);
 
-  /* ===== INIT ===== */
+  const onToggleFavorite = (id: string) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Load content CSV
   useEffect(() => {
-    fetchContentItems().then(setItems);
-
-    const savedFav = localStorage.getItem("nd_favorites");
-    if (savedFav) setFavoriteIds(new Set(JSON.parse(savedFav)));
-
-    const savedPills = localStorage.getItem("nd_pills");
-    if (savedPills) setPills(Number(savedPills));
+    (async () => {
+      try {
+        const parsed = await fetchContentItems();
+        setItems(parsed);
+      } catch (e) {
+        console.error("Errore caricamento contenuti CSV", e);
+        setItems([]);
+      }
+    })();
   }, []);
 
-  /* ===== PERSIST FAVORITES ===== */
+  // Load favorites + cards economy once
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(
-      "nd_favorites",
-      JSON.stringify(Array.from(favoriteIds))
-    );
+    try {
+      if (typeof window === "undefined") return;
+
+      // favorites
+      const rawFav = localStorage.getItem(LS.favorites);
+      if (rawFav) {
+        const arr = JSON.parse(rawFav) as string[];
+        setFavoriteIds(new Set(arr));
+      }
+
+      // pills
+      const rawPills = localStorage.getItem(LS.pills);
+      if (rawPills) setPills(Number(rawPills) || 0);
+
+      // pack cost
+      const rawCost = localStorage.getItem(LS.packCost);
+      if (rawCost) setPackCost(Number(rawCost) || 30);
+    } catch (e) {
+      console.error("Errore caricamento storage", e);
+    }
+  }, []);
+
+  // Persist favorites
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(LS.favorites, JSON.stringify(Array.from(favoriteIds)));
+    } catch (e) {
+      console.error("Errore salvataggio preferiti", e);
+    }
   }, [favoriteIds]);
 
-  /* ===== PERSIST PILLS ===== */
+  // Persist cards economy
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("nd_pills", String(pills));
-  }, [pills]);
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(LS.pills, String(pills));
+      localStorage.setItem(LS.packCost, String(packCost));
+    } catch (e) {
+      console.error("Errore salvataggio economia carte", e);
+    }
+  }, [pills, packCost]);
 
-  /* ===== CATEGORIES ===== */
-  const categories = useMemo(() => {
+  // Categories list (from items)
+  const categorie = useMemo(() => {
     const set = new Set<string>();
-    items.forEach((i) => i.category && set.add(i.category));
-    return ["all", ...Array.from(set)];
+    items.forEach((it) => {
+      const c = safe((it as any).categoria || (it as any).category);
+      if (c) set.add(c);
+    });
+    return ["Tutte", ...Array.from(set)];
   }, [items]);
 
-  /* ===== FILTER ===== */
+  // Didattica filtered list
   const filtered = useMemo(() => {
-    return items.filter((i) => {
-      if (onlyFav && !favoriteIds.has(i.id)) return false;
-      if (category !== "all" && i.category !== category) return false;
-      if (!query) return true;
+    const q = query.trim().toLowerCase();
 
-      const q = query.toLowerCase();
-      return (
-        i.title.toLowerCase().includes(q) ||
-        i.description.toLowerCase().includes(q) ||
-        i.category?.toLowerCase().includes(q) ||
-        i.tags?.join(" ").toLowerCase().includes(q)
-      );
+    return items.filter((it) => {
+      const id = safe((it as any).id);
+      const title = safe((it as any).titolo || (it as any).title).toLowerCase();
+      const desc = safe((it as any).descrizione || (it as any).description).toLowerCase();
+      const cat = safe((it as any).categoria || (it as any).category).toLowerCase();
+      const tagsRaw = (it as any).tag || (it as any).tags;
+      const tags = Array.isArray(tagsRaw) ? tagsRaw.join(" ").toLowerCase() : safe(tagsRaw).toLowerCase();
+
+      if (onlyFavorites && !favoriteIds.has(id)) return false;
+
+      if (categoria !== "Tutte") {
+        const current = safe((it as any).categoria || (it as any).category);
+        if (current !== categoria) return false;
+      }
+
+      if (!q) return true;
+      return title.includes(q) || desc.includes(q) || cat.includes(q) || tags.includes(q);
     });
-  }, [items, query, category, onlyFav, favoriteIds]);
+  }, [items, query, categoria, onlyFavorites, favoriteIds]);
 
   return (
     <Page title="Home">
-      {/* ===== HERO (SOLO DIDATTICA) ===== */}
+      <Head>
+        <meta name="description" content="NurseDiary – didattica, quiz e carte formative" />
+      </Head>
+
+      {/* ✅ HERO SOLO IN DIDATTICA (fix overlay/blur sugli altri tab) */}
       {activeTab === "didattica" && (
-        <section className={styles.hero}>
+        <Section className={styles.hero}>
           <h1 className={styles.title}>NurseDiary</h1>
           <p className={styles.subtitle}>
-            Una biblioteca rapida di contenuti infermieristici: cerca, salva i
-            preferiti e costruisci la tua raccolta.
+            Una biblioteca rapida di contenuti infermieristici: cerca, salva i preferiti e costruisci la tua raccolta.
           </p>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-            <div className="pill">
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+            <div
+              style={{
+                padding: "8px 12px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.85)",
+                fontSize: 13,
+              }}
+            >
               Contenuti: <b>{items.length}</b>
             </div>
-            <div className="pill">
+            <div
+              style={{
+                padding: "8px 12px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.85)",
+                fontSize: 13,
+              }}
+            >
               Preferiti: <b>{favoriteIds.size}</b>
             </div>
           </div>
-        </section>
+        </Section>
       )}
 
-      {/* ===== DIDATTICA ===== */}
+      {/* DIDATTICA */}
       {activeTab === "didattica" && (
-        <section className={styles.grid}>
-          <input
-            placeholder="Cerca (titolo, descrizione, categoria...)"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="search"
-          />
+        <Section>
+          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Didattica</h2>
 
-          <div className={styles.filters}>
-            {categories.map((c) => (
-              <button
-                key={c}
-                data-active={category === c}
-                onClick={() => setCategory(c)}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-
-          <label className="checkbox">
+          <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
             <input
-              type="checkbox"
-              checked={onlyFav}
-              onChange={(e) => setOnlyFav(e.target.checked)}
-            />
-            Solo preferiti
-          </label>
-
-          {filtered.map((item) => (
-            <ContentCard
-              key={item.id}
-              item={item}
-              isFavorite={favoriteIds.has(item.id)}
-              onToggleFavorite={(id) => {
-                setFavoriteIds((prev) => {
-                  const next = new Set(prev);
-                  next.has(id) ? next.delete(id) : next.add(id);
-                  return next;
-                });
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Cerca (titolo, descrizione, categoria...)"
+              style={{
+                width: "100%",
+                padding: "12px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
+                outline: "none",
               }}
             />
-          ))}
-        </section>
+
+            <div className={styles.filters}>
+              {categorie.map((c) => (
+                <button key={c} data-active={categoria === c} onClick={() => setCategoria(c)}>
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            <label style={{ display: "flex", gap: 10, alignItems: "center", color: "rgba(255,255,255,0.8)" }}>
+              <input type="checkbox" checked={onlyFavorites} onChange={(e) => setOnlyFavorites(e.target.checked)} />
+              Solo preferiti <span style={{ opacity: 0.7 }}>— Risultati: {filtered.length}</span>
+            </label>
+          </div>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            {filtered.map((it) => {
+              const id = safe((it as any).id);
+              return (
+                <ContentCard
+                  key={id}
+                  item={it}
+                  isFavorite={favoriteIds.has(id)}
+                  onToggleFavorite={(cardId) => onToggleFavorite(cardId)}
+                />
+              );
+            })}
+          </div>
+        </Section>
       )}
 
-      {/* ===== CARTE ===== */}
+      {/* CARTE */}
       {activeTab === "carte" && (
-        <CarteTab pills={pills} setPills={setPills} packCost={packCost} />
+        <Section>
+          <CarteTab pills={pills} setPills={setPills} packCost={packCost} />
+        </Section>
       )}
 
-      {/* ===== OPZIONI ===== */}
+      {/* OPZIONI */}
       {activeTab === "opzioni" && (
-        <section className={styles.grid}>
-          <h2>Opzioni</h2>
-          <p>Work in progress.</p>
-        </section>
+        <Section>
+          <h2 style={{ color: "rgba(255,255,255,0.92)" }}>Opzioni</h2>
+          <p style={{ color: "rgba(255,255,255,0.70)" }}>Work in progress.</p>
+        </Section>
       )}
 
-      {/* ===== PROFILO ===== */}
+      {/* PROFILO */}
       {activeTab === "profilo" && (
-        <section className={styles.grid}>
-          <h2>Profilo</h2>
-          <p>Work in progress.</p>
-        </section>
+        <Section>
+          <h2 style={{ color: "rgba(255,255,255,0.92)" }}>Profilo</h2>
+          <p style={{ color: "rgba(255,255,255,0.70)" }}>Work in progress.</p>
+        </Section>
       )}
 
-      {/* ===== BOTTOM NAV ===== */}
-      <nav className="bottom-nav">
-        <button
-          onClick={() => setActiveTab("didattica")}
-          data-active={activeTab === "didattica"}
-        >
-          Didattica
-        </button>
-        <button
-          onClick={() => setActiveTab("carte")}
-          data-active={activeTab === "carte"}
-        >
-          Carte
-        </button>
-        <button
-          onClick={() => setActiveTab("opzioni")}
-          data-active={activeTab === "opzioni"}
-        >
-          Opzioni
-        </button>
-        <button
-          onClick={() => setActiveTab("profilo")}
-          data-active={activeTab === "profilo"}
-        >
-          Profilo
-        </button>
-      </nav>
+      {/* ✅ BOTTOM NAV RIPRISTINATO */}
+      <NurseBottomNav active={activeTab} onChange={setActiveTab} />
     </Page>
   );
 }
