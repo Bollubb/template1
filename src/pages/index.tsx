@@ -98,17 +98,18 @@ export default function HomePage() {
 
           {filtered.map((item) => (
             <ContentCard
-              key={item.id}
-              item={item}
-              isFavorite={favoriteIds.has(item.id)}
-              onToggleFavorite={() => {
-                setFavoriteIds((prev) => {
-                  const next = new Set(prev);
-                  next.has(item.id) ? next.delete(item.id) : next.add(item.id);
-                  return next;
-                });
-              }}
-            />
+  key={item.id}
+  item={item}
+  isFavorite={favoriteIds.has(item.id)}
+  onToggleFavorite={(id) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }}
+/>
+
           ))}
         </section>
       )}
