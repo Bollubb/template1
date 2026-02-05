@@ -13,27 +13,40 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
     <>
       <Head>
         <title>{pageTitle}</title>
-        <meta name="theme-color" content="#0ea5e9" />
+        <meta name="theme-color" content="#0b1220" />
       </Head>
 
-      <header
+      <div
         style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          background: "white",
-          borderBottom: "1px solid rgba(0,0,0,0.08)",
-          padding: "12px 16px",
+          minHeight: "100vh",
+          background: "radial-gradient(1200px 700px at 50% -10%, rgba(59,130,246,0.35), rgba(2,6,23,1) 55%)",
+          color: "rgba(255,255,255,0.92)",
         }}
       >
-        <div style={{ fontWeight: 800, fontSize: 18 }}>NurseDiary</div>
-      </header>
+        <header
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            padding: "12px 16px",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+            background: "rgba(2,6,23,0.65)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
+          <div style={{ fontWeight: 800, fontSize: 18 }}>NurseDiary</div>
+        </header>
 
-      <main style={{ paddingBottom: 88 }}>{children}</main>
+        <main style={{ paddingBottom: 96 }}>
+          <div style={{ maxWidth: 520, margin: "0 auto", padding: "16px 14px" }}>
+            {children}
+          </div>
+        </main>
 
-      <footer style={{ padding: "18px 16px", color: "rgba(0,0,0,0.55)" }}>
-        <small>© {new Date().getFullYear()} NurseDiary</small>
-      </footer>
+        <footer style={{ padding: "18px 16px", color: "rgba(255,255,255,0.55)" }}>
+          <small>© {new Date().getFullYear()} NurseDiary</small>
+        </footer>
+      </div>
     </>
   );
 }
