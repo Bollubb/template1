@@ -13,22 +13,20 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
     <>
       <Head>
         <title>{pageTitle}</title>
-        <meta name="theme-color" content="#0b1220" />
+        <meta name="theme-color" content="#020617" />
       </Head>
 
       <div
         style={{
           minHeight: "100vh",
           overflowX: "hidden",
+          color: "rgba(255,255,255,0.92)",
+
+          /* ✅ ZERO cerchi: niente radial-gradient, niente immagini */
           backgroundColor: "rgb(2,6,23)",
-          // ✅ NIENTE background-main.png => sparisce l’arco/cerchio
-          backgroundImage:
-            "radial-gradient(1200px 700px at 50% -10%, rgba(59,130,246,0.30), rgba(2,6,23,1) 55%)," +
-            "radial-gradient(900px 600px at 15% 20%, rgba(16,185,129,0.10), rgba(2,6,23,0) 60%)," +
-            "radial-gradient(900px 600px at 85% 35%, rgba(168,85,247,0.10), rgba(2,6,23,0) 60%)",
+          backgroundImage: "linear-gradient(180deg, rgba(11,18,32,0.45), rgba(2,6,23,0) 55%)",
           backgroundRepeat: "no-repeat",
           backgroundSize: "cover",
-          color: "rgba(255,255,255,0.92)",
         }}
       >
         <header
@@ -38,35 +36,33 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
             zIndex: 50,
             padding: "10px 14px",
             borderBottom: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(2,6,23,0.65)",
+            background: "rgba(2,6,23,0.85)",
+            /* puoi anche togliere blur se vuoi ultra-clean */
             backdropFilter: "blur(10px)",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <img
-              src="/logo.png"
-              alt="NurseDiary"
-              width={28}
-              height={28}
-              style={{ borderRadius: 8 }}
-            />
-            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: 0.2 }}>
-              NurseDiary
-            </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              maxWidth: 520,
+              margin: "0 auto",
+            }}
+          >
+            <img src="/logo.png" alt="NurseDiary" width={28} height={28} style={{ borderRadius: 8 }} />
+            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: 0.2 }}>NurseDiary</div>
           </div>
         </header>
 
         <main style={{ paddingBottom: 96 }}>
-          <div style={{ maxWidth: 520, margin: "0 auto", padding: "16px 14px" }}>
-            {children}
-          </div>
+          <div style={{ maxWidth: 520, margin: "0 auto", padding: "16px 14px" }}>{children}</div>
         </main>
 
-        <footer style={{ padding: "18px 16px", color: "rgba(255,255,255,0.55)" }}>
+        <footer style={{ padding: "18px 16px", color: "rgba(255,255,255,0.55)", textAlign: "center" }}>
           <small>© {new Date().getFullYear()} NurseDiary</small>
         </footer>
       </div>
     </>
   );
 }
-
