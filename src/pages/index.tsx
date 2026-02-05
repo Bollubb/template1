@@ -14,6 +14,12 @@ import { fetchContentItems } from "../utils/nursediary/contentCsv";
 
 const safe = (v: unknown) => (v == null ? "" : String(v));
 
+const LS = {
+  favorites: "nd_favorites",
+  pills: "nd_pills",
+  packCost: "nd_pack_cost",
+};
+
 export default function Home(): JSX.Element {
   const [activeTab, setActiveTab] = useState<NurseTab>("didattica");
 
@@ -25,8 +31,12 @@ export default function Home(): JSX.Element {
   const [query, setQuery] = useState("");
   const [onlyFavorites, setOnlyFavorites] = useState(false);
 
-  // Favorites storage (nd_favorites)
+  // Favorites storage
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+
+  // Cards economy (base)
+  const [pills, setPills] = useState<number>(0);
+  const [packCost, setPackCost] = useState<number>(30);
 
   const onToggleFavorite = (id: string) => {
     setFavoriteIds((prev) => {
@@ -50,15 +60,25 @@ export default function Home(): JSX.Element {
     })();
   }, []);
 
-  // Load favorites once
+  // Load favorites + cards economy once
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
-      const raw = localStorage.getItem("nd_favorites");
-      const arr = raw ? (JSON.parse(raw) as string[]) : [];
-      setFavoriteIds(new Set(arr));
+
+      // favorites
+      const rawFav = localStorage.getItem(LS.favorites);
+      const favArr = rawFav ? (JSON.parse(rawFav) as string[]) : [];
+      setFavoriteIds(new Set(favArr));
+
+      // pills
+      const rawPills = localStorage.getItem(LS.pills);
+      setPills(rawPills ? Number(rawPills) : 0);
+
+      // pack cost
+      const rawCost = localStorage.getItem(LS.packCost);
+      setPackCost(rawCost ? Number(rawCost) : 30);
     } catch (e) {
-      console.error("Errore lettura preferiti", e);
+      console.error("Errore lettura storage", e);
     }
   }, []);
 
@@ -66,11 +86,30 @@ export default function Home(): JSX.Element {
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
-      localStorage.setItem("nd_favorites", JSON.stringify(Array.from(favoriteIds)));
+      localStorage.setItem(LS.favorites, JSON.stringify(Array.from(favoriteIds)));
     } catch (e) {
       console.error("Errore salvataggio preferiti", e);
     }
   }, [favoriteIds]);
+
+  // Persist cards economy
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(LS.pills, String(pills));
+    } catch (e) {
+      console.error("Errore salvataggio pills", e);
+    }
+  }, [pills]);
+
+  useEffect(() => {
+    try {
+      if (typeof window === "undefined") return;
+      localStorage.setItem(LS.packCost, String(packCost));
+    } catch (e) {
+      console.error("Errore salvataggio packCost", e);
+    }
+  }, [packCost]);
 
   const categorie = useMemo(() => {
     const set = new Set<string>();
@@ -85,13 +124,9 @@ export default function Home(): JSX.Element {
     const q = query.trim().toLowerCase();
 
     return items.filter((i) => {
-      // 1) categoria
       if (categoria !== "Tutte" && safe((i as any).categoria).trim() !== categoria) return false;
-
-      // 2) solo preferiti
       if (onlyFavorites && !favoriteIds.has(i.id)) return false;
 
-      // 3) search
       if (!q) return true;
 
       const hay = [
@@ -113,14 +148,44 @@ export default function Home(): JSX.Element {
         <meta name="description" content="NurseDiary – didattica, quiz e carte formative" />
       </Head>
 
+      {/* HERO / HOME (ripristinata “rifinita”) */}
       <Section className={styles.hero}>
         <h1 className={styles.title}>NurseDiary</h1>
-        <p className={styles.subtitle}>Didattica infermieristica, quiz e carte formative</p>
+        <p className={styles.subtitle}>
+          Una biblioteca rapida di contenuti infermieristici: cerca, salva i preferiti e costruisci la tua raccolta.
+        </p>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+          <div
+            style={{
+              padding: "8px 12px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.06)",
+              color: "rgba(255,255,255,0.85)",
+              fontSize: 13,
+            }}
+          >
+            Contenuti: <b>{items.length}</b>
+          </div>
+          <div
+            style={{
+              padding: "8px 12px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(255,255,255,0.06)",
+              color: "rgba(255,255,255,0.85)",
+              fontSize: 13,
+            }}
+          >
+            Preferiti: <b>{favoriteIds.size}</b>
+          </div>
+        </div>
       </Section>
 
       {activeTab === "didattica" && (
         <Section>
-          <h2>Didattica</h2>
+          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Didattica</h2>
 
           {/* Controls */}
           <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
@@ -132,13 +197,15 @@ export default function Home(): JSX.Element {
                 width: "100%",
                 padding: "12px 12px",
                 borderRadius: 12,
-                border: "1px solid rgba(0,0,0,0.15)",
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
                 outline: "none",
               }}
             />
 
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "rgba(255,255,255,0.85)" }}>
                 <input
                   type="checkbox"
                   checked={onlyFavorites}
@@ -147,8 +214,8 @@ export default function Home(): JSX.Element {
                 <span>Solo preferiti</span>
               </label>
 
-              <div style={{ color: "rgba(0,0,0,0.6)" }}>
-                Risultati: <b>{filtered.length}</b>
+              <div style={{ color: "rgba(255,255,255,0.70)" }}>
+                Risultati: <b style={{ color: "rgba(255,255,255,0.92)" }}>{filtered.length}</b>
               </div>
             </div>
           </div>
@@ -168,9 +235,17 @@ export default function Home(): JSX.Element {
           </div>
 
           {filtered.length === 0 ? (
-            <div style={{ padding: 12, border: "1px solid rgba(0,0,0,0.10)", borderRadius: 12 }}>
+            <div
+              style={{
+                padding: 12,
+                border: "1px solid rgba(255,255,255,0.12)",
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.05)",
+                color: "rgba(255,255,255,0.85)",
+              }}
+            >
               <div style={{ fontWeight: 700, marginBottom: 6 }}>Nessun contenuto trovato</div>
-              <div style={{ color: "rgba(0,0,0,0.65)" }}>
+              <div style={{ color: "rgba(255,255,255,0.70)" }}>
                 Controlla che <code>/public/contenuti.csv</code> esista e sia raggiungibile, oppure modifica filtri/ricerca.
               </div>
             </div>
@@ -191,22 +266,51 @@ export default function Home(): JSX.Element {
 
       {activeTab === "carte" && (
         <Section>
-          <h2>Carte</h2>
+          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Carte</h2>
+
+          {/* Recupero impostazioni base “economia” */}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+            <div
+              style={{
+                padding: "8px 12px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.85)",
+                fontSize: 13,
+              }}
+            >
+              💊 Pillole: <b>{pills}</b>
+            </div>
+            <div
+              style={{
+                padding: "8px 12px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.85)",
+                fontSize: 13,
+              }}
+            >
+              Bustina: <b>{packCost}</b> pillole
+            </div>
+          </div>
+
           <CarteTab />
         </Section>
       )}
 
       {activeTab === "opzioni" && (
         <Section>
-          <h2>Opzioni</h2>
-          <p style={{ color: "rgba(0,0,0,0.7)" }}>Work in progress.</p>
+          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Opzioni</h2>
+          <p style={{ color: "rgba(255,255,255,0.70)" }}>Work in progress.</p>
         </Section>
       )}
 
       {activeTab === "profilo" && (
         <Section>
-          <h2>Profilo</h2>
-          <p style={{ color: "rgba(0,0,0,0.7)" }}>Work in progress.</p>
+          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Profilo</h2>
+          <p style={{ color: "rgba(255,255,255,0.70)" }}>Work in progress.</p>
         </Section>
       )}
 
