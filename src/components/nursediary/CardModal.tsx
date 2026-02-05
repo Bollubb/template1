@@ -1,7 +1,16 @@
 import React from "react";
-import { Card } from "../../features/cards/cards.data";
 
-const aura: Record<Card["rarity"], string> = {
+type CardRarity = "comune" | "rara" | "epica" | "leggendaria";
+
+export type CardModalItem = {
+  id: string;
+  name: string;
+  image: string;
+  description?: string;
+  rarity: CardRarity;
+};
+
+const aura: Record<CardRarity, string> = {
   comune: "0 0 20px rgba(255,255,255,0.15)",
   rara: "0 0 30px rgba(96,165,250,0.6)",
   epica: "0 0 40px rgba(168,85,247,0.7)",
@@ -12,7 +21,7 @@ export function CardModal({
   card,
   onClose,
 }: {
-  card: Card;
+  card: CardModalItem;
   onClose: () => void;
 }) {
   return (
@@ -39,9 +48,13 @@ export function CardModal({
           width: "90%",
         }}
       >
-        <img src={card.image} alt={card.name} style={{ width: "100%", objectFit: "contain" }} />
+        <img
+          src={card.image}
+          alt={card.name}
+          style={{ width: "100%", objectFit: "contain" }}
+        />
         <h3 style={{ marginTop: 10 }}>{card.name}</h3>
-        <p style={{ opacity: 0.8 }}>{card.description}</p>
+        {card.description && <p style={{ opacity: 0.8 }}>{card.description}</p>}
       </div>
     </div>
   );

@@ -1,7 +1,15 @@
 import React from "react";
-import { Card } from "../../features/cards/cards.data";
 
-const rarityColors: Record<Card["rarity"], string> = {
+type CardRarity = "comune" | "rara" | "epica" | "leggendaria";
+
+export type CardCollectionItem = {
+  id: string;
+  name: string;
+  image: string;
+  rarity: CardRarity;
+};
+
+const rarityColors: Record<CardRarity, string> = {
   comune: "#9ca3af",
   rara: "#60a5fa",
   epica: "#a855f7",
@@ -13,9 +21,9 @@ export function CardCollection({
   owned,
   onOpen,
 }: {
-  cards: Card[];
+  cards: CardCollectionItem[];
   owned: Record<string, number>;
-  onOpen: (card: Card) => void;
+  onOpen: (card: CardCollectionItem) => void;
 }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
@@ -40,7 +48,12 @@ export function CardCollection({
             <img
               src={c.image}
               alt={c.name}
-              style={{ width: "100%", height: 120, objectFit: "contain", filter: locked ? "grayscale(1)" : "none" }}
+              style={{
+                width: "100%",
+                height: 120,
+                objectFit: "contain",
+                filter: locked ? "grayscale(1)" : "none",
+              }}
             />
 
             {locked && (
