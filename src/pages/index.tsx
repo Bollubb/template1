@@ -1,312 +1,152 @@
-import Head from "next/head";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Page from "@/layouts/Page";
+import styles from "@/styles/Home.module.css";
+import ContentCard from "@/components/nursediary/ContentCard";
+import CarteTab from "@/components/nursediary/CarteTab";
+import { loadContentsFromCsv } from "@/utils/nursediary/contentCsv";
 
-import Page from "../layouts/Page";
-import Section from "../layouts/Section";
-import styles from "../styles/Home.module.css";
+type TabKey = "didattica" | "carte" | "opzioni" | "profilo";
 
-import { ContentCard } from "../components/nursediary/ContentCard";
-import { CarteTab } from "../components/nursediary/CarteTab";
-import NurseBottomNav, { type NurseTab } from "../components/nursediary/NurseBottomNav";
+export default function HomePage() {
+  const [activeTab, setActiveTab] = useState<TabKey>("didattica");
 
-import type { ContentItem } from "../types/nursediary/types";
-import { fetchContentItems } from "../utils/nursediary/contentCsv";
-
-const safe = (v: unknown) => (v == null ? "" : String(v));
-
-const LS = {
-  favorites: "nd_favorites",
-  pills: "nd_pills",
-  packCost: "nd_pack_cost",
-};
-
-export default function Home(): JSX.Element {
-  const [activeTab, setActiveTab] = useState<NurseTab>("didattica");
-
-  // Didattica data
-  const [items, setItems] = useState<ContentItem[]>([]);
-  const [categoria, setCategoria] = useState("Tutte");
-
-  // Search + only favorites
-  const [query, setQuery] = useState(""); 
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
-
-  // Favorites storage
+  const [items, setItems] = useState<any[]>([]);
+  const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<string>("all");
+  const [onlyFav, setOnlyFav] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
-  // Cards economy (base)
-  const [pills, setPills] = useState<number>(0);
-  const [packCost, setPackCost] = useState<number>(30);
-
-  const onToggleFavorite = (id: string) => {
-    setFavoriteIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  // Load content CSV
   useEffect(() => {
-    (async () => {
-      try {
-        const parsed = await fetchContentItems();
-        setItems(parsed);
-      } catch (e) {
-        console.error("Errore caricamento contenuti CSV", e);
-        setItems([]);
-      }
-    })();
-  }, []);
-
-  // Load favorites + cards economy once
-  useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-
-      const rawFav = localStorage.getItem(LS.favorites);
-      const favArr = rawFav ? (JSON.parse(rawFav) as string[]) : [];
-      setFavoriteIds(new Set(favArr));
-
-      const rawPills = localStorage.getItem(LS.pills);
-      setPills(rawPills ? Number(rawPills) : 0);
-
-      const rawCost = localStorage.getItem(LS.packCost);
-      setPackCost(rawCost ? Number(rawCost) : 30);
-    } catch (e) {
-      console.error("Errore lettura storage", e);
-    }
+    loadContentsFromCsv("/contenuti.csv").then(setItems);
+    const saved = localStorage.getItem("nd_favorites");
+    if (saved) setFavoriteIds(new Set(JSON.parse(saved)));
   }, []);
 
   useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      localStorage.setItem(LS.favorites, JSON.stringify(Array.from(favoriteIds)));
-    } catch (e) {
-      console.error("Errore salvataggio preferiti", e);
-    }
+    localStorage.setItem("nd_favorites", JSON.stringify([...favoriteIds]));
   }, [favoriteIds]);
 
-  useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      localStorage.setItem(LS.pills, String(pills));
-    } catch (e) {
-      console.error("Errore salvataggio pills", e);
-    }
-  }, [pills]);
-
-  useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      localStorage.setItem(LS.packCost, String(packCost));
-    } catch (e) {
-      console.error("Errore salvataggio packCost", e);
-    }
-  }, [packCost]);
-
-  const categorie = useMemo(() => {
+  const categories = useMemo(() => {
     const set = new Set<string>();
-    items.forEach((i) => {
-      const c = safe((i as any).categoria).trim();
-      if (c) set.add(c);
-    });
-    return ["Tutte", ...Array.from(set).sort()];
+    items.forEach((i) => i.category && set.add(i.category));
+    return ["all", ...Array.from(set)];
   }, [items]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
     return items.filter((i) => {
-      if (categoria !== "Tutte" && safe((i as any).categoria).trim() !== categoria) return false;
-      if (onlyFavorites && !favoriteIds.has(i.id)) return false;
-
-      if (!q) return true;
-
-      const hay = [
-        safe((i as any).titolo),
-        safe((i as any).descrizione),
-        safe((i as any).categoria),
-        safe((i as any).tags),
-      ]
-        .join(" ")
-        .toLowerCase();
-
-      return hay.includes(q);
+      if (onlyFav && !favoriteIds.has(i.id)) return false;
+      if (category !== "all" && i.category !== category) return false;
+      if (!query) return true;
+      const q = query.toLowerCase();
+      return (
+        i.title.toLowerCase().includes(q) ||
+        i.description.toLowerCase().includes(q) ||
+        i.category?.toLowerCase().includes(q) ||
+        i.tags?.join(" ").toLowerCase().includes(q)
+      );
     });
-  }, [items, categoria, query, onlyFavorites, favoriteIds]);
+  }, [items, query, category, onlyFav, favoriteIds]);
 
   return (
     <Page title="Home">
-      <Head>
-        <meta name="description" content="NurseDiary – didattica, quiz e carte formative" />
-      </Head>
-
-      {/* HERO / HOME – SENZA SHAPE ASSOLUTE */}
-      <Section className={styles.hero}>
-        <h1 className={styles.title}>NurseDiary</h1>
-        <p className={styles.subtitle}>
-          Una biblioteca rapida di contenuti infermieristici: cerca, salva i preferiti e costruisci la tua raccolta.
-        </p>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-          <div
-            style={{
-              padding: "8px 12px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.85)",
-              fontSize: 13,
-            }}
-          >
-            Contenuti: <b>{items.length}</b>
-          </div>
-          <div
-            style={{
-              padding: "8px 12px",
-              borderRadius: 999,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.85)",
-              fontSize: 13,
-            }}
-          >
-            Preferiti: <b>{favoriteIds.size}</b>
-          </div>
-        </div>
-      </Section>
-
+      {/* HERO — SOLO DIDATTICA */}
       {activeTab === "didattica" && (
-        <Section>
-          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Didattica</h2>
+        <section className={styles.hero}>
+          <h1 className={styles.title}>NurseDiary</h1>
+          <p className={styles.subtitle}>
+            Una biblioteca rapida di contenuti infermieristici: cerca, salva i
+            preferiti e costruisci la tua raccolta.
+          </p>
 
-          <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cerca (titolo, descrizione, categoria...)"
-              style={{
-                width: "100%",
-                padding: "12px 12px",
-                borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.92)",
-                outline: "none",
-              }}
-            />
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "rgba(255,255,255,0.85)" }}>
-                <input
-                  type="checkbox"
-                  checked={onlyFavorites}
-                  onChange={(e) => setOnlyFavorites(e.target.checked)}
-                />
-                <span>Solo preferiti</span>
-              </label>
-
-              <div style={{ color: "rgba(255,255,255,0.70)" }}>
-                Risultati: <b style={{ color: "rgba(255,255,255,0.92)" }}>{filtered.length}</b>
-              </div>
-            </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+            <div className="pill">Contenuti: <b>{items.length}</b></div>
+            <div className="pill">Preferiti: <b>{favoriteIds.size}</b></div>
           </div>
+        </section>
+      )}
+
+      {/* DIDATTICA */}
+      {activeTab === "didattica" && (
+        <section className={styles.grid}>
+          <input
+            placeholder="Cerca (titolo, descrizione, categoria...)"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="search"
+          />
 
           <div className={styles.filters}>
-            {categorie.map((c) => (
+            {categories.map((c) => (
               <button
                 key={c}
-                className={c === categoria ? styles.active : ""}
-                onClick={() => setCategoria(c)}
-                type="button"
+                data-active={category === c}
+                onClick={() => setCategory(c)}
               >
                 {c}
               </button>
             ))}
           </div>
 
-          {filtered.length === 0 ? (
-            <div
-              style={{
-                padding: 12,
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 12,
-                background: "rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.85)",
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={onlyFav}
+              onChange={(e) => setOnlyFav(e.target.checked)}
+            />
+            Solo preferiti
+          </label>
+
+          {filtered.map((item) => (
+            <ContentCard
+              key={item.id}
+              item={item}
+              isFavorite={favoriteIds.has(item.id)}
+              onToggleFavorite={() => {
+                setFavoriteIds((prev) => {
+                  const next = new Set(prev);
+                  next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+                  return next;
+                });
               }}
-            >
-              <div style={{ fontWeight: 700, marginBottom: 6 }}>Nessun contenuto trovato</div>
-              <div style={{ color: "rgba(255,255,255,0.70)" }}>
-                Controlla che <code>/public/contenuti.csv</code> esista e sia raggiungibile.
-              </div>
-            </div>
-          ) : (
-            <div className={styles.grid}>
-              {filtered.map((item) => (
-                <ContentCard
-                  key={item.id}
-                  item={item}
-                  isFavorite={favoriteIds.has(item.id)}
-                  onToggleFavorite={onToggleFavorite}
-                />
-              ))}
-            </div>
-          )}
-        </Section>
+            />
+          ))}
+        </section>
       )}
 
-      {activeTab === "carte" && (
-        <Section>
-          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Carte</h2>
+      {/* CARTE */}
+      {activeTab === "carte" && <CarteTab />}
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-            <div
-              style={{
-                padding: "8px 12px",
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.85)",
-                fontSize: 13,
-              }}
-            >
-              💊 Pillole: <b>{pills}</b>
-            </div>
-            <div
-              style={{
-                padding: "8px 12px",
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.85)",
-                fontSize: 13,
-              }}
-            >
-              Bustina: <b>{packCost}</b> pillole
-            </div>
-          </div>
-
-          <CarteTab pills={pills} setPills={setPills} packCost={packCost} />
-        </Section>
-      )}
-
+      {/* OPZIONI */}
       {activeTab === "opzioni" && (
-        <Section>
-          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Opzioni</h2>
-          <p style={{ color: "rgba(255,255,255,0.70)" }}>Work in progress.</p>
-        </Section>
+        <section className={styles.grid}>
+          <h2>Opzioni</h2>
+          <p>Work in progress.</p>
+        </section>
       )}
 
+      {/* PROFILO */}
       {activeTab === "profilo" && (
-        <Section>
-          <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Profilo</h2>
-          <p style={{ color: "rgba(255,255,255,0.70)" }}>Work in progress.</p>
-        </Section>
+        <section className={styles.grid}>
+          <h2>Profilo</h2>
+          <p>Work in progress.</p>
+        </section>
       )}
 
-      <NurseBottomNav active={activeTab} onChange={setActiveTab} />
+      {/* BOTTOM NAV */}
+      <nav className="bottom-nav">
+        <button onClick={() => setActiveTab("didattica")} data-active={activeTab === "didattica"}>
+          Didattica
+        </button>
+        <button onClick={() => setActiveTab("carte")} data-active={activeTab === "carte"}>
+          Carte
+        </button>
+        <button onClick={() => setActiveTab("opzioni")} data-active={activeTab === "opzioni"}>
+          Opzioni
+        </button>
+        <button onClick={() => setActiveTab("profilo")} data-active={activeTab === "profilo"}>
+          Profilo
+        </button>
+      </nav>
     </Page>
   );
 }
