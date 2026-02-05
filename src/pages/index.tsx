@@ -3,7 +3,7 @@ import Page from "@/layouts/Page";
 import styles from "@/styles/Home.module.css";
 import { ContentCard } from "@/components/nursediary/ContentCard";
 import { CarteTab } from "@/components/nursediary/CarteTab";
-import { loadContentsFromCsv } from "@/utils/nursediary/contentCsv";
+import { fetchContentItems } from "../utils/nursediary/contentCsv";
 
 type TabKey = "didattica" | "carte" | "opzioni" | "profilo";
 
@@ -17,7 +17,7 @@ export default function HomePage() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadContentsFromCsv("/contenuti.csv").then(setItems);
+    fetchContentItems().then(setItems);
     const saved = localStorage.getItem("nd_favorites");
     if (saved) setFavoriteIds(new Set(JSON.parse(saved)));
   }, []);
