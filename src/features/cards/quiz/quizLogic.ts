@@ -1,114 +1,98 @@
-import type { QuizCategory, QuizQuestion } from "./quizBank";
-
 export type QuizMode = "daily" | "weekly";
 
-export type QuizRunState = {
+export type QuizHistoryItem = {
+  ts: number;
   mode: QuizMode;
-  status: "running" | "done";
-  idx: number;
-  correct: number;
-  selected: number | null;
-  questions: QuizQuestion[];
-  history: {
-    id: string;
-    category: QuizCategory;
-    q: string;
-    options: string[];
-    answer: number;
-    selected: number;
-    correct: boolean;
-  }[];
-};
-
-export type DailyQuizState = {
-  dayKey: string; // YYYY-MM-DD
-  status: "idle" | "done";
-  streak: number;
-};
-
-export type WeeklyQuizState = {
-  weekKey: string; // YYYY-W##
-  status: "idle" | "done";
-};
-
-export type QuizHistoryEntry = {
-  id: string; // unique
-  mode: QuizMode;
-  at: string; // ISO
   correct: number;
   total: number;
-  byCategory: Record<QuizCategory, { correct: number; total: number }>;
+  byCategory: Record<string, { correct: number; total: number }>;
 };
+
+export type DailyQuizState = { dayKey: string; status: "idle" | "done"; streak: number };
+export type WeeklyQuizState = { weekKey: string; status: "idle" | "done" };
 
 const LS_DAILY = "nd_quiz_daily";
 const LS_WEEKLY = "nd_quiz_weekly";
 const LS_HISTORY = "nd_quiz_history";
 
-function isBrowser() {
-  return typeof window !== "undefined" && typeof localStorage !== "undefined";
+const isBrowser = () => typeof window !== "undefined" && typeof localStorage !== "undefined";
+
+export function getDailyKey() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-function safeJson<T>(raw: string | null, fallback: T): T {
-  if (!raw) return fallback;
+export function getWeekKey(d = new Date()) {
+  const year = d.getFullYear();
+  const week = getISOWeek(d);
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
+export function getDailyState(): DailyQuizState {
+  const dayKey = getDailyKey();
+  const fallback: DailyQuizState = { dayKey, status: "idle", streak: 0 };
+  if (!isBrowser()) return fallback;
   try {
-    return JSON.parse(raw) as T;
+    const raw = localStorage.getItem(LS_DAILY);
+    if (!raw) return fallback;
+    const v = JSON.parse(raw) as DailyQuizState;
+    if (v.dayKey !== dayKey) return { ...fallback, streak: v.streak || 0 };
+    return { ...fallback, ...v };
   } catch {
     return fallback;
   }
 }
 
-export function getDailyState(): DailyQuizState {
-  const dayKey = new Date().toISOString().slice(0, 10);
-  const fallback: DailyQuizState = { dayKey, status: "idle", streak: 0 };
-  if (!isBrowser()) return fallback;
-
-  const parsed = safeJson<DailyQuizState>(localStorage.getItem(LS_DAILY), fallback);
-  if (parsed.dayKey !== dayKey) {
-    // new day: keep streak, reset status
-    return { ...fallback, streak: parsed.streak || 0 };
-  }
-  return { ...fallback, ...parsed };
-}
-
 export function setDailyState(v: DailyQuizState) {
   if (!isBrowser()) return;
-  localStorage.setItem(LS_DAILY, JSON.stringify(v));
+  try { localStorage.setItem(LS_DAILY, JSON.stringify(v)); } catch {}
 }
 
 export function getWeeklyState(): WeeklyQuizState {
-  const now = new Date();
-  const weekKey = getWeekKey(now);
+  const weekKey = getWeekKey();
   const fallback: WeeklyQuizState = { weekKey, status: "idle" };
   if (!isBrowser()) return fallback;
-
-  const parsed = safeJson<WeeklyQuizState>(localStorage.getItem(LS_WEEKLY), fallback);
-  if (parsed.weekKey !== weekKey) return fallback;
-  return { ...fallback, ...parsed };
+  try {
+    const raw = localStorage.getItem(LS_WEEKLY);
+    if (!raw) return fallback;
+    const v = JSON.parse(raw) as WeeklyQuizState;
+    if (v.weekKey !== weekKey) return fallback;
+    return { ...fallback, ...v };
+  } catch {
+    return fallback;
+  }
 }
 
 export function setWeeklyState(v: WeeklyQuizState) {
   if (!isBrowser()) return;
-  localStorage.setItem(LS_WEEKLY, JSON.stringify(v));
+  try { localStorage.setItem(LS_WEEKLY, JSON.stringify(v)); } catch {}
 }
 
-export function getQuizHistory(): QuizHistoryEntry[] {
+export function getHistory(): QuizHistoryItem[] {
   if (!isBrowser()) return [];
-  return safeJson<QuizHistoryEntry[]>(localStorage.getItem(LS_HISTORY), []);
+  try {
+    const raw = localStorage.getItem(LS_HISTORY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw) as QuizHistoryItem[];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
 }
 
-export function pushQuizHistory(entry: QuizHistoryEntry) {
+export function pushHistory(item: QuizHistoryItem) {
   if (!isBrowser()) return;
-  const arr = getQuizHistory();
-  arr.unshift(entry);
-  // keep last 60 runs
-  localStorage.setItem(LS_HISTORY, JSON.stringify(arr.slice(0, 60)));
+  try {
+    const arr = getHistory();
+    arr.unshift(item);
+    localStorage.setItem(LS_HISTORY, JSON.stringify(arr.slice(0, 50)));
+  } catch {}
 }
 
 export function calcDailyReward(correct: number, total: number, perfect: boolean, streak: number) {
   const base = 25;
   const perCorrect = correct * 6;
   const perfectBonus = perfect ? 20 : 0;
-  const streakBonus = Math.min(20, Math.max(0, streak) * 2);
+  const streakBonus = Math.min(20, streak * 2);
   return base + perCorrect + perfectBonus + streakBonus;
 }
 
@@ -117,14 +101,6 @@ export function calcWeeklyReward(correct: number, total: number, perfect: boolea
   const perCorrect = correct * 8;
   const perfectBonus = perfect ? 35 : 0;
   return base + perCorrect + perfectBonus;
-}
-
-export function calcXpForQuiz(mode: QuizMode, correct: number, total: number) {
-  // XP: weekly > daily. reward performance.
-  const ratio = total > 0 ? correct / total : 0;
-  const base = mode === "weekly" ? 80 : 35;
-  const perf = Math.round(ratio * (mode === "weekly" ? 70 : 45));
-  return base + perf;
 }
 
 export function getNextDailyResetMs() {
@@ -140,12 +116,6 @@ export function getNextWeeklyResetMs() {
   return next.getTime() - now.getTime();
 }
 
-export function getWeekKey(d: Date) {
-  const year = d.getFullYear();
-  const week = getISOWeek(d);
-  return `${year}-W${String(week).padStart(2, "0")}`;
-}
-
 function nextMonday00(d: Date) {
   const n = new Date(d);
   const day = n.getDay() || 7; // 1..7
@@ -155,7 +125,6 @@ function nextMonday00(d: Date) {
   return n;
 }
 
-// ISO week number
 function getISOWeek(date: Date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
   const dayNum = d.getUTCDay() || 7;
