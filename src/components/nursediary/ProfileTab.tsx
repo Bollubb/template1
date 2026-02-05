@@ -1,272 +1,265 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import { QUIZ_BANK, type QuizQuestion } from "@/features/quiz/quizBank";
+// ✅ use relative imports (no @ alias needed)
+import { QUIZ_BANK, type QuizQuestion } from "../../features/quiz/quizBank";
 import {
   calcDailyReward,
   calcWeeklyReward,
-  pickQuestions,
-  startOfNextDay,
-  startOfNextWeek,
-  startOfToday,
-  startOfWeek,
-  type QuizKind,
-} from "@/features/quiz/quizLogic";
+  getDailyState,
+  getWeeklyState,
+  setDailyState,
+  setWeeklyState,
+  type QuizMode,
+  type QuizRunState,
+  getNextDailyResetMs,
+  getNextWeeklyResetMs,
+} from "../../features/quiz/quizLogic";
 
-const LS_PROFILE = "nd_profile";
-const LS_COLLECTION = "nd_card_collection";
-const LS_QUIZ_DAILY = "nd_quiz_daily_done"; // stores dayStart timestamp
-const LS_QUIZ_WEEKLY = "nd_quiz_weekly_done"; // stores weekStart timestamp
-const LS_QUIZ_STREAK = "nd_quiz_daily_streak"; // number
-const LS_READ = "nd_read";
-const LS_FAVORITES = "nd_favorites";
+const LS = {
+  profile: "nd_profile",
+  avatar: "nd_avatar",
+  favorites: "nd_favorites",
+  read: "nd_read",
+  pills: "nd_pills",
+  cards: "nd_card_collection",
+  mission: "nd_mission_daily_read3",
+} as const;
 
 type ProfileData = {
   name: string;
   role: string;
-  avatarDataUrl?: string;
 };
 
-type QuizState = {
-  kind: QuizKind;
-  questions: QuizQuestion[];
-  idx: number;
-  correct: number;
-  selected: number | null;
-  done: boolean;
-};
+function clamp(n: number, a: number, b: number) {
+  return Math.max(a, Math.min(b, n));
+}
 
-function fmtCountdown(ms: number): string {
+function msToHMS(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
-  const hh = Math.floor(s / 3600);
-  const mm = Math.floor((s % 3600) / 60);
-  const ss = s % 60;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
+  const hh = String(Math.floor(s / 3600)).padStart(2, "0");
+  const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const ss = String(s % 60).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
 }
 
-function rarityPillHint(): JSX.Element {
-  return (
-    <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, lineHeight: 1.4 }}>
-      💡 Tip: quiz giornalieri e settimanali sono la via più rapida per ottenere pillole senza “farmare” bustine.
-    </div>
-  );
+function safeJson<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
 }
 
-export function ProfileTab({
+function pickRandom<T>(arr: T[], n: number) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+}
+
+export default function ProfileTab({
   pills,
   setPills,
-  favoritesCount,
-  readCount,
   totalContent,
 }: {
   pills: number;
-  setPills: (next: number) => void;
-  favoritesCount: number;
-  readCount: number;
+  setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
-}): JSX.Element {
-  const [profile, setProfile] = useState<ProfileData>({ name: "Nurse", role: "Infermiere/a" });
-  const [collectionStats, setCollectionStats] = useState({ unique: 0, total: 0 });
+}) {
+  const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
+  const [avatar, setAvatar] = useState<string | null>(null);
 
-  const [dailyDoneStart, setDailyDoneStart] = useState<number | null>(null);
-  const [weeklyDoneStart, setWeeklyDoneStart] = useState<number | null>(null);
-  const [dailyStreak, setDailyStreak] = useState<number>(0);
+  // stats sources
+  const [favIds, setFavIds] = useState<Set<string>>(new Set());
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [cardsOwned, setCardsOwned] = useState<Record<string, number>>({});
 
-  const [now, setNow] = useState<number>(Date.now());
-  const [quiz, setQuiz] = useState<QuizState | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  // mission daily: read 3
+  const [missionDone, setMissionDone] = useState(false);
+  const [missionClaimed, setMissionClaimed] = useState(false);
 
-  // ticker for countdown
+  // quiz
+  const [mode, setMode] = useState<QuizMode>("daily");
+  const [run, setRun] = useState<QuizRunState | null>(null);
+
+  // countdown
+  const [dailyLeft, setDailyLeft] = useState<number>(0);
+  const [weeklyLeft, setWeeklyLeft] = useState<number>(0);
+
+  // bootstrap
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(t);
-  }, []);
+    if (typeof window === "undefined") return;
 
-  // load profile + stats + quiz state
-  useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
+    const p = safeJson<ProfileData>(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" });
+    setProfile(p);
 
-      const rawProf = localStorage.getItem(LS_PROFILE);
-      if (rawProf) setProfile(JSON.parse(rawProf) as ProfileData);
+    setAvatar(localStorage.getItem(LS.avatar));
 
-      // cards stats
-      const rawCol = localStorage.getItem(LS_COLLECTION);
-      if (rawCol) {
-        const col = JSON.parse(rawCol) as Record<string, number>;
-        const unique = Object.keys(col).filter((k) => (col[k] ?? 0) > 0).length;
-        const total = Object.values(col).reduce((a, b) => a + (b ?? 0), 0);
-        setCollectionStats({ unique, total });
-      }
+    const favArr = safeJson<string[]>(localStorage.getItem(LS.favorites), []);
+    setFavIds(new Set(favArr));
 
-      const dd = localStorage.getItem(LS_QUIZ_DAILY);
-      setDailyDoneStart(dd ? Number(dd) : null);
+    const readArr = safeJson<string[]>(localStorage.getItem(LS.read), []);
+    setReadIds(new Set(readArr));
 
-      const wd = localStorage.getItem(LS_QUIZ_WEEKLY);
-      setWeeklyDoneStart(wd ? Number(wd) : null);
+    const owned = safeJson<Record<string, number>>(localStorage.getItem(LS.cards), {});
+    setCardsOwned(owned);
 
-      const st = localStorage.getItem(LS_QUIZ_STREAK);
-      setDailyStreak(st ? Number(st) : 0);
-    } catch (e) {
-      console.error("Profile load error", e);
-    }
+    const m = safeJson<{ dayKey: string; claimed: boolean }>(localStorage.getItem(LS.mission), {
+      dayKey: "",
+      claimed: false,
+    });
+    const dayKey = new Date().toISOString().slice(0, 10);
+    const claimed = m.dayKey === dayKey ? m.claimed : false;
+    setMissionClaimed(claimed);
   }, []);
 
   // persist profile
   useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      localStorage.setItem(LS_PROFILE, JSON.stringify(profile));
-    } catch {}
+    if (typeof window === "undefined") return;
+    localStorage.setItem(LS.profile, JSON.stringify(profile));
   }, [profile]);
 
-  // refresh cards stats when pills changes (cheap) + when returning to tab
+  // mission progress
   useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      const rawCol = localStorage.getItem(LS_COLLECTION);
-      if (!rawCol) return;
-      const col = JSON.parse(rawCol) as Record<string, number>;
-      const unique = Object.keys(col).filter((k) => (col[k] ?? 0) > 0).length;
-      const total = Object.values(col).reduce((a, b) => a + (b ?? 0), 0);
-      setCollectionStats({ unique, total });
-    } catch {}
-  }, [pills]);
+    const dayKey = new Date().toISOString().slice(0, 10);
+    const progress = clamp(readIds.size, 0, 3);
+    const done = progress >= 3;
+    setMissionDone(done);
 
-  const dailyAvailable = useMemo(() => {
-    const today = startOfToday(now);
-    return dailyDoneStart !== today;
-  }, [dailyDoneStart, now]);
+    // reset claimed daily
+    if (typeof window === "undefined") return;
+    const m = safeJson<{ dayKey: string; claimed: boolean }>(localStorage.getItem(LS.mission), {
+      dayKey: "",
+      claimed: false,
+    });
+    if (m.dayKey !== dayKey) {
+      const next = { dayKey, claimed: false };
+      localStorage.setItem(LS.mission, JSON.stringify(next));
+      setMissionClaimed(false);
+    }
+  }, [readIds]);
 
-  const weeklyAvailable = useMemo(() => {
-    const wk = startOfWeek(now);
-    return weeklyDoneStart !== wk;
-  }, [weeklyDoneStart, now]);
+  // countdown ticker
+  useEffect(() => {
+    const tick = () => {
+      setDailyLeft(getNextDailyResetMs());
+      setWeeklyLeft(getNextWeeklyResetMs());
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
-  const dailyCountdown = useMemo(() => fmtCountdown(startOfNextDay(now) - now), [now]);
-  const weeklyCountdown = useMemo(() => fmtCountdown(startOfNextWeek(now) - now), [now]);
+  const uniqueCards = useMemo(() => Object.keys(cardsOwned).filter((k) => (cardsOwned[k] || 0) > 0).length, [cardsOwned]);
+  const totalCards = useMemo(() => Object.values(cardsOwned).reduce((a, b) => a + (b || 0), 0), [cardsOwned]);
 
-  const startQuiz = (kind: QuizKind) => {
-    const count = kind === "daily" ? 5 : 12;
-    const qs = pickQuestions(QUIZ_BANK, count);
-    setQuiz({ kind, questions: qs, idx: 0, correct: 0, selected: null, done: false });
-  };
+  const dailyState = useMemo(() => getDailyState(), [dailyLeft]); // re-eval with tick
+  const weeklyState = useMemo(() => getWeeklyState(), [weeklyLeft]);
 
-  const pickAnswer = (idx: number) => {
-    if (!quiz || quiz.done) return;
-    setQuiz({ ...quiz, selected: idx });
-  };
+  const canStartDaily = dailyState.status !== "done";
+  const canStartWeekly = weeklyState.status !== "done";
 
-  const next = () => {
-    if (!quiz || quiz.done) return;
-    const q = quiz.questions[quiz.idx]!;
-    const isCorrect = quiz.selected === q.answerIndex;
-    const nextCorrect = quiz.correct + (isCorrect ? 1 : 0);
+  function startQuiz(nextMode: QuizMode) {
+    const bank = QUIZ_BANK;
+    const questions = pickRandom(bank, nextMode === "daily" ? 5 : 12);
 
-    const isLast = quiz.idx >= quiz.questions.length - 1;
-    if (isLast) {
-      // complete
-      const total = quiz.questions.length;
-      const kind = quiz.kind;
+    const newRun: QuizRunState = {
+      mode: nextMode,
+      status: "running",
+      idx: 0,
+      correct: 0,
+      selected: null,
+      questions,
+      history: [],
+    };
+    setMode(nextMode);
+    setRun(newRun);
+  }
 
-      // update done markers & reward
-      const nowTs = Date.now();
-      if (kind === "daily") {
-        const todayStart = startOfToday(nowTs);
-        localStorage.setItem(LS_QUIZ_DAILY, String(todayStart));
-        setDailyDoneStart(todayStart);
+  function answer(selected: number) {
+    if (!run || run.status !== "running") return;
+    const q = run.questions[run.idx];
+    const isCorrect = selected === q.answer;
 
-        // streak logic: if yesterday done -> +1 else reset to 1
-        const prev = dailyDoneStart;
-        const yesterdayStart = todayStart - 24 * 3600 * 1000;
-        const nextStreak =
-          prev === yesterdayStart ? Math.max(1, dailyStreak + 1) : 1;
-        localStorage.setItem(LS_QUIZ_STREAK, String(nextStreak));
-        setDailyStreak(nextStreak);
+    const nextHistory = [
+      ...run.history,
+      { id: q.id, q: q.q, options: q.options, answer: q.answer, selected },
+    ];
 
-        const reward = calcDailyReward(nextCorrect, total, nextStreak);
-        setPills(pills + reward);
-        setToast(`✅ Quiz giornaliero completato: ${nextCorrect}/${total} • +${reward} pillole`);
-      } else {
-        const weekStart = startOfWeek(nowTs);
-        localStorage.setItem(LS_QUIZ_WEEKLY, String(weekStart));
-        setWeeklyDoneStart(weekStart);
+    const nextCorrect = run.correct + (isCorrect ? 1 : 0);
+    const isLast = run.idx >= run.questions.length - 1;
 
-        const reward = calcWeeklyReward(nextCorrect, total);
-        setPills(pills + reward);
-        setToast(`🏁 Quiz settimanale completato: ${nextCorrect}/${total} • +${reward} pillole`);
-      }
-
-      setQuiz({ ...quiz, correct: nextCorrect, done: true });
+    if (!isLast) {
+      setRun({
+        ...run,
+        idx: run.idx + 1,
+        correct: nextCorrect,
+        selected: null,
+        history: nextHistory,
+      });
       return;
     }
 
-    setQuiz({ ...quiz, correct: nextCorrect, idx: quiz.idx + 1, selected: null });
-  };
+    // finish
+    const total = run.questions.length;
+    const perfect = nextCorrect === total;
+    let reward = 0;
+    if (run.mode === "daily") reward = calcDailyReward(nextCorrect, total, perfect, dailyState.streak);
+    else reward = calcWeeklyReward(nextCorrect, total, perfect);
 
-  const quitQuiz = () => setQuiz(null);
+    setPills((p) => p + reward);
 
-  // “Surprise” idea: micro-missione giornaliera (contenuti letti)
-  const [missionClaimed, setMissionClaimed] = useState<boolean>(false);
-  useEffect(() => {
-    try {
-      if (typeof window === "undefined") return;
-      const key = "nd_mission_read_claimed_" + String(startOfToday(now));
-      setMissionClaimed(localStorage.getItem(key) === "1");
-    } catch {}
-  }, [now]);
+    if (run.mode === "daily") {
+      setDailyState({ ...dailyState, status: "done", streak: dailyState.streak + (nextCorrect > 0 ? 1 : 0) });
+    } else {
+      setWeeklyState({ ...weeklyState, status: "done" });
+    }
 
-  const canClaimReadMission = useMemo(() => {
-    // missione: leggi almeno 3 contenuti oggi
-    // Nota: leggiamo solo count totale read (semplice). Premia anche chi recupera arretrati.
-    return !missionClaimed && readCount >= 3;
-  }, [missionClaimed, readCount]);
+    setRun({
+      ...run,
+      status: "done",
+      correct: nextCorrect,
+      selected,
+      history: nextHistory,
+    });
+  }
 
-  const claimReadMission = () => {
-    try {
-      const key = "nd_mission_read_claimed_" + String(startOfToday(Date.now()));
-      localStorage.setItem(key, "1");
-      setMissionClaimed(true);
-      setPills(pills + 25);
-      setToast("🎯 Missione completata: +25 pillole");
-    } catch {}
-  };
+  function closeRun() {
+    setRun(null);
+  }
 
-  const onAvatarPick = async (file: File | null) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) return;
-
+  async function onPickAvatar(file: File) {
     const reader = new FileReader();
     reader.onload = () => {
-      const url = String(reader.result || "");
-      setProfile((p) => ({ ...p, avatarDataUrl: url }));
+      const data = String(reader.result || "");
+      setAvatar(data);
+      try {
+        localStorage.setItem(LS.avatar, data);
+      } catch {}
     };
     reader.readAsDataURL(file);
-  };
+  }
+
+  function claimMission() {
+    if (!missionDone || missionClaimed) return;
+    setPills((p) => p + 25);
+    const dayKey = new Date().toISOString().slice(0, 10);
+    const next = { dayKey, claimed: true };
+    localStorage.setItem(LS.mission, JSON.stringify(next));
+    setMissionClaimed(true);
+  }
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      {toast && (
-        <div
-          style={{
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: "rgba(14,165,233,0.10)",
-            borderRadius: 16,
-            padding: 10,
-            color: "rgba(255,255,255,0.92)",
-            fontWeight: 800,
-          }}
-        >
-          {toast}
-        </div>
-      )}
-
-      {/* Profile card */}
+      {/* Header */}
       <div
         style={{
           border: "1px solid rgba(255,255,255,0.10)",
           background: "#0b1220",
-          borderRadius: 18,
+          borderRadius: 20,
           padding: 14,
         }}
       >
@@ -278,27 +271,25 @@ export function ProfileTab({
               borderRadius: 18,
               border: "1px solid rgba(255,255,255,0.12)",
               background: "rgba(255,255,255,0.06)",
-              overflow: "hidden",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              overflow: "hidden",
             }}
           >
-            {profile.avatarDataUrl ? (
-              <img src={profile.avatarDataUrl} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            {avatar ? (
+              <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
               <span style={{ fontSize: 24 }}>👤</span>
             )}
           </div>
 
           <div style={{ flex: 1 }}>
-            <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 800 }}>Profilo</div>
             <input
               value={profile.name}
               onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
               style={{
                 width: "100%",
-                marginTop: 6,
                 padding: "10px 12px",
                 borderRadius: 14,
                 border: "1px solid rgba(255,255,255,0.12)",
@@ -312,14 +303,14 @@ export function ProfileTab({
               value={profile.role}
               onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))}
               style={{
-                width: "100%",
                 marginTop: 8,
+                width: "100%",
                 padding: "10px 12px",
                 borderRadius: 14,
                 border: "1px solid rgba(255,255,255,0.12)",
                 background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.80)",
-                fontWeight: 800,
+                color: "rgba(255,255,255,0.86)",
+                fontWeight: 700,
                 outline: "none",
               }}
             />
@@ -329,107 +320,97 @@ export function ProfileTab({
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <label
             style={{
-              display: "inline-flex",
-              gap: 8,
-              alignItems: "center",
-              padding: "9px 12px",
+              padding: "10px 12px",
               borderRadius: 14,
               border: "1px solid rgba(255,255,255,0.12)",
               background: "#0f172a",
-              cursor: "pointer",
+              color: "rgba(255,255,255,0.92)",
               fontWeight: 800,
-              color: "rgba(255,255,255,0.90)",
+              cursor: "pointer",
             }}
           >
-            📷 Cambia avatar
+            Carica avatar
             <input
               type="file"
               accept="image/*"
               style={{ display: "none" }}
-              onChange={(e) => onAvatarPick(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onPickAvatar(f);
+              }}
             />
           </label>
 
           <div
             style={{
-              padding: "9px 12px",
+              padding: "10px 12px",
               borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "#0f172a",
+              color: "rgba(255,255,255,0.88)",
               fontWeight: 900,
-              color: "rgba(255,255,255,0.92)",
             }}
           >
-            💊 {pills}
+            Pillole: {pills}
           </div>
         </div>
       </div>
 
       {/* Stats */}
-      <div
-        style={{
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "#0b1220",
-          borderRadius: 18,
-          padding: 14,
-        }}
-      >
-        <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900, marginBottom: 10 }}>Statistiche</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <StatBox label="Preferiti" value={favoritesCount} />
-          <StatBox label="Letti" value={`${readCount}/${totalContent}`} />
-          <StatBox label="Carte uniche" value={`${collectionStats.unique}`} />
-          <StatBox label="Carte totali" value={`${collectionStats.total}`} />
-          <StatBox label="Streak quiz" value={`${dailyStreak}🔥`} />
-        </div>
-        <div style={{ marginTop: 10 }}>{rarityPillHint()}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <Stat title="Preferiti" value={String(favIds.size)} />
+        <Stat title="Letti" value={`${readIds.size}/${totalContent}`} />
+        <Stat title="Carte uniche" value={String(uniqueCards)} />
+        <Stat title="Carte totali" value={String(totalCards)} />
       </div>
 
-      {/* Missions */}
+      {/* Mission */}
       <div
         style={{
           border: "1px solid rgba(255,255,255,0.10)",
           background: "#0b1220",
-          borderRadius: 18,
+          borderRadius: 20,
           padding: 14,
         }}
       >
-        <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900, marginBottom: 10 }}>Missioni</div>
-        <div style={{ display: "grid", gap: 10 }}>
-          <div
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div>
+            <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900 }}>Missione giornaliera</div>
+            <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13 }}>
+              Leggi 3 contenuti → +25 pillole
+            </div>
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Reset: {msToHMS(dailyLeft)}</div>
+        </div>
+
+        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ flex: 1, height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+            <div
+              style={{
+                height: "100%",
+                width: `${clamp((readIds.size / 3) * 100, 0, 100)}%`,
+                background: "#0ea5e9",
+              }}
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={claimMission}
+            disabled={!missionDone || missionClaimed}
             style={{
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "#0f172a",
-              borderRadius: 16,
-              padding: 12,
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 10,
-              alignItems: "center",
+              padding: "10px 12px",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: !missionDone || missionClaimed ? "rgba(255,255,255,0.06)" : "#22c55e",
+              color: !missionDone || missionClaimed ? "rgba(255,255,255,0.60)" : "#052e16",
+              fontWeight: 900,
+              cursor: !missionDone || missionClaimed ? "not-allowed" : "pointer",
+              whiteSpace: "nowrap",
             }}
           >
-            <div>
-              <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>Leggi 3 contenuti</div>
-              <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12 }}>Ricompensa: +25 pillole (reset giornaliero)</div>
-            </div>
-            <button
-              type="button"
-              onClick={claimReadMission}
-              disabled={!canClaimReadMission}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: canClaimReadMission ? "#22c55e" : "rgba(255,255,255,0.06)",
-                color: canClaimReadMission ? "#052e16" : "rgba(255,255,255,0.70)",
-                fontWeight: 900,
-                cursor: canClaimReadMission ? "pointer" : "not-allowed",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {missionClaimed ? "Completata" : canClaimReadMission ? "Riscatta" : "Non pronta"}
-            </button>
-          </div>
+            {missionClaimed ? "Riscattata" : missionDone ? "Riscatta" : "In corso"}
+          </button>
         </div>
       </div>
 
@@ -438,240 +419,113 @@ export function ProfileTab({
         style={{
           border: "1px solid rgba(255,255,255,0.10)",
           background: "#0b1220",
-          borderRadius: 18,
+          borderRadius: 20,
           padding: 14,
         }}
       >
-        <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900, marginBottom: 10 }}>Quiz</div>
-
-        {!quiz ? (
-          <div style={{ display: "grid", gap: 10 }}>
-            <QuizCard
-              title="Quiz giornaliero"
-              subtitle={`Reset tra: ${dailyCountdown}`}
-              available={dailyAvailable}
-              cta={dailyAvailable ? "Inizia" : "Completato"}
-              onClick={() => startQuiz("daily")}
-              hint={`Ricompensa: base + per risposta corretta + streak (streak: ${dailyStreak})`}
-            />
-            <QuizCard
-              title="Quiz settimanale"
-              subtitle={`Reset tra: ${weeklyCountdown}`}
-              available={weeklyAvailable}
-              cta={weeklyAvailable ? "Inizia" : "Completato"}
-              onClick={() => startQuiz("weekly")}
-              hint="Ricompensa maggiore, più domande."
-            />
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div>
+            <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900 }}>Quiz</div>
+            <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13 }}>
+              Completa daily/weekly per ottenere pillole
+            </div>
           </div>
-        ) : (
-          <div
-            style={{
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "#0f172a",
-              borderRadius: 16,
-              padding: 12,
-              display: "grid",
-              gap: 10,
-            }}
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>
+            Streak daily: {dailyState.streak}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => startQuiz("daily")}
+            disabled={!canStartDaily}
+            style={btnPrimary(!canStartDaily)}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>
-                {quiz.kind === "daily" ? "Quiz giornaliero" : "Quiz settimanale"} • {quiz.idx + 1}/{quiz.questions.length}
+            Daily (reset {msToHMS(dailyLeft)})
+          </button>
+
+          <button
+            type="button"
+            onClick={() => startQuiz("weekly")}
+            disabled={!canStartWeekly}
+            style={btnPrimary(!canStartWeekly)}
+          >
+            Weekly (reset {msToHMS(weeklyLeft)})
+          </button>
+        </div>
+
+        {run && (
+          <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
+            {run.status === "running" ? (
+              <div>
+                <div style={{ color: "rgba(255,255,255,0.90)", fontWeight: 900 }}>
+                  {run.mode.toUpperCase()} — Domanda {run.idx + 1}/{run.questions.length}
+                </div>
+                <div style={{ marginTop: 6, color: "rgba(255,255,255,0.85)", fontWeight: 700 }}>{run.questions[run.idx].q}</div>
+
+                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                  {run.questions[run.idx].options.map((op, i) => (
+                    <button key={i} type="button" onClick={() => answer(i)} style={optBtn()}>
+                      {op}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={quitQuiz}
-                style={{
-                  padding: "8px 10px",
-                  borderRadius: 12,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.85)",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                Esci
-              </button>
-            </div>
-
-            <div style={{ color: "rgba(255,255,255,0.90)", fontWeight: 800 }}>
-              {quiz.questions[quiz.idx]!.prompt}
-            </div>
-
-            <div style={{ display: "grid", gap: 8 }}>
-              {quiz.questions[quiz.idx]!.options.map((opt, i) => {
-                const selected = quiz.selected === i;
-                return (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => pickAnswer(i)}
-                    style={{
-                      textAlign: "left",
-                      padding: "10px 12px",
-                      borderRadius: 14,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: selected ? "rgba(14,165,233,0.18)" : "rgba(255,255,255,0.06)",
-                      color: "rgba(255,255,255,0.92)",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {opt}
-                  </button>
-                );
-              })}
-            </div>
-
-            <button
-              type="button"
-              onClick={next}
-              disabled={quiz.selected == null}
-              style={{
-                marginTop: 4,
-                padding: "10px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: quiz.selected == null ? "rgba(255,255,255,0.06)" : "#0ea5e9",
-                color: quiz.selected == null ? "rgba(255,255,255,0.65)" : "#020617",
-                fontWeight: 900,
-                cursor: quiz.selected == null ? "not-allowed" : "pointer",
-              }}
-            >
-              {quiz.idx >= quiz.questions.length - 1 ? "Concludi" : "Avanti"}
-            </button>
-
-            <div style={{ color: "rgba(255,255,255,0.65)", fontSize: 12 }}>
-              Punteggio attuale: {quiz.correct} corretti
-            </div>
+            ) : (
+              <div>
+                <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900 }}>
+                  Quiz completato: {run.correct}/{run.questions.length}
+                </div>
+                <button type="button" onClick={closeRun} style={{ ...btnPrimary(false), marginTop: 10 }}>
+                  Chiudi
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* dev / testing helpers (safe) */}
-      <details style={{ opacity: 0.9 }}>
-        <summary style={{ cursor: "pointer", color: "rgba(255,255,255,0.70)" }}>⚙️ Strumenti (test)</summary>
-        <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                localStorage.removeItem(LS_QUIZ_DAILY);
-                localStorage.removeItem(LS_QUIZ_WEEKLY);
-                localStorage.removeItem(LS_QUIZ_STREAK);
-                setDailyDoneStart(null);
-                setWeeklyDoneStart(null);
-                setDailyStreak(0);
-                setToast("Reset quiz completato.");
-              } catch {}
-            }}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.90)",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            Reset quiz (solo test)
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                localStorage.removeItem(LS_PROFILE);
-                setProfile({ name: "Nurse", role: "Infermiere/a" });
-                setToast("Profilo resettato.");
-              } catch {}
-            }}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 14,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.90)",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            Reset profilo (solo test)
-          </button>
-        </div>
-      </details>
     </div>
   );
 }
 
-function StatBox({ label, value }: { label: string; value: React.ReactNode }) {
+function Stat({ title, value }: { title: string; value: string }) {
   return (
     <div
       style={{
         border: "1px solid rgba(255,255,255,0.10)",
-        background: "#0f172a",
-        borderRadius: 16,
+        background: "#0b1220",
+        borderRadius: 18,
         padding: 12,
       }}
     >
-      <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 800 }}>{label}</div>
-      <div style={{ color: "rgba(255,255,255,0.96)", fontSize: 20, fontWeight: 900, marginTop: 4 }}>{value}</div>
+      <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 800 }}>{title}</div>
+      <div style={{ color: "rgba(255,255,255,0.95)", fontSize: 22, fontWeight: 950 }}>{value}</div>
     </div>
   );
 }
 
-function QuizCard({
-  title,
-  subtitle,
-  hint,
-  available,
-  cta,
-  onClick,
-}: {
-  title: string;
-  subtitle: string;
-  hint: string;
-  available: boolean;
-  cta: string;
-  onClick: () => void;
-}) {
-  return (
-    <div
-      style={{
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "#0f172a",
-        borderRadius: 16,
-        padding: 12,
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-        alignItems: "center",
-      }}
-    >
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>{title}</div>
-        <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12 }}>{subtitle}</div>
-        <div style={{ color: "rgba(255,255,255,0.60)", fontSize: 12, marginTop: 6 }}>{hint}</div>
-      </div>
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={!available}
-        style={{
-          padding: "10px 12px",
-          borderRadius: 14,
-          border: "1px solid rgba(255,255,255,0.12)",
-          background: available ? "#0ea5e9" : "rgba(255,255,255,0.06)",
-          color: available ? "#020617" : "rgba(255,255,255,0.65)",
-          fontWeight: 900,
-          cursor: available ? "pointer" : "not-allowed",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {cta}
-      </button>
-    </div>
-  );
+function btnPrimary(disabled: boolean): React.CSSProperties {
+  return {
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: disabled ? "rgba(255,255,255,0.06)" : "#0ea5e9",
+    color: disabled ? "rgba(255,255,255,0.55)" : "#020617",
+    fontWeight: 900,
+    cursor: disabled ? "not-allowed" : "pointer",
+  };
+}
+
+function optBtn(): React.CSSProperties {
+  return {
+    padding: "12px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.92)",
+    fontWeight: 800,
+    cursor: "pointer",
+    textAlign: "left",
+  };
 }
