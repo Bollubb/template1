@@ -81,18 +81,19 @@ export default function Home(): JSX.Element {
       if (typeof window === "undefined") return;
 
       // favorites
-      const rawFav = localStorage.getItem(LS.favorites);
-      if (rawFav) {
-        const arr = JSON.parse(rawFav) as string[];
-        setFavoriteIds(new Set(arr));
-      }
+   const rawFavs = localStorage.getItem(LS.favs);
+if (rawFavs) {
+  const arr = JSON.parse(rawFavs) as string[];
+  setFavIds(new Set(arr));
+}
 
       // read ids
-      const rawRead = localStorage.getItem(LS.read);
-      if (rawRead) {
-        const arr = JSON.parse(rawRead) as string[];
-        setReadIds(new Set(arr));
-      }
+    const rawReadIds = localStorage.getItem(LS.read);
+     if (rawReadIds) {
+  const arr = JSON.parse(rawReadIds) as string[];
+  setReadIds(new Set(arr));
+}
+
 
       // read
       const rawRead = localStorage.getItem(LS.read);
