@@ -13,60 +13,94 @@ export function ContentCard({
   return (
     <div
       style={{
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        backgroundColor: "#0b1220", // ✅ OPACO → elimina effetto lente
         borderRadius: 16,
-        padding: 12,
+        padding: 14,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 10,
+        }}
+      >
         <div>
-          <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>{item.titolo}</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.70)" }}>
+          <div
+            style={{
+              fontWeight: 800,
+              color: "rgba(255,255,255,0.95)",
+            }}
+          >
+            {item.titolo}
+          </div>
+
+          <div
+            style={{
+              fontSize: 12,
+              marginTop: 2,
+              color: "rgba(255,255,255,0.65)",
+            }}
+          >
             {item.categoria}
             {item.tag ? ` • ${item.tag}` : ""}
           </div>
         </div>
+
         <button
           onClick={() => onToggleFavorite(item.id)}
           aria-label="toggle favorite"
           style={{
             border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 12,
+            borderRadius: 10,
             padding: "6px 10px",
-            background: "rgba(2,6,23,0.35)",
-            color: "rgba(255,255,255,0.92)",
+            backgroundColor: "#111827", // opaco
+            color: "rgba(255,255,255,0.9)",
+            cursor: "pointer",
           }}
         >
           {isFavorite ? "★" : "☆"}
         </button>
       </div>
 
-      {item.descrizione ? (
-        <p style={{ marginTop: 8, marginBottom: 0, color: "rgba(255,255,255,0.85)" }}>{item.descrizione}</p>
-      ) : null}
+      {item.descrizione && (
+        <p
+          style={{
+            marginTop: 10,
+            marginBottom: 0,
+            fontSize: 14,
+            lineHeight: 1.4,
+            color: "rgba(255,255,255,0.85)",
+          }}
+        >
+          {item.descrizione}
+        </p>
+      )}
 
-      {item.link ? (
-        <div style={{ marginTop: 10 }}>
+      {item.link && (
+        <div style={{ marginTop: 12 }}>
           <a
             href={item.link}
             target="_blank"
             rel="noreferrer"
             style={{
               display: "inline-flex",
-              padding: "8px 12px",
+              alignItems: "center",
+              padding: "8px 14px",
               borderRadius: 12,
               border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(14,165,233,0.18)",
-              color: "rgba(255,255,255,0.92)",
-              fontWeight: 800,
+              backgroundColor: "#0ea5e9",
+              color: "#020617",
+              fontWeight: 700,
               textDecoration: "none",
             }}
           >
             Apri
           </a>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
