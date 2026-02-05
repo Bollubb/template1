@@ -92,4 +92,29 @@
   display: none !important;
   background: none !important;
 }
+  /* =========================
+   KILL DEFINITIVO ANIMAZIONI LEGACY (CERCHIO)
+   ========================= */
+
+/* qualunque classe Home_* che aveva animazioni */
+[class^="Home_"],
+[class*=" Home_"] {
+  animation: none !important;
+  background-image: none !important;
+}
+
+/* nello specifico i filtri */
+.filters,
+.filters * {
+  animation: none !important;
+  background-image: none !important;
+}
+
+/* sicurezza extra */
+.filters::before,
+.filters::after {
+  content: none !important;
+  display: none !important;
+}
+
 
