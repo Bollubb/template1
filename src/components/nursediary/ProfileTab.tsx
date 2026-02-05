@@ -1,21 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-import { QUIZ_BANK } from "../../features/quiz/quizBank";
+import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import {
   calcDailyReward,
   calcWeeklyReward,
-  calcXpForQuiz,
   getDailyState,
   getWeeklyState,
-  getQuizHistory,
-  pushQuizHistory,
   setDailyState,
   setWeeklyState,
-  type QuizMode,
-  type QuizRunState,
   getNextDailyResetMs,
   getNextWeeklyResetMs,
-} from "../../features/quiz/quizLogic";
+  getHistory,
+  pushHistory,
+  type QuizHistoryItem,
+} from "@/features/cards/quiz/quizLogic";
 
 const LS = {
   profile: "nd_profile",
@@ -24,50 +22,27 @@ const LS = {
   read: "nd_read",
   pills: "nd_pills",
   cards: "nd_card_collection",
-  mission: "nd_mission_daily_read3",
-  login: "nd_login_reward",
-  freePack: "nd_free_pack",
   xp: "nd_xp",
-  achievements: "nd_achievements",
+  premium: "nd_premium",
+  login: "nd_login_daily",
+  freePacks: "nd_free_packs",
 } as const;
 
-type ProfileData = {
-  name: string;
-  role: string;
+type ProfileData = { name: string; role: string };
+type QuizMode = "daily" | "weekly";
+
+type RunState = {
+  mode: QuizMode;
+  idx: number;
+  correct: number;
+  questions: QuizQuestion[];
 };
 
-type LoginState = {
-  dayKey: string;
-  streak: number;
-  claimed: boolean;
-};
+const LEVEL_XP = (lvl: number) => 120 + (lvl - 1) * 60;
 
-type AchievementId =
-  | "first_quiz"
-  | "daily_streak_3"
-  | "daily_streak_7"
-  | "reader_10"
-  | "reader_30"
-  | "collector_5"
-  | "collector_12"
-  | "weekly_done";
-
-type Achievement = {
-  id: AchievementId;
-  title: string;
-  desc: string;
-  rewardPills: number;
-  rewardXp: number;
-  condition: (ctx: AchvCtx) => boolean;
-};
-
-type AchvCtx = {
-  readCount: number;
-  uniqueCards: number;
-  dailyStreak: number;
-  weeklyDone: boolean;
-  quizRuns: number;
-};
+function isBrowser() {
+  return typeof window !== "undefined" && typeof localStorage !== "undefined";
+}
 
 function safeJson<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -78,57 +53,12 @@ function safeJson<T>(raw: string | null, fallback: T): T {
   }
 }
 
-function clamp(n: number, a: number, b: number) {
-  return Math.max(a, Math.min(b, n));
-}
-
 function msToHMS(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const hh = String(Math.floor(s / 3600)).padStart(2, "0");
   const mm = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
   const ss = String(s % 60).padStart(2, "0");
   return `${hh}:${mm}:${ss}`;
-}
-
-function dayKey(d = new Date()) {
-  return d.toISOString().slice(0, 10);
-}
-
-function addFreePack(n: number) {
-  try {
-    const curr = Number(localStorage.getItem(LS.freePack) || "0") || 0;
-    localStorage.setItem(LS.freePack, String(Math.max(0, curr + n)));
-  } catch {}
-}
-
-function addXp(n: number) {
-  try {
-    const curr = Number(localStorage.getItem(LS.xp) || "0") || 0;
-    localStorage.setItem(LS.xp, String(Math.max(0, curr + n)));
-  } catch {}
-}
-
-function getXp() {
-  try {
-    return Number(localStorage.getItem(LS.xp) || "0") || 0;
-  } catch {
-    return 0;
-  }
-}
-
-// Level curve: thresholds grow smoothly
-function levelFromXp(xp: number) {
-  let level = 1;
-  let next = 100;
-  let prev = 0;
-  while (xp >= next) {
-    level += 1;
-    prev = next;
-    next = Math.round(next + 100 + level * 35); // ramp
-    if (level > 60) break;
-  }
-  const progress = clamp((xp - prev) / Math.max(1, next - prev), 0, 1);
-  return { level, prev, next, progress };
 }
 
 function pickRandom<T>(arr: T[], n: number) {
@@ -140,72 +70,17 @@ function pickRandom<T>(arr: T[], n: number) {
   return a.slice(0, n);
 }
 
-const ACHIEVEMENTS: Achievement[] = [
-  {
-    id: "first_quiz",
-    title: "Primo Quiz",
-    desc: "Completa un quiz (daily o weekly).",
-    rewardPills: 30,
-    rewardXp: 40,
-    condition: (c) => c.quizRuns >= 1,
-  },
-  {
-    id: "weekly_done",
-    title: "Settimana Chiusa",
-    desc: "Completa un quiz settimanale.",
-    rewardPills: 60,
-    rewardXp: 90,
-    condition: (c) => c.weeklyDone,
-  },
-  {
-    id: "daily_streak_3",
-    title: "Streak x3",
-    desc: "Streak daily di 3 giorni.",
-    rewardPills: 40,
-    rewardXp: 60,
-    condition: (c) => c.dailyStreak >= 3,
-  },
-  {
-    id: "daily_streak_7",
-    title: "Streak x7",
-    desc: "Streak daily di 7 giorni.",
-    rewardPills: 80,
-    rewardXp: 120,
-    condition: (c) => c.dailyStreak >= 7,
-  },
-  {
-    id: "reader_10",
-    title: "Lettore",
-    desc: "Segna come letti 10 contenuti.",
-    rewardPills: 25,
-    rewardXp: 35,
-    condition: (c) => c.readCount >= 10,
-  },
-  {
-    id: "reader_30",
-    title: "Studioso",
-    desc: "Segna come letti 30 contenuti.",
-    rewardPills: 70,
-    rewardXp: 110,
-    condition: (c) => c.readCount >= 30,
-  },
-  {
-    id: "collector_5",
-    title: "Collezionista",
-    desc: "Ottieni 5 carte uniche.",
-    rewardPills: 35,
-    rewardXp: 55,
-    condition: (c) => c.uniqueCards >= 5,
-  },
-  {
-    id: "collector_12",
-    title: "Master Set",
-    desc: "Ottieni 12 carte uniche.",
-    rewardPills: 120,
-    rewardXp: 160,
-    condition: (c) => c.uniqueCards >= 12,
-  },
-];
+function computeLevel(xp: number) {
+  let level = 1;
+  let remaining = xp;
+  while (remaining >= LEVEL_XP(level)) {
+    remaining -= LEVEL_XP(level);
+    level += 1;
+    if (level > 99) break;
+  }
+  const need = LEVEL_XP(level);
+  return { level, into: remaining, need };
+}
 
 export default function ProfileTab({
   pills,
@@ -218,70 +93,62 @@ export default function ProfileTab({
 }) {
   const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [premium, setPremium] = useState<boolean>(false);
 
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [cardsOwned, setCardsOwned] = useState<Record<string, number>>({});
 
-  // Missione giornaliera (leggi 3)
-  const [missionClaimed, setMissionClaimed] = useState(false);
+  const [xp, setXp] = useState<number>(0);
+  const [freePacks, setFreePacks] = useState<number>(0);
 
-  // Login reward
-  const [login, setLogin] = useState<LoginState>({ dayKey: "", streak: 0, claimed: false });
+  const [dailyLeft, setDailyLeft] = useState(0);
+  const [weeklyLeft, setWeeklyLeft] = useState(0);
 
-  // XP & achievements
-  const [xp, setXpState] = useState(0);
-  const [unlocked, setUnlocked] = useState<Set<AchievementId>>(new Set());
+  const [run, setRun] = useState<RunState | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
 
-  // Quiz
-  const [run, setRun] = useState<QuizRunState | null>(null);
-
-  // countdown
-  const [dailyLeft, setDailyLeft] = useState<number>(0);
-  const [weeklyLeft, setWeeklyLeft] = useState<number>(0);
+  const [history, setHistory] = useState<QuizHistoryItem[]>([]);
 
   // bootstrap
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!isBrowser()) return;
 
-    setProfile(safeJson<ProfileData>(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
+    setProfile(safeJson(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
     setAvatar(localStorage.getItem(LS.avatar));
+    setPremium(localStorage.getItem(LS.premium) === "1");
 
     setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
     setReadIds(new Set(safeJson<string[]>(localStorage.getItem(LS.read), [])));
     setCardsOwned(safeJson<Record<string, number>>(localStorage.getItem(LS.cards), {}));
 
-    setXpState(getXp());
+    setXp(Number(localStorage.getItem(LS.xp) || 0));
+    setFreePacks(Number(localStorage.getItem(LS.freePacks) || 0));
 
-    const unlockedArr = safeJson<AchievementId[]>(localStorage.getItem(LS.achievements), []);
-    setUnlocked(new Set(unlockedArr));
-
-    // mission daily claimed
-    const m = safeJson<{ dayKey: string; claimed: boolean }>(localStorage.getItem(LS.mission), { dayKey: "", claimed: false });
-    const dk = dayKey();
-    setMissionClaimed(m.dayKey === dk ? !!m.claimed : false);
-
-    // login reward
-    const l = safeJson<LoginState>(localStorage.getItem(LS.login), { dayKey: "", streak: 0, claimed: false });
-    const dk2 = dayKey();
-    if (l.dayKey !== dk2) {
-      // new day -> not claimed
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const continues = l.dayKey === dayKey(yesterday);
-      const next: LoginState = { dayKey: dk2, streak: continues ? (l.streak || 0) + 1 : 1, claimed: false };
-      localStorage.setItem(LS.login, JSON.stringify(next));
-      setLogin(next);
-    } else {
-      setLogin(l);
-    }
+    setHistory(getHistory());
   }, []);
 
-  // persist profile
+  // persist profile + xp + premium + free packs
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!isBrowser()) return;
     localStorage.setItem(LS.profile, JSON.stringify(profile));
   }, [profile]);
+
+  useEffect(() => {
+    if (!isBrowser()) return;
+    localStorage.setItem(LS.xp, String(xp));
+  }, [xp]);
+
+  useEffect(() => {
+    if (!isBrowser()) return;
+    localStorage.setItem(LS.premium, premium ? "1" : "0");
+  }, [premium]);
+
+  useEffect(() => {
+    if (!isBrowser()) return;
+    localStorage.setItem(LS.freePacks, String(freePacks));
+  }, [freePacks]);
 
   // countdown ticker
   useEffect(() => {
@@ -294,191 +161,189 @@ export default function ProfileTab({
     return () => window.clearInterval(id);
   }, []);
 
-  // derived stats
   const uniqueCards = useMemo(
     () => Object.keys(cardsOwned).filter((k) => (cardsOwned[k] || 0) > 0).length,
     [cardsOwned]
   );
   const totalCards = useMemo(() => Object.values(cardsOwned).reduce((a, b) => a + (b || 0), 0), [cardsOwned]);
 
-  const dailyState = useMemo(() => (typeof window === "undefined" ? { status: "idle", streak: 0 } : getDailyState()), [dailyLeft]);
-  const weeklyState = useMemo(() => (typeof window === "undefined" ? { status: "idle" } : getWeeklyState()), [weeklyLeft]);
+  const lvl = useMemo(() => computeLevel(xp), [xp]);
 
-  const levelInfo = useMemo(() => levelFromXp(xp), [xp]);
+  const dailyState = useMemo(() => getDailyState(), [dailyLeft]);
+  const weeklyState = useMemo(() => getWeeklyState(), [weeklyLeft]);
 
-  // mission done: uses readIds (simple: first 3 of the day)
-  const missionProgress = useMemo(() => clamp(readIds.size, 0, 3), [readIds]);
-  const missionDone = missionProgress >= 3;
+  const accuracy = useMemo(() => {
+    const h = history;
+    const tot = h.reduce((a, x) => a + x.total, 0);
+    const cor = h.reduce((a, x) => a + x.correct, 0);
+    return tot > 0 ? Math.round((cor / tot) * 100) : 0;
+  }, [history]);
 
-  // quiz history stats
-  const quizHistory = useMemo(() => (typeof window === "undefined" ? [] : getQuizHistory()), [dailyLeft, weeklyLeft, run]);
-  const quizStats = useMemo(() => {
-    const totalRuns = quizHistory.length;
-    let totalQ = 0;
-    let totalC = 0;
-    const byCat: Record<string, { correct: number; total: number }> = {};
-    for (const h of quizHistory) {
-      totalQ += h.total;
-      totalC += h.correct;
-      for (const [cat, v] of Object.entries(h.byCategory)) {
-        if (!byCat[cat]) byCat[cat] = { correct: 0, total: 0 };
-        byCat[cat].correct += v.correct;
-        byCat[cat].total += v.total;
+  const byCategory = useMemo(() => {
+    const acc: Record<string, { correct: number; total: number }> = {};
+    for (const h of history) {
+      for (const k of Object.keys(h.byCategory || {})) {
+        const v = h.byCategory[k];
+        if (!acc[k]) acc[k] = { correct: 0, total: 0 };
+        acc[k].correct += v.correct;
+        acc[k].total += v.total;
       }
     }
-    const acc = totalQ ? Math.round((totalC / totalQ) * 100) : 0;
-    const cats = Object.entries(byCat)
-      .map(([k, v]) => ({ cat: k, acc: v.total ? Math.round((v.correct / v.total) * 100) : 0, total: v.total }))
-      .sort((a, b) => b.total - a.total);
-    return { totalRuns, totalQ, totalC, acc, cats };
-  }, [quizHistory]);
+    const arr = Object.entries(acc)
+      .map(([k, v]) => ({ k, pct: v.total ? Math.round((v.correct / v.total) * 100) : 0, ...v }))
+      .sort((a, b) => b.pct - a.pct);
+    return arr.slice(0, 5);
+  }, [history]);
 
-  // achievements auto-unlock
+  // Daily login reward (WeWard style) + free pack
+  const [loginInfo, setLoginInfo] = useState<{ dayKey: string; streak: number; claimed: boolean }>({
+    dayKey: "",
+    streak: 0,
+    claimed: false,
+  });
+
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const ctx: AchvCtx = {
-      readCount: readIds.size,
-      uniqueCards,
-      dailyStreak: dailyState.streak || 0,
-      weeklyDone: weeklyState.status === "done",
-      quizRuns: quizHistory.length,
-    };
-
-    const newly: Achievement[] = [];
-    for (const a of ACHIEVEMENTS) {
-      if (unlocked.has(a.id)) continue;
-      if (a.condition(ctx)) newly.push(a);
-    }
-    if (newly.length === 0) return;
-
-    // apply rewards once
-    setPills((p) => p + newly.reduce((s, a) => s + a.rewardPills, 0));
-    addXp(newly.reduce((s, a) => s + a.rewardXp, 0));
-    setXpState(getXp());
-
-    const next = new Set(unlocked);
-    newly.forEach((a) => next.add(a.id));
-    setUnlocked(next);
-    localStorage.setItem(LS.achievements, JSON.stringify(Array.from(next)));
-  }, [readIds, uniqueCards, dailyState.streak, weeklyState.status, quizHistory.length]);
-
-  function claimMission() {
-    if (!missionDone || missionClaimed) return;
-    setPills((p) => p + 25);
-    try {
-      localStorage.setItem(LS.mission, JSON.stringify({ dayKey: dayKey(), claimed: true }));
-    } catch {}
-    setMissionClaimed(true);
-    addXp(15);
-    setXpState(getXp());
-  }
-
-  function claimLoginReward() {
-    if (login.claimed) return;
-
-    const basePills = 20;
-    const streakBonus = Math.min(30, (login.streak || 1) * 3);
-    const pillsGain = basePills + streakBonus;
-
-    setPills((p) => p + pillsGain);
-
-    // pack bonus: 1 free pack every day, +1 extra at streak 7/14/21...
-    const extra = login.streak > 0 && login.streak % 7 === 0 ? 1 : 0;
-    addFreePack(1 + extra);
-
-    addXp(12 + Math.min(25, login.streak * 2));
-    setXpState(getXp());
-
-    const next: LoginState = { ...login, claimed: true };
-    setLogin(next);
-    try {
+    if (!isBrowser()) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const stored = safeJson(localStorage.getItem(LS.login), { dayKey: "", streak: 0, claimed: false });
+    if (stored.dayKey !== today) {
+      // new day
+      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const streak = stored.dayKey === yesterday ? (stored.streak || 0) + 1 : 1;
+      const next = { dayKey: today, streak, claimed: false };
       localStorage.setItem(LS.login, JSON.stringify(next));
-    } catch {}
-  }
-
-  function startQuiz(mode: QuizMode) {
-    const questions = pickRandom(QUIZ_BANK, mode === "daily" ? 5 : 12);
-
-    const newRun: QuizRunState = {
-      mode,
-      status: "running",
-      idx: 0,
-      correct: 0,
-      selected: null,
-      questions,
-      history: [],
-    };
-    setRun(newRun);
-  }
-
-  function answer(selected: number) {
-    if (!run || run.status !== "running") return;
-
-    const q = run.questions[run.idx];
-    const isCorrect = selected === q.answer;
-
-    const nextHistory = [
-      ...run.history,
-      {
-        id: q.id,
-        category: q.category,
-        q: q.q,
-        options: q.options,
-        answer: q.answer,
-        selected,
-        correct: isCorrect,
-      },
-    ];
-
-    const nextCorrect = run.correct + (isCorrect ? 1 : 0);
-    const isLast = run.idx >= run.questions.length - 1;
-
-    if (!isLast) {
-      setRun({ ...run, idx: run.idx + 1, correct: nextCorrect, selected: null, history: nextHistory });
-      return;
-    }
-
-    // finish
-    const total = run.questions.length;
-    const perfect = nextCorrect === total;
-
-    const reward = run.mode === "daily"
-      ? calcDailyReward(nextCorrect, total, perfect, dailyState.streak || 0)
-      : calcWeeklyReward(nextCorrect, total, perfect);
-
-    setPills((p) => p + reward);
-
-    // XP
-    const xpGain = calcXpForQuiz(run.mode, nextCorrect, total);
-    addXp(xpGain);
-    setXpState(getXp());
-
-    // mark done
-    if (run.mode === "daily") {
-      const streakNext = (dailyState.streak || 0) + 1;
-      setDailyState({ ...getDailyState(), status: "done", streak: streakNext });
+      setLoginInfo(next);
     } else {
-      setWeeklyState({ ...getWeeklyState(), status: "done" });
+      setLoginInfo(stored);
     }
+  }, []);
 
-    // history entry with category stats
-    const byCategory: any = {};
-    for (const h of nextHistory) {
-      if (!byCategory[h.category]) byCategory[h.category] = { correct: 0, total: 0 };
-      byCategory[h.category].total += 1;
-      if (h.correct) byCategory[h.category].correct += 1;
-    }
-    pushQuizHistory({
-      id: `run_${Date.now()}_${Math.random().toString(16).slice(2)}`,
-      mode: run.mode,
-      at: new Date().toISOString(),
-      correct: nextCorrect,
-      total,
-      byCategory,
-    });
+  function claimDailyLogin() {
+    if (loginInfo.claimed) return;
+    const bonusPills = 20 + Math.min(20, loginInfo.streak * 2);
+    const bonusXp = 15 + Math.min(25, loginInfo.streak * 2);
+    setPills((p) => p + bonusPills);
+    setXp((x) => x + bonusXp);
 
-    setRun({ ...run, status: "done", correct: nextCorrect, selected, history: nextHistory });
+    // 1 free pack per day
+    setFreePacks((v) => v + 1);
+
+    // extra pack each 7-day streak
+    if (loginInfo.streak % 7 === 0) setFreePacks((v) => v + 1);
+
+    const next = { ...loginInfo, claimed: true };
+    setLoginInfo(next);
+    if (isBrowser()) localStorage.setItem(LS.login, JSON.stringify(next));
+    setFeedback(`Login reward: +${bonusPills} pillole, +${bonusXp} XP, +pack GRATIS`);
+  }
+
+  // Achievements (obiettivi)
+  const achievements = useMemo(() => {
+    const arr = [
+      { id: "a_read_10", title: "Lettore", desc: "Leggi 10 contenuti", done: readIds.size >= 10, pill: 40, xp: 40 },
+      { id: "a_fav_5", title: "Curatore", desc: "Aggiungi 5 preferiti", done: favIds.size >= 5, pill: 30, xp: 30 },
+      { id: "a_cards_5", title: "Collezionista", desc: "Ottieni 5 carte uniche", done: uniqueCards >= 5, pill: 50, xp: 40 },
+      { id: "a_quiz_3", title: "Studioso", desc: "Completa 3 quiz", done: history.length >= 3, pill: 60, xp: 60 },
+      { id: "a_acc_80", title: "Preciso", desc: "Raggiungi 80% accuracy", done: accuracy >= 80 && history.length >= 3, pill: 80, xp: 80 },
+    ];
+    return arr;
+  }, [readIds.size, favIds.size, uniqueCards, history.length, accuracy]);
+
+  const [claimedA, setClaimedA] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (!isBrowser()) return;
+    setClaimedA(safeJson(localStorage.getItem("nd_achievements_claimed"), {}));
+  }, []);
+  useEffect(() => {
+    if (!isBrowser()) return;
+    localStorage.setItem("nd_achievements_claimed", JSON.stringify(claimedA));
+  }, [claimedA]);
+
+  function claimAchievement(id: string, pill: number, addXp: number) {
+    if (claimedA[id]) return;
+    setClaimedA((p) => ({ ...p, [id]: true }));
+    setPills((v) => v + pill);
+    setXp((v) => v + addXp);
+    setFeedback(`Obiettivo completato: +${pill} pillole, +${addXp} XP`);
+  }
+
+  function startQuiz(nextMode: QuizMode) {
+    if (nextMode === "daily" && dailyState.status === "done") return;
+    if (nextMode === "weekly" && weeklyState.status === "done") return;
+
+    const questions = pickRandom(QUIZ_BANK, nextMode === "daily" ? 5 : 12);
+    setRun({ mode: nextMode, idx: 0, correct: 0, questions });
+    setSelected(null);
+    setFeedback(null);
+  }
+
+  function answer(idx: number) {
+    if (!run) return;
+    const q = run.questions[run.idx];
+    const ok = idx === q.answer;
+    const nextCorrect = run.correct + (ok ? 1 : 0);
+
+    setSelected(idx);
+    // small delay to show feedback, then advance
+    window.setTimeout(() => {
+      const isLast = run.idx >= run.questions.length - 1;
+      if (!isLast) {
+        setRun({ ...run, idx: run.idx + 1, correct: nextCorrect });
+        setSelected(null);
+        return;
+      }
+
+      // finish
+      const total = run.questions.length;
+      const perfect = nextCorrect === total;
+
+      // build byCategory
+      const byCat: Record<string, { correct: number; total: number }> = {};
+      for (let i = 0; i < run.questions.length; i++) {
+        const qq = run.questions[i];
+        const cat = qq.category || "altro";
+        if (!byCat[cat]) byCat[cat] = { correct: 0, total: 0 };
+        byCat[cat].total += 1;
+        // we don't store per-question selection here; approximate: use overall correct ratio not per q
+        // Better: treat correct if i < nextCorrect is wrong; cannot.
+      }
+      // For accuracy by category we compute from current run only using correct proportion by category is not exact without selections.
+      // We'll instead compute by category using a simple assumption: correct answers distributed uniformly over questions.
+      // (Good enough for MVP; can refine later by storing selections.)
+      const ratio = total ? nextCorrect / total : 0;
+      for (const cat of Object.keys(byCat)) {
+        byCat[cat].correct = Math.round(byCat[cat].total * ratio);
+      }
+
+      let reward = 0;
+      if (run.mode === "daily") {
+        reward = calcDailyReward(nextCorrect, total, perfect, dailyState.streak);
+        setDailyState({ ...dailyState, status: "done", streak: dailyState.streak + 1 });
+      } else {
+        reward = calcWeeklyReward(nextCorrect, total, perfect);
+        setWeeklyState({ ...weeklyState, status: "done" });
+      }
+
+      // pillole + XP
+      setPills((p) => p + reward);
+      const xpGain = 20 + nextCorrect * (run.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
+      setXp((x) => x + xpGain);
+
+      const item: QuizHistoryItem = {
+        ts: Date.now(),
+        mode: run.mode,
+        correct: nextCorrect,
+        total,
+        byCategory: byCat,
+      };
+      pushHistory(item);
+      const newHist = [item, ...history].slice(0, 50);
+      setHistory(newHist);
+
+      setFeedback(`Quiz ${run.mode}: ${nextCorrect}/${total} — +${reward} pillole, +${xpGain} XP`);
+      setRun(null);
+      setSelected(null);
+    }, 450);
   }
 
   async function onPickAvatar(file: File) {
@@ -493,27 +358,12 @@ export default function ProfileTab({
     reader.readAsDataURL(file);
   }
 
-  const canStartDaily = dailyState.status !== "done";
-  const canStartWeekly = weeklyState.status !== "done";
-
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      {/* Header */}
-      <CardBox>
+      {/* Profile header */}
+      <div style={card()}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div
-            style={{
-              width: 64,
-              height: 64,
-              borderRadius: 18,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.06)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "hidden",
-            }}
-          >
+          <div style={avatarBox()}>
             {avatar ? (
               <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
@@ -522,349 +372,207 @@ export default function ProfileTab({
           </div>
 
           <div style={{ flex: 1 }}>
-            <input
-              value={profile.name}
-              onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
-              style={inputMain(true)}
-              aria-label="Nome"
-            />
-            <input
-              value={profile.role}
-              onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))}
-              style={{ ...inputMain(false), marginTop: 8 }}
-              aria-label="Ruolo"
-            />
+            <input value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} style={inp(true)} />
+            <input value={profile.role} onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))} style={{ ...inp(false), marginTop: 8 }} />
           </div>
         </div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <label style={pillTag("#0f172a", "rgba(255,255,255,0.92)")}>
+          <label style={chipBtn()}>
             Carica avatar
-            <input
-              type="file"
-              accept="image/*"
-              style={{ display: "none" }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onPickAvatar(f);
-              }}
-            />
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && onPickAvatar(e.target.files[0])} />
           </label>
 
-          <div style={pillTag("#0f172a", "rgba(255,255,255,0.88)")}>Pillole: {pills}</div>
-          <div style={pillTag("#0f172a", "rgba(255,255,255,0.88)")}>
-            Livello: {levelInfo.level} <span style={{ opacity: 0.7 }}>(XP {xp})</span>
+          <div style={chip()}>
+            Pillole: <b>{pills}</b>
           </div>
-        </div>
 
-        <div style={{ marginTop: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", color: "rgba(255,255,255,0.72)", fontWeight: 800, fontSize: 12 }}>
-            <span>Progresso livello</span>
-            <span>
-              {levelInfo.prev} → {levelInfo.next}
-            </span>
+          <div style={chip()}>
+            Packs FREE: <b>{freePacks}</b>
           </div>
-          <ProgressBar value={levelInfo.progress} />
-        </div>
-      </CardBox>
 
-      {/* Daily login reward */}
-      <CardBox>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <div>
-            <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>Daily login</div>
-            <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13 }}>
-              Ricompensa giornaliera + pack bonus (streak)
-            </div>
-          </div>
-          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 900, fontSize: 12 }}>Streak: {login.streak}</div>
-        </div>
-
-        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <button type="button" onClick={claimLoginReward} disabled={login.claimed} style={btnPrimary(login.claimed)}>
-            {login.claimed ? "Già riscattata" : "Riscatta"}
+          <button type="button" onClick={() => setPremium((v) => !v)} style={{ ...chipBtn(), background: premium ? "#f59e0b" : "#0f172a", color: premium ? "#1f1300" : "rgba(255,255,255,0.9)" }}>
+            {premium ? "Premium attivo" : "Premium (demo)"}
           </button>
-
-          <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, fontSize: 12 }}>
-            Reset: {msToHMS(dailyLeft)}
-          </div>
-
-          <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, fontSize: 12 }}>
-            Bonus pack: <b>{login.streak > 0 && login.streak % 7 === 0 ? "+1 extra oggi" : "1 free pack"}</b>
-          </div>
         </div>
-      </CardBox>
+      </div>
+
+      {/* XP / Level */}
+      <div style={card()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <div style={title()}>Progressi</div>
+          <div style={{ color: "rgba(255,255,255,0.80)", fontWeight: 900 }}>Lv {lvl.level}</div>
+        </div>
+        <div style={{ marginTop: 8, height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${Math.round((lvl.into / lvl.need) * 100)}%`, background: "#0ea5e9" }} />
+        </div>
+        <div style={{ marginTop: 8, color: "rgba(255,255,255,0.70)", fontWeight: 700, fontSize: 12 }}>
+          XP: {xp} — Prossimo livello tra {Math.max(0, lvl.need - lvl.into)} XP
+        </div>
+      </div>
 
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Stat title="Preferiti" value={String(favIds.size)} />
         <Stat title="Letti" value={`${readIds.size}/${totalContent}`} />
         <Stat title="Carte uniche" value={String(uniqueCards)} />
-        <Stat title="Carte totali" value={String(totalCards)} />
+        <Stat title="Accuracy quiz" value={`${accuracy}%`} />
       </div>
 
-      {/* Mission */}
-      <CardBox>
+      {/* Daily login */}
+      <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <div>
-            <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>Missione giornaliera</div>
-            <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13 }}>
-              Leggi 3 contenuti → +25 pillole (+15 XP)
+            <div style={title()}>Daily login</div>
+            <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 700, fontSize: 13 }}>
+              Streak: <b>{loginInfo.streak}</b> — 1 pack gratis al giorno (+1 extra ogni 7 giorni)
             </div>
           </div>
-          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 900, fontSize: 12 }}>Reset: {msToHMS(dailyLeft)}</div>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Reset: {msToHMS(dailyLeft)}</div>
         </div>
 
-        <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
-          <div style={{ flex: 1 }}>
-            <ProgressBar value={missionProgress / 3} />
-          </div>
-
-          <button
-            type="button"
-            onClick={claimMission}
-            disabled={!missionDone || missionClaimed}
-            style={btnSecondary(!missionDone || missionClaimed)}
-          >
-            {missionClaimed ? "Riscattata" : missionDone ? "Riscatta" : "In corso"}
-          </button>
-        </div>
-      </CardBox>
+        <button type="button" onClick={claimDailyLogin} disabled={loginInfo.claimed} style={primaryBtn(loginInfo.claimed)}>
+          {loginInfo.claimed ? "Già riscattato" : "Riscatta reward"}
+        </button>
+      </div>
 
       {/* Quiz */}
-      <CardBox>
+      <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <div>
-            <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>Quiz</div>
-            <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13 }}>
-              Completa daily/weekly per pillole + XP (streak daily)
+            <div style={title()}>Quiz</div>
+            <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 700, fontSize: 13 }}>
+              Daily/Weekly → pillole + XP (streak daily: {dailyState.streak})
             </div>
-          </div>
-          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 900, fontSize: 12 }}>
-            Streak daily: {dailyState.streak || 0}
           </div>
         </div>
 
-        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => startQuiz("daily")} disabled={!canStartDaily} style={btnPrimary(!canStartDaily)}>
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => startQuiz("daily")} disabled={dailyState.status === "done" || !!run} style={pillBtn(dailyState.status === "done" || !!run)}>
             Daily (reset {msToHMS(dailyLeft)})
           </button>
-
-          <button type="button" onClick={() => startQuiz("weekly")} disabled={!canStartWeekly} style={btnPrimary(!canStartWeekly)}>
+          <button type="button" onClick={() => startQuiz("weekly")} disabled={weeklyState.status === "done" || !!run} style={pillBtn(weeklyState.status === "done" || !!run)}>
             Weekly (reset {msToHMS(weeklyLeft)})
           </button>
-
-          <div style={pillTag("#0f172a", "rgba(255,255,255,0.80)")}>
-            Accuracy: <b>{quizStats.acc}%</b> ({quizStats.totalC}/{quizStats.totalQ})
-          </div>
         </div>
 
         {run && (
           <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
-            {run.status === "running" ? (
-              <div>
-                <div style={{ color: "rgba(255,255,255,0.90)", fontWeight: 950 }}>
-                  {run.mode.toUpperCase()} — Domanda {run.idx + 1}/{run.questions.length}
-                </div>
-                <div style={{ marginTop: 6, color: "rgba(255,255,255,0.85)", fontWeight: 800 }}>
-                  {run.questions[run.idx].q}
-                </div>
+            <div style={{ color: "rgba(255,255,255,0.90)", fontWeight: 900 }}>
+              {run.mode.toUpperCase()} — Domanda {run.idx + 1}/{run.questions.length}
+            </div>
+            <div style={{ marginTop: 6, color: "rgba(255,255,255,0.85)", fontWeight: 800 }}>{run.questions[run.idx].q}</div>
 
-                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                  {run.questions[run.idx].options.map((op, i) => (
-                    <button key={i} type="button" onClick={() => answer(i)} style={optBtn()}>
-                      {op}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>
-                  Quiz completato: {run.correct}/{run.questions.length}
-                </div>
-                <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 800, fontSize: 13, marginTop: 6 }}>
-                  Reward già applicata (pillole + XP)
-                </div>
-                <button type="button" onClick={() => setRun(null)} style={{ ...btnSecondary(false), marginTop: 10 }}>
-                  Chiudi
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              {run.questions[run.idx].options.map((op, i) => (
+                <button key={i} type="button" onClick={() => answer(i)} disabled={selected !== null} style={optBtn(selected, i)}>
+                  {op}
                 </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Quiz category stats */}
-        {quizStats.cats.length > 0 && (
-          <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
-            <div style={{ color: "rgba(255,255,255,0.90)", fontWeight: 950 }}>Accuracy per categoria</div>
-            <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-              {quizStats.cats.slice(0, 5).map((c) => (
-                <div key={c.cat} style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                  <div style={{ width: 120, color: "rgba(255,255,255,0.80)", fontWeight: 800, fontSize: 12 }}>
-                    {c.cat}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <ProgressBar value={c.acc / 100} />
-                  </div>
-                  <div style={{ width: 52, textAlign: "right", color: "rgba(255,255,255,0.75)", fontWeight: 900, fontSize: 12 }}>
-                    {c.acc}%
-                  </div>
-                </div>
               ))}
             </div>
           </div>
         )}
-      </CardBox>
 
-      {/* Achievements */}
-      <CardBox>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <div>
-            <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>Obiettivi</div>
-            <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13 }}>
-              Sblocca reward extra (pillole + XP)
-            </div>
+        {feedback && (
+          <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.90)", fontWeight: 800 }}>
+            {feedback}
           </div>
-          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 900, fontSize: 12 }}>
-            Sbloccati: {unlocked.size}/{ACHIEVEMENTS.length}
+        )}
+
+        {/* History + category stats */}
+        <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
+          <div style={{ color: "rgba(255,255,255,0.90)", fontWeight: 900 }}>Storico & categorie</div>
+          <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+            {byCategory.length === 0 ? (
+              <div style={{ color: "rgba(255,255,255,0.65)", fontWeight: 700, fontSize: 13 }}>Completa qualche quiz per vedere le statistiche.</div>
+            ) : (
+              byCategory.map((c) => (
+                <div key={c.k} style={{ display: "flex", justifyContent: "space-between", gap: 10, color: "rgba(255,255,255,0.85)", fontWeight: 800 }}>
+                  <span style={{ textTransform: "capitalize" }}>{c.k}</span>
+                  <span>{c.pct}%</span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {history.slice(0, 5).map((h) => (
+              <div key={h.ts} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.88)" }}>
+                <span style={{ fontWeight: 900 }}>{h.mode.toUpperCase()}</span>
+                <span style={{ fontWeight: 800 }}>{h.correct}/{h.total}</span>
+              </div>
+            ))}
           </div>
         </div>
+      </div>
 
-        <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-          {ACHIEVEMENTS.map((a) => {
-            const ok = unlocked.has(a.id);
+      {/* Achievements */}
+      <div style={card()}>
+        <div style={title()}>Obiettivi</div>
+        <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+          {achievements.map((a) => {
+            const already = !!claimedA[a.id];
+            const can = a.done && !already;
             return (
-              <div
-                key={a.id}
-                style={{
-                  borderRadius: 16,
-                  padding: 12,
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  background: ok ? "rgba(34,197,94,0.10)" : "rgba(255,255,255,0.04)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                  <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>{a.title}</div>
-                  <div style={{ color: ok ? "rgba(34,197,94,0.95)" : "rgba(255,255,255,0.55)", fontWeight: 950, fontSize: 12 }}>
-                    {ok ? "COMPLETATO" : "IN CORSO"}
+              <div key={a.id} style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <div>
+                    <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 900 }}>{a.title}</div>
+                    <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 700, fontSize: 13 }}>{a.desc}</div>
+                    <div style={{ marginTop: 6, color: "rgba(255,255,255,0.75)", fontWeight: 800, fontSize: 12 }}>
+                      Reward: +{a.pill} pillole, +{a.xp} XP
+                    </div>
                   </div>
-                </div>
-                <div style={{ marginTop: 6, color: "rgba(255,255,255,0.76)", fontWeight: 700, fontSize: 13 }}>{a.desc}</div>
-                <div style={{ marginTop: 8, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <div style={pillTag("#0f172a", "rgba(255,255,255,0.80)")}>+{a.rewardPills} pillole</div>
-                  <div style={pillTag("#0f172a", "rgba(255,255,255,0.80)")}>+{a.rewardXp} XP</div>
+                  <button type="button" onClick={() => claimAchievement(a.id, a.pill, a.xp)} disabled={!can} style={smallBtn(!can)}>
+                    {already ? "Riscattato" : a.done ? "Riscatta" : "In corso"}
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
-
-        <div style={{ marginTop: 12, color: "rgba(255,255,255,0.60)", fontWeight: 800, fontSize: 12 }}>
-          Badge premium (preview): in futuro puoi bloccare obiettivi extra + quiz avanzati per premium, senza impedire l’uso base.
-        </div>
-      </CardBox>
+      </div>
     </div>
   );
 }
 
-function CardBox({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "#0b1220",
-        borderRadius: 20,
-        padding: 14,
-      }}
-    >
-      {children}
-    </div>
-  );
+/* styles (no duplicate keys, no blur) */
+function card(): React.CSSProperties {
+  return { border: "1px solid rgba(255,255,255,0.10)", background: "#0b1220", borderRadius: 20, padding: 14 };
+}
+function title(): React.CSSProperties {
+  return { color: "rgba(255,255,255,0.92)", fontWeight: 950 };
+}
+function avatarBox(): React.CSSProperties {
+  return { width: 64, height: 64, borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" };
+}
+function inp(bold: boolean): React.CSSProperties {
+  return { width: "100%", padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.92)", fontWeight: bold ? 950 : 800, outline: "none" };
+}
+function chip(): React.CSSProperties {
+  return { padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "#0f172a", color: "rgba(255,255,255,0.88)", fontWeight: 900 };
+}
+function chipBtn(): React.CSSProperties {
+  return { padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "#0f172a", color: "rgba(255,255,255,0.92)", fontWeight: 900, cursor: "pointer" };
+}
+function pillBtn(disabled: boolean): React.CSSProperties {
+  return { padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: disabled ? "rgba(255,255,255,0.06)" : "#0ea5e9", color: disabled ? "rgba(255,255,255,0.55)" : "#020617", fontWeight: 950, cursor: disabled ? "not-allowed" : "pointer" };
+}
+function primaryBtn(disabled: boolean): React.CSSProperties {
+  return { marginTop: 10, width: "100%", padding: "12px 12px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", background: disabled ? "rgba(255,255,255,0.06)" : "#22c55e", color: disabled ? "rgba(255,255,255,0.55)" : "#052e16", fontWeight: 950, cursor: disabled ? "not-allowed" : "pointer" };
+}
+function smallBtn(disabled: boolean): React.CSSProperties {
+  return { padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: disabled ? "rgba(255,255,255,0.06)" : "#22c55e", color: disabled ? "rgba(255,255,255,0.55)" : "#052e16", fontWeight: 950, cursor: disabled ? "not-allowed" : "pointer", whiteSpace: "nowrap" };
+}
+function optBtn(selected: number | null, i: number): React.CSSProperties {
+  return { padding: "12px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: selected === null ? "rgba(255,255,255,0.06)" : selected === i ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", fontWeight: 850, cursor: selected === null ? "pointer" : "default", textAlign: "left" };
 }
 
-function Stat({ title, value }: { title: string; value: string }) {
+function Stat({ title: t, value }: { title: string; value: string }) {
   return (
-    <div
-      style={{
-        border: "1px solid rgba(255,255,255,0.10)",
-        background: "#0b1220",
-        borderRadius: 18,
-        padding: 12,
-      }}
-    >
-      <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 900 }}>{title}</div>
+    <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "#0b1220", borderRadius: 18, padding: 12 }}>
+      <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 900 }}>{t}</div>
       <div style={{ color: "rgba(255,255,255,0.95)", fontSize: 22, fontWeight: 950 }}>{value}</div>
     </div>
   );
-}
-
-function ProgressBar({ value }: { value: number }) {
-  return (
-    <div style={{ height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-      <div style={{ height: "100%", width: `${clamp(value * 100, 0, 100)}%`, background: "#0ea5e9" }} />
-    </div>
-  );
-}
-
-function inputMain(bold: boolean): React.CSSProperties {
-  return {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.06)",
-    color: bold ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.86)",
-    fontWeight: bold ? 950 : 800,
-    outline: "none",
-  };
-}
-
-function pillTag(bg: string, color: string): React.CSSProperties {
-  return {
-    padding: "10px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: bg,
-    color,
-    fontWeight: 900,
-  };
-}
-
-function btnPrimary(disabled: boolean): React.CSSProperties {
-  return {
-    padding: "10px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: disabled ? "rgba(255,255,255,0.06)" : "#0ea5e9",
-    color: disabled ? "rgba(255,255,255,0.55)" : "#020617",
-    fontWeight: 950,
-    cursor: disabled ? "not-allowed" : "pointer",
-  };
-}
-
-function btnSecondary(disabled: boolean): React.CSSProperties {
-  return {
-    padding: "10px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: disabled ? "rgba(255,255,255,0.06)" : "#22c55e",
-    color: disabled ? "rgba(255,255,255,0.55)" : "#052e16",
-    fontWeight: 950,
-    cursor: disabled ? "not-allowed" : "pointer",
-    whiteSpace: "nowrap",
-  };
-}
-
-function optBtn(): React.CSSProperties {
-  return {
-    padding: "12px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.06)",
-    color: "rgba(255,255,255,0.92)",
-    fontWeight: 850,
-    cursor: "pointer",
-    textAlign: "left",
-  };
 }

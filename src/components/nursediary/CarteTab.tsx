@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+
+const LS_FREE_PACKS = "nd_free_packs";
 import { NURSE_CARDS, RARITY_PILL_VALUES, type NurseCard } from "@/features/cards/cards.data";
 import { getDuplicates, openPack, type CardCollection } from "@/features/cards/cards.logic";
 
 const LS_COLLECTION = "nd_card_collection";
-const LS_FREEPACK = "nd_free_pack";
 
 type View = "apri" | "collezione" | "scambia";
 
@@ -19,7 +20,6 @@ export function CarteTab({
 }): JSX.Element {
   const [view, setView] = useState<View>("apri");
   const [collection, setCollection] = useState<CardCollection>({});
-  const [freePacks, setFreePacks] = useState<number>(0);
   const [opened, setOpened] = useState<NurseCard[]>([]);
   const [opening, setOpening] = useState(false);
   const [modalCard, setModalCard] = useState<NurseCard | null>(null);
@@ -31,11 +31,27 @@ export function CarteTab({
     try {
       if (typeof window === "undefined") return;
       const raw = localStorage.getItem(LS_COLLECTION);
-      const rawFree = localStorage.getItem(LS_FREEPACK);
-      if (rawFree != null) setFreePacks(Number(rawFree) || 0);
-      
       setCollection(raw ? (JSON.parse(raw) as CardCollection) : {});
     } catch (e) {
+
+  const [freePacks, setFreePacks] = useState<number>(0);
+
+  // load free packs
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = localStorage.getItem(LS_FREE_PACKS);
+      if (raw != null) setFreePacks(Number(raw) || 0);
+    } catch {}
+  }, []);
+
+  // persist free packs
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(LS_FREE_PACKS, String(freePacks));
+    } catch {}
+  }, [freePacks]);
       console.error("Errore lettura collezione", e);
       setCollection({});
     }
@@ -46,11 +62,10 @@ export function CarteTab({
     try {
       if (typeof window === "undefined") return;
       localStorage.setItem(LS_COLLECTION, JSON.stringify(collection));
-      localStorage.setItem(LS_FREEPACK, String(freePacks));
     } catch (e) {
       console.error("Errore salvataggio collezione", e);
     }
-  }, [collection, freePacks]);
+  }, [collection]);
 
   const totalCards = useMemo(() => Object.values(collection).reduce((a, b) => a + b, 0), [collection]);
   const uniqueCards = useMemo(() => Object.keys(collection).length, [collection]);
@@ -71,15 +86,11 @@ export function CarteTab({
   }, [selectedDup]);
 
   const openOnePack = () => {
-    if (opening) return;
-
-    // ✅ free pack bonus (daily login / rewards)
-    const useFree = freePacks > 0;
-
-    if (!useFree && pills < packCost) {
+    if (pills < packCost) {
       setToast("Pillole insufficienti per aprire una bustina.");
       return;
     }
+    if (opening) return;
 
     setOpening(true);
     setToast("Apertura bustina...");
@@ -88,11 +99,7 @@ export function CarteTab({
     // Piccola animazione prima del reveal
     window.setTimeout(() => {
       setOpened(drawn);
-      if (useFree) {
-        setFreePacks((n) => Math.max(0, n - 1));
-      } else {
-        setPills(pills - packCost);
-      }
+      setPills(pills - packCost);
       setCollection((prev) => {
         const next = { ...prev };
         for (const c of drawn) next[c.id] = (next[c.id] ?? 0) + 1;
@@ -162,7 +169,6 @@ export function CarteTab({
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Chip label={`💊 Pillole: ${pills}`} />
           <Chip label={`Bustina: ${packCost} pillole`} />
-          <Chip label={`Free pack: ${freePacks}`} />
           <Chip label={`Collezione: ${uniqueCards} / ${NURSE_CARDS.length} (tot: ${totalCards})`} />
         </div>
 
@@ -218,7 +224,34 @@ export function CarteTab({
               />
             </div>
 
-            <button
+            
+              <button
+                type="button"
+                onClick={() => {
+                  if (freePacks <= 0) return;
+                  try {
+                    // 1-2 cards free for daily bonus
+                    const res = openPack(1 + Math.floor(Math.random() * 2));
+                    setPulled(res);
+                    setFreePacks((v) => Math.max(0, v - 1));
+                  } catch (e) {
+                    console.error(e);
+                  }
+                }}
+                disabled={freePacks <= 0 || opening}
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: freePacks > 0 && !opening ? "#22c55e" : "rgba(255,255,255,0.06)",
+                  color: freePacks > 0 && !opening ? "#052e16" : "rgba(255,255,255,0.60)",
+                  fontWeight: 900,
+                  cursor: freePacks > 0 && !opening ? "pointer" : "not-allowed",
+                }}
+              >
+                Apri bustina GRATIS ({freePacks})
+              </button>
+<button
               type="button"
               onClick={openOnePack}
               style={{
@@ -227,14 +260,14 @@ export function CarteTab({
                 padding: "12px 14px",
                 borderRadius: 14,
                 border: "1px solid rgba(255,255,255,0.14)",
-                background: (freePacks > 0 || pills >= packCost) ? "rgba(14,165,233,0.18)" : "rgba(255,255,255,0.06)",
-                color: (freePacks > 0 || pills >= packCost) ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.65)",
+                background: pills >= packCost ? "rgba(14,165,233,0.18)" : "rgba(255,255,255,0.06)",
+                color: pills >= packCost ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.65)",
                 fontWeight: 800,
-                cursor: (freePacks > 0 || pills >= packCost) ? "pointer" : "not-allowed",
+                cursor: pills >= packCost ? "pointer" : "not-allowed",
               }}
-              disabled={freePacks <= 0 && pills < packCost}
+              disabled={pills < packCost}
             >
-              Apri bustina {freePacks > 0 ? "(FREE)" : `(${packCost} pillole)`}
+              Apri bustina ({packCost} pillole)
             </button>
           </div>
 
