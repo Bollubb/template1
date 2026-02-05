@@ -7,6 +7,7 @@ import styles from "../styles/Home.module.css";
 
 import { ContentCard } from "../components/nursediary/ContentCard";
 import { CarteTab } from "../components/nursediary/CarteTab";
+import { ProfileTab } from "../components/nursediary/ProfileTab";
 import NurseBottomNav, { type NurseTab } from "../components/nursediary/NurseBottomNav";
 
 import type { ContentItem } from "../types/nursediary/types";
@@ -511,12 +512,16 @@ export default function Home(): JSX.Element {
       {/* PROFILO */}
       {activeTab === "profilo" && (
         <Section>
-          <h2 style={{ color: "rgba(255,255,255,0.92)" }}>Profilo</h2>
-          <p style={{ color: "rgba(255,255,255,0.70)" }}>Work in progress.</p>
+          <ProfileTab
+            pills={pills}
+            setPills={setPills}
+            favoritesCount={favoriteIds.size}
+            readCount={readIds.size}
+            totalContent={items.length}
+          />
         </Section>
       )}
-
-      <NurseBottomNav active={activeTab} onChange={setActiveTab} />
+<NurseBottomNav active={activeTab} onChange={setActiveTab} />
     </Page>
   );
 }
