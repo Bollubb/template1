@@ -512,8 +512,7 @@ export default function Home(): JSX.Element {
       {/* PROFILO */}
       {activeTab === "profilo" && (
         <Section>
-          <h2 style={{ color: "rgba(255,255,255,0.92)" }}>Profilo</h2>
-          <p style={{ color: "rgba(255,255,255,0.70)" }}>Work in progress.</p>
+          <ProfileTab pills={pills} setPills={setPills} totalContent={items.length} />
         </Section>
       )}
 
