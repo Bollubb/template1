@@ -16,28 +16,50 @@ export default function HomePage() {
   const [onlyFav, setOnlyFav] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
+  // 💊 SISTEMA CARTE (obbligatorio per CarteTab)
+  const [pills, setPills] = useState<number>(0);
+  const packCost = 30;
+
+  /* ===== INIT ===== */
   useEffect(() => {
     fetchContentItems().then(setItems);
-    const saved = localStorage.getItem("nd_favorites");
-    if (saved) setFavoriteIds(new Set(JSON.parse(saved)));
+
+    const savedFav = localStorage.getItem("nd_favorites");
+    if (savedFav) setFavoriteIds(new Set(JSON.parse(savedFav)));
+
+    const savedPills = localStorage.getItem("nd_pills");
+    if (savedPills) setPills(Number(savedPills));
   }, []);
 
-useEffect(() => {
-  if (typeof window === "undefined") return;
-  localStorage.setItem("nd_favorites", JSON.stringify(Array.from(favoriteIds)));
-}, [favoriteIds]);
-  
- const categories = useMemo(() => {
+  /* ===== PERSIST FAVORITES ===== */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(
+      "nd_favorites",
+      JSON.stringify(Array.from(favoriteIds))
+    );
+  }, [favoriteIds]);
+
+  /* ===== PERSIST PILLS ===== */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("nd_pills", String(pills));
+  }, [pills]);
+
+  /* ===== CATEGORIES ===== */
+  const categories = useMemo(() => {
     const set = new Set<string>();
     items.forEach((i) => i.category && set.add(i.category));
     return ["all", ...Array.from(set)];
   }, [items]);
 
+  /* ===== FILTER ===== */
   const filtered = useMemo(() => {
     return items.filter((i) => {
       if (onlyFav && !favoriteIds.has(i.id)) return false;
       if (category !== "all" && i.category !== category) return false;
       if (!query) return true;
+
       const q = query.toLowerCase();
       return (
         i.title.toLowerCase().includes(q) ||
@@ -50,7 +72,7 @@ useEffect(() => {
 
   return (
     <Page title="Home">
-      {/* HERO — SOLO DIDATTICA */}
+      {/* ===== HERO (SOLO DIDATTICA) ===== */}
       {activeTab === "didattica" && (
         <section className={styles.hero}>
           <h1 className={styles.title}>NurseDiary</h1>
@@ -60,13 +82,17 @@ useEffect(() => {
           </p>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-            <div className="pill">Contenuti: <b>{items.length}</b></div>
-            <div className="pill">Preferiti: <b>{favoriteIds.size}</b></div>
+            <div className="pill">
+              Contenuti: <b>{items.length}</b>
+            </div>
+            <div className="pill">
+              Preferiti: <b>{favoriteIds.size}</b>
+            </div>
           </div>
         </section>
       )}
 
-      {/* DIDATTICA */}
+      {/* ===== DIDATTICA ===== */}
       {activeTab === "didattica" && (
         <section className={styles.grid}>
           <input
@@ -99,26 +125,27 @@ useEffect(() => {
 
           {filtered.map((item) => (
             <ContentCard
-  key={item.id}
-  item={item}
-  isFavorite={favoriteIds.has(item.id)}
-  onToggleFavorite={(id) => {
-    setFavoriteIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }}
-/>
-
+              key={item.id}
+              item={item}
+              isFavorite={favoriteIds.has(item.id)}
+              onToggleFavorite={(id) => {
+                setFavoriteIds((prev) => {
+                  const next = new Set(prev);
+                  next.has(id) ? next.delete(id) : next.add(id);
+                  return next;
+                });
+              }}
+            />
           ))}
         </section>
       )}
 
-      {/* CARTE */}
-      {activeTab === "carte" && <CarteTab />}
+      {/* ===== CARTE ===== */}
+      {activeTab === "carte" && (
+        <CarteTab pills={pills} setPills={setPills} packCost={packCost} />
+      )}
 
-      {/* OPZIONI */}
+      {/* ===== OPZIONI ===== */}
       {activeTab === "opzioni" && (
         <section className={styles.grid}>
           <h2>Opzioni</h2>
@@ -126,7 +153,7 @@ useEffect(() => {
         </section>
       )}
 
-      {/* PROFILO */}
+      {/* ===== PROFILO ===== */}
       {activeTab === "profilo" && (
         <section className={styles.grid}>
           <h2>Profilo</h2>
@@ -134,18 +161,30 @@ useEffect(() => {
         </section>
       )}
 
-      {/* BOTTOM NAV */}
+      {/* ===== BOTTOM NAV ===== */}
       <nav className="bottom-nav">
-        <button onClick={() => setActiveTab("didattica")} data-active={activeTab === "didattica"}>
+        <button
+          onClick={() => setActiveTab("didattica")}
+          data-active={activeTab === "didattica"}
+        >
           Didattica
         </button>
-        <button onClick={() => setActiveTab("carte")} data-active={activeTab === "carte"}>
+        <button
+          onClick={() => setActiveTab("carte")}
+          data-active={activeTab === "carte"}
+        >
           Carte
         </button>
-        <button onClick={() => setActiveTab("opzioni")} data-active={activeTab === "opzioni"}>
+        <button
+          onClick={() => setActiveTab("opzioni")}
+          data-active={activeTab === "opzioni"}
+        >
           Opzioni
         </button>
-        <button onClick={() => setActiveTab("profilo")} data-active={activeTab === "profilo"}>
+        <button
+          onClick={() => setActiveTab("profilo")}
+          data-active={activeTab === "profilo"}
+        >
           Profilo
         </button>
       </nav>
