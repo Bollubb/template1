@@ -22,11 +22,12 @@ export default function HomePage() {
     if (saved) setFavoriteIds(new Set(JSON.parse(saved)));
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
+  if (typeof window === "undefined") return;
   localStorage.setItem("nd_favorites", JSON.stringify(Array.from(favoriteIds)));
-
-
-  const categories = useMemo(() => {
+}, [favoriteIds]);
+  
+ const categories = useMemo(() => {
     const set = new Set<string>();
     items.forEach((i) => i.category && set.add(i.category));
     return ["all", ...Array.from(set)];
