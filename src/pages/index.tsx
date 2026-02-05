@@ -28,7 +28,7 @@ export default function Home(): JSX.Element {
   const [categoria, setCategoria] = useState("Tutte");
 
   // Search + only favorites
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(""); 
   const [onlyFavorites, setOnlyFavorites] = useState(false);
 
   // Favorites storage
@@ -65,16 +65,13 @@ export default function Home(): JSX.Element {
     try {
       if (typeof window === "undefined") return;
 
-      // favorites
       const rawFav = localStorage.getItem(LS.favorites);
       const favArr = rawFav ? (JSON.parse(rawFav) as string[]) : [];
       setFavoriteIds(new Set(favArr));
 
-      // pills
       const rawPills = localStorage.getItem(LS.pills);
       setPills(rawPills ? Number(rawPills) : 0);
 
-      // pack cost
       const rawCost = localStorage.getItem(LS.packCost);
       setPackCost(rawCost ? Number(rawCost) : 30);
     } catch (e) {
@@ -82,7 +79,6 @@ export default function Home(): JSX.Element {
     }
   }, []);
 
-  // Persist favorites
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
@@ -92,7 +88,6 @@ export default function Home(): JSX.Element {
     }
   }, [favoriteIds]);
 
-  // Persist cards economy
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
@@ -148,7 +143,7 @@ export default function Home(): JSX.Element {
         <meta name="description" content="NurseDiary – didattica, quiz e carte formative" />
       </Head>
 
-      {/* HERO / HOME (ripristinata “rifinita”) */}
+      {/* HERO / HOME – SENZA SHAPE ASSOLUTE */}
       <Section className={styles.hero}>
         <h1 className={styles.title}>NurseDiary</h1>
         <p className={styles.subtitle}>
@@ -187,7 +182,6 @@ export default function Home(): JSX.Element {
         <Section>
           <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Didattica</h2>
 
-          {/* Controls */}
           <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
             <input
               value={query}
@@ -220,7 +214,6 @@ export default function Home(): JSX.Element {
             </div>
           </div>
 
-          {/* Category chips */}
           <div className={styles.filters}>
             {categorie.map((c) => (
               <button
@@ -246,7 +239,7 @@ export default function Home(): JSX.Element {
             >
               <div style={{ fontWeight: 700, marginBottom: 6 }}>Nessun contenuto trovato</div>
               <div style={{ color: "rgba(255,255,255,0.70)" }}>
-                Controlla che <code>/public/contenuti.csv</code> esista e sia raggiungibile, oppure modifica filtri/ricerca.
+                Controlla che <code>/public/contenuti.csv</code> esista e sia raggiungibile.
               </div>
             </div>
           ) : (
@@ -268,7 +261,6 @@ export default function Home(): JSX.Element {
         <Section>
           <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Carte</h2>
 
-          {/* Recupero impostazioni base “economia” */}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
             <div
               style={{
