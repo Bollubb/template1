@@ -56,5 +56,6 @@
 }
 
 .filters button[data-active="true"] {
-  @apply bg-white/15 border-white/20 text-white;
+  @apply bg-white/10 border-white/20 text-white;
 }
+
