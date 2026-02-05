@@ -503,7 +503,8 @@ function rarityAura(rarity: NurseCard["rarity"]) {
   const c = rarityColor(rarity);
   return {
     boxShadow: `0 0 0 1px ${c.br}, 0 0 36px ${c.bg}`,
-    background: `radial-gradient(120% 120% at 50% 0%, ${c.bg} 0%, rgba(2,6,23,0.35) 60%)`,
+    // ✅ use backgroundImage to avoid duplicate 'background' keys in callers
+    backgroundImage: `radial-gradient(120% 120% at 50% 0%, ${c.bg} 0%, rgba(2,6,23,0) 60%)`,
   } satisfies React.CSSProperties;
 }
 
