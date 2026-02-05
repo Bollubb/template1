@@ -16,13 +16,15 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
         <meta name="theme-color" content="#0b1220" />
       </Head>
 
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "radial-gradient(1200px 700px at 50% -10%, rgba(59,130,246,0.35), rgba(2,6,23,1) 55%)",
-          color: "rgba(255,255,255,0.92)",
-        }}
-      >
+   <div
+  style={{
+    minHeight: "100vh",
+    overflowX: "hidden",
+    background: "radial-gradient(1200px 700px at 50% -10%, rgba(59,130,246,0.35), rgba(2,6,23,1) 55%)",
+    color: "rgba(255,255,255,0.92)",
+  }}
+>
+
         <header
           style={{
             position: "sticky",
