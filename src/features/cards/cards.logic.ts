@@ -4,10 +4,15 @@ export type CardCollection = Record<string, number>;
 
 // Drop-rate iniziali (facili da cambiare): somma = 1
 export const PACK_DROP: Record<CardRarity, number> = {
-  comune: 0.82,
-  rara: 0.16,
-  epica: 0.019,
-  leggendaria: 0.001,
+  // Bilanciate per una collezione "fattibile" ma con hype:
+  // - Comuni: frequenti
+  // - Rare: abbastanza presenti
+  // - Epiche: occasionali
+  // - Leggendarie: molto rare
+  comune: 0.75,
+  rara: 0.20,
+  epica: 0.045,
+  leggendaria: 0.005,
 };
 
 export function pickRarity(rng: () => number = Math.random): CardRarity {
