@@ -1,5 +1,6 @@
 import Head from "next/head";
 import React from "react";
+import { ToastProvider } from "../components/nursediary/Toast";
 
 export type PageProps = {
   title?: string;
@@ -16,6 +17,7 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
         <meta name="theme-color" content="#020617" />
       </Head>
 
+      <ToastProvider>
       <div
         style={{
           minHeight: "100vh",

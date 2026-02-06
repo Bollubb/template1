@@ -15,6 +15,7 @@ export default function Section({ children, className, style }: Props): JSX.Elem
         maxWidth: 520,
         margin: "0 auto",
         padding: "12px 14px",
+        paddingBottom: 96, // spazio per bottom nav
         ...style,
       }}
     >
