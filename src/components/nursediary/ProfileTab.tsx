@@ -607,7 +607,7 @@ const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Inf
                           addXpGlobal(tierDef.xp);
                           toast.push(`+${tierDef.xp} XP`, "success");
                         }
-                        if (tierDef.pack) setFreePacks((v) => v + tierDef.pack);
+                        if ("pack" in tierDef && (tierDef as any).pack) setFreePacks((v) => v + (tierDef as any).pack);
                         setClaimed(m.scope, m.id, nextTier);
                         toast.push(`Missione completata: +${tierDef.pills} 💊`, "success");
                       }}
