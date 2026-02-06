@@ -65,6 +65,7 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
           <small>© {new Date().getFullYear()} NurseDiary</small>
         </footer>
       </div>
+      </ToastProvider>
     </>
   );
 }
