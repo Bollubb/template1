@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import type { ContentItem } from "@/types/nursediary/types";
+import { incDailyCounter } from "@/features/progress/dailyCounters";
 
 export function ContentCard({
   item,

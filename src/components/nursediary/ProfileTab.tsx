@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+import { useToast } from "./Toast";
+import { addXp as addXpGlobal, getWeeklyXpMap } from "@/features/progress/xp";
+import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/features/progress/dailyCounters";
+
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import {
   calcDailyReward,
@@ -91,7 +95,9 @@ export default function ProfileTab({
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
 }) {
-  const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
+  
+  const toast = useToast();
+const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
   const [avatar, setAvatar] = useState<string | null>(null);
   const [premium, setPremium] = useState<boolean>(false);
 
@@ -101,6 +107,38 @@ export default function ProfileTab({
 
   const [xp, setXp] = useState<number>(0);
   const [freePacks, setFreePacks] = useState<number>(0);
+
+  const [missionTick, setMissionTick] = useState(0);
+  const dayKey = useMemo(() => new Date().toISOString().slice(0, 10), [missionTick]);
+  const weekKey = useMemo(() => {
+    const d = new Date();
+    // ISO-ish week key
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${date.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+  }, [missionTick]);
+
+  const LS_MISSIONS = "nd_mission_claims_v1" as const;
+  function getClaimed(scope: string, id: string): number {
+    if (!isBrowser()) return 0;
+    const raw = localStorage.getItem(LS_MISSIONS);
+    const map = safeJson<Record<string, number>>(raw, {});
+    return map[`${scope}:${id}`] || 0;
+  }
+  function setClaimed(scope: string, id: string, tier: number) {
+    if (!isBrowser()) return;
+    const raw = localStorage.getItem(LS_MISSIONS);
+    const map = safeJson<Record<string, number>>(raw, {});
+    map[`${scope}:${id}`] = Math.max(map[`${scope}:${id}`] || 0, tier);
+    try {
+      localStorage.setItem(LS_MISSIONS, JSON.stringify(map));
+    } catch {}
+    setMissionTick((t) => t + 1);
+  }
+
 
   const [dailyLeft, setDailyLeft] = useState(0);
   const [weeklyLeft, setWeeklyLeft] = useState(0);
@@ -224,6 +262,7 @@ export default function ProfileTab({
     const bonusXp = 15 + Math.min(25, loginInfo.streak * 2);
     setPills((p) => p + bonusPills);
     setXp((x) => x + bonusXp);
+    addXpGlobal(bonusXp);
 
     // 1 free pack per day
     setFreePacks((v) => v + 1);
@@ -235,6 +274,10 @@ export default function ProfileTab({
     setLoginInfo(next);
     if (isBrowser()) localStorage.setItem(LS.login, JSON.stringify(next));
     setFeedback(`Login reward: +${bonusPills} pillole, +${bonusXp} XP, +pack GRATIS`);
+    setDailyFlag("nd_daily_login_claimed", true);
+    toast.push(`+${bonusPills} 💊`, "success");
+    toast.push(`+${bonusXp} XP`, "success");
+    incDailyCounter("nd_daily_login_claimed_count", 1);
   }
 
   // Achievements (obiettivi)
@@ -264,6 +307,7 @@ export default function ProfileTab({
     setClaimedA((p) => ({ ...p, [id]: true }));
     setPills((v) => v + pill);
     setXp((v) => v + addXp);
+    addXpGlobal(addXp);
     setFeedback(`Obiettivo completato: +${pill} pillole, +${addXp} XP`);
   }
 
@@ -326,8 +370,12 @@ export default function ProfileTab({
 
       // pillole + XP
       setPills((p) => p + reward);
+      incDailyCounter("nd_daily_quiz_done", 1);
+      toast.push(`+${reward} 💊`, "success");
       const xpGain = 20 + nextCorrect * (run.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
       setXp((x) => x + xpGain);
+    addXpGlobal(xpGain);
+      toast.push(`+${xpGain} XP`, "success");
 
       const item: QuizHistoryItem = {
         ts: Date.now(),
@@ -436,7 +484,144 @@ export default function ProfileTab({
         </button>
       </div>
 
-      {/* Quiz */}
+      
+      {/* Missioni (tier) */}
+      <div style={card()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div style={title()}>Missioni</div>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Step 1 → 2 → 3</div>
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13, marginTop: 6 }}>
+          Completa uno step, riscotta la reward, poi si sblocca lo step successivo (più difficile).
+        </div>
+
+        {(() => {
+          const dailyReads = getDailyCounter("nd_daily_reads");
+          const dailyUtility = getDailyCounter("nd_daily_utility_used");
+          const dailyPacks = getDailyCounter("nd_daily_packs_opened");
+          const dailyRecycled = getDailyCounter("nd_daily_recycled");
+
+          const weeklyXp = (getWeeklyXpMap()[weekKey] || 0);
+
+          const missions = [
+            {
+              id: "reads",
+              scope: dayKey,
+              label: "📚 Letture oggi",
+              progress: dailyReads,
+              tiers: [
+                { need: 3, pills: 25, xp: 10 },
+                { need: 7, pills: 60, xp: 25 },
+                { need: 15, pills: 120, xp: 60, pack: 1 },
+              ],
+            },
+            {
+              id: "utility",
+              scope: dayKey,
+              label: "🛠 Utility oggi",
+              progress: dailyUtility,
+              tiers: [
+                { need: 1, pills: 15, xp: 10 },
+                { need: 3, pills: 40, xp: 25 },
+                { need: 6, pills: 90, xp: 55 },
+              ],
+            },
+            {
+              id: "packs",
+              scope: dayKey,
+              label: "🎴 Bustine oggi",
+              progress: dailyPacks,
+              tiers: [
+                { need: 1, pills: 10, xp: 10 },
+                { need: 3, pills: 35, xp: 25 },
+                { need: 6, pills: 80, xp: 55 },
+              ],
+            },
+            {
+              id: "recycle",
+              scope: dayKey,
+              label: "♻️ Riciclo oggi",
+              progress: dailyRecycled,
+              tiers: [
+                { need: 2, pills: 15, xp: 10 },
+                { need: 8, pills: 45, xp: 25 },
+                { need: 20, pills: 110, xp: 60 },
+              ],
+            },
+            {
+              id: "weekly_xp",
+              scope: weekKey,
+              label: "🏁 XP settimanali",
+              progress: weeklyXp,
+              tiers: [
+                { need: 120, pills: 60, xp: 0 },
+                { need: 320, pills: 120, xp: 0, pack: 1 },
+                { need: 600, pills: 220, xp: 0, pack: 2 },
+              ],
+            },
+          ] as const;
+
+          return (
+            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+              {missions.map((m) => {
+                const claimed = getClaimed(m.scope, m.id);
+                const nextTier = Math.min(3, claimed + 1);
+                const tierDef = m.tiers[nextTier - 1];
+                const done = m.progress >= tierDef.need;
+                const maxed = claimed >= 3;
+
+                return (
+                  <div
+                    key={`${m.scope}:${m.id}`}
+                    style={{
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      borderRadius: 16,
+                      padding: 12,
+                      background: maxed ? "rgba(34,197,94,0.10)" : "#0f172a",
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                      <div style={{ fontWeight: 950 }}>{m.label}</div>
+                      <div style={{ opacity: 0.8, fontWeight: 900, fontSize: 12 }}>
+                        Step {maxed ? 3 : nextTier}/3
+                      </div>
+                    </div>
+
+                    <div style={{ opacity: 0.8, fontWeight: 800, fontSize: 12 }}>
+                      Progresso: {m.progress}/{tierDef.need} • Reward: +{tierDef.pills} 💊 {tierDef.xp ? `+${tierDef.xp} XP` : ""} {tierDef.pack ? `+${tierDef.pack} 🎁` : ""}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={maxed || !done}
+                      onClick={() => {
+                        if (maxed || !done) return;
+                        // grant
+                        setPills((p) => p + tierDef.pills);
+                        if (tierDef.xp) {
+                          setXp((x) => x + tierDef.xp);
+                          addXpGlobal(tierDef.xp);
+                          toast.push(`+${tierDef.xp} XP`, "success");
+                        }
+                        if (tierDef.pack) setFreePacks((v) => v + tierDef.pack);
+                        setClaimed(m.scope, m.id, nextTier);
+                        toast.push(`Missione completata: +${tierDef.pills} 💊`, "success");
+                      }}
+                      style={primaryBtn(maxed || !done)}
+                    >
+                      {maxed ? "Completata" : done ? "Riscatta reward" : "In corso"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </div>
+
+{/* Quiz */}
       <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <div>
@@ -573,6 +758,50 @@ function Stat({ title: t, value }: { title: string; value: string }) {
     <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "#0b1220", borderRadius: 18, padding: 12 }}>
       <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 900 }}>{t}</div>
       <div style={{ color: "rgba(255,255,255,0.95)", fontSize: 22, fontWeight: 950 }}>{value}</div>
+      {/* Classifica (locale) */}
+      <div style={card()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div style={title()}>Classifica (locale)</div>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Solo sul dispositivo • pronta per globale</div>
+        </div>
+
+        {(() => {
+          const map = getWeeklyXpMap();
+          const items = Object.entries(map)
+            .map(([k, v]) => ({ k, v }))
+            .sort((a, b) => b.v - a.v)
+            .slice(0, 5);
+
+          const current = map[weekKey] || 0;
+
+          return (
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Stat title="XP settimana" value={String(current)} />
+                <Stat title="Top settimana" value={String(items[0]?.v ?? 0)} />
+              </div>
+
+              <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 18, padding: 12, background: "#0f172a" }}>
+                <div style={{ fontWeight: 950, marginBottom: 8 }}>Top settimane (XP)</div>
+                {items.length === 0 ? (
+                  <div style={{ opacity: 0.75, fontWeight: 800, fontSize: 13 }}>Inizia a guadagnare XP per vedere la classifica.</div>
+                ) : (
+                  <div style={{ display: "grid", gap: 6 }}>
+                    {items.map((it, i) => (
+                      <div key={it.k} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontWeight: 900, fontSize: 13 }}>
+                        <div style={{ opacity: 0.85 }}>#{i + 1} • {it.k}</div>
+                        <div style={{ opacity: 0.95 }}>{it.v} XP</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+
+
     </div>
   );
 }

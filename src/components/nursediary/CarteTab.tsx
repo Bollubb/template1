@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import { NURSE_CARDS, type CardRarity, type NurseCard } from "../../features/cards/cards.data";
-import { openPack } from "../../features/cards/cards.logic";
+import { PACK_DROP, getDuplicates } from "../../features/cards/cards.logic";
+import { incDailyCounter } from "@/features/progress/dailyCounters";
+import { useToast } from "./Toast";
 
 import { CardCollection, type CardCollectionItem } from "./CardCollection";
 import { CardModal, type CardModalItem } from "./CardModal";
@@ -9,7 +11,17 @@ import { CardModal, type CardModalItem } from "./CardModal";
 const LS = {
   collection: "nd_card_collection",
   freePacks: "nd_free_packs",
+  pity: "nd_pity_v1",
 } as const;
+
+type PityState = { sinceEpic: number; sinceLegend: number };
+
+const RECYCLE: Record<CardRarity, number> = {
+  comune: 2,
+  rara: 6,
+  epica: 16,
+  leggendaria: 40,
+};
 
 function safeJson<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -41,6 +53,54 @@ function rarityTextStyle(r: CardRarity): React.CSSProperties {
   return { color: "#9ca3af", fontWeight: 900 };
 }
 
+function pickRarity(rng: () => number): CardRarity {
+  const x = rng();
+  let acc = 0;
+  const order: CardRarity[] = ["comune", "rara", "epica", "leggendaria"];
+  for (const r of order) {
+    acc += PACK_DROP[r];
+    if (x <= acc) return r;
+  }
+  return "comune";
+}
+
+function pickCardByRarity(cards: NurseCard[], rarity: CardRarity, rng: () => number): NurseCard {
+  const pool = cards.filter((c) => c.rarity === rarity);
+  if (!pool.length) return cards[Math.floor(rng() * cards.length)];
+  return pool[Math.floor(rng() * pool.length)];
+}
+
+function openPackWithPity(cards: NurseCard[], pity: PityState, rng: () => number = Math.random): { pulls: NurseCard[]; next: PityState } {
+  const count = rng() < 0.3 ? 2 : 1;
+  const pulls: NurseCard[] = [];
+  let next = { ...pity };
+
+  for (let i = 0; i < count; i += 1) {
+    // pity priority: legend > epic
+    let forced: CardRarity | null = null;
+    if (next.sinceLegend >= 25) forced = "leggendaria";
+    else if (next.sinceEpic >= 10) forced = "epica";
+
+    const rarity = forced ?? pickRarity(rng);
+    const card = pickCardByRarity(cards, rarity, rng);
+    pulls.push(card);
+
+    // update pity counters
+    if (rarity === "leggendaria") {
+      next.sinceLegend = 0;
+      next.sinceEpic = 0;
+    } else if (rarity === "epica") {
+      next.sinceEpic = 0;
+      next.sinceLegend += 1;
+    } else {
+      next.sinceEpic += 1;
+      next.sinceLegend += 1;
+    }
+  }
+
+  return { pulls, next };
+}
+
 export function CarteTab({
   pills,
   setPills,
@@ -50,12 +110,17 @@ export function CarteTab({
   setPills: React.Dispatch<React.SetStateAction<number>>;
   packCost: number;
 }) {
+  const toast = useToast();
+
   const [owned, setOwned] = useState<Record<string, number>>({});
   const [opening, setOpening] = useState(false);
   const [lastPull, setLastPull] = useState<NurseCard[] | null>(null);
 
   // ✅ FREE PACKS
   const [freePacks, setFreePacks] = useState<number>(0);
+
+  // ✅ pity
+  const [pity, setPity] = useState<PityState>({ sinceEpic: 0, sinceLegend: 0 });
 
   // modal
   const [modalCard, setModalCard] = useState<CardModalItem | null>(null);
@@ -69,6 +134,9 @@ export function CarteTab({
 
     const fp = Number(localStorage.getItem(LS.freePacks) || "0");
     setFreePacks(Number.isFinite(fp) ? fp : 0);
+
+    const ps = safeJson<PityState>(localStorage.getItem(LS.pity), { sinceEpic: 0, sinceLegend: 0 });
+    setPity(ps);
   }, []);
 
   // persist collection
@@ -87,6 +155,14 @@ export function CarteTab({
     } catch {}
   }, [freePacks]);
 
+  // persist pity
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(LS.pity, JSON.stringify(pity));
+    } catch {}
+  }, [pity]);
+
   const cards: CardCollectionItem[] = useMemo(() => {
     return NURSE_CARDS.map((c) => ({
       id: c.id,
@@ -95,6 +171,24 @@ export function CarteTab({
       rarity: c.rarity,
     }));
   }, []);
+
+  const completion = useMemo(() => {
+    const unique = Object.keys(owned).filter((k) => (owned[k] || 0) > 0).length;
+    return { unique, total: NURSE_CARDS.length };
+  }, [owned]);
+
+  const duplicates = useMemo(() => getDuplicates(owned), [owned]);
+  const recyclePreview = useMemo(() => {
+    let pillsGain = 0;
+    let cardsCount = 0;
+    for (const [id, n] of Object.entries(duplicates)) {
+      const card = NURSE_CARDS.find((c) => c.id === id);
+      if (!card) continue;
+      cardsCount += n;
+      pillsGain += (RECYCLE[card.rarity] || 0) * n;
+    }
+    return { pillsGain, cardsCount };
+  }, [duplicates]);
 
   function addToCollection(pulls: NurseCard[]) {
     setOwned((prev) => {
@@ -109,10 +203,15 @@ export function CarteTab({
     setOpening(true);
 
     window.setTimeout(() => {
-      const pulls = openPack(NURSE_CARDS);
-      addToCollection(pulls);
-      setLastPull(pulls);
+      const res = openPackWithPity(NURSE_CARDS, pity);
+      addToCollection(res.pulls);
+      setLastPull(res.pulls);
+      setPity(res.next);
+
       setPills((p) => p - packCost);
+      incDailyCounter("nd_daily_packs_opened", 1);
+      toast.push(`Bustina aperta (-${packCost} 💊)`, "info");
+
       setOpening(false);
     }, 850);
   }
@@ -122,13 +221,40 @@ export function CarteTab({
     setOpening(true);
 
     window.setTimeout(() => {
-      // Free pack: 1–2 carte come openPack (già 70/30)
-      const pulls = openPack(NURSE_CARDS);
-      addToCollection(pulls);
-      setLastPull(pulls);
+      const res = openPackWithPity(NURSE_CARDS, pity);
+      addToCollection(res.pulls);
+      setLastPull(res.pulls);
+      setPity(res.next);
+
       setFreePacks((n) => Math.max(0, n - 1));
+      incDailyCounter("nd_daily_packs_opened", 1);
+      toast.push("Bustina GRATIS aperta 🎁", "success");
+
       setOpening(false);
     }, 850);
+  }
+
+  function recycleAllDuplicates() {
+    if (recyclePreview.cardsCount <= 0) return;
+
+    // remove duplicates (keep 1 copy)
+    const nextOwned = { ...owned };
+    let pillsGain = 0;
+    let removed = 0;
+
+    for (const [id, n] of Object.entries(duplicates)) {
+      const card = NURSE_CARDS.find((c) => c.id === id);
+      if (!card) continue;
+      // subtract duplicates
+      nextOwned[id] = (nextOwned[id] || 0) - n;
+      removed += n;
+      pillsGain += (RECYCLE[card.rarity] || 0) * n;
+    }
+
+    setOwned(nextOwned);
+    setPills((p) => p + pillsGain);
+    incDailyCounter("nd_daily_recycled", removed);
+    toast.push(`Riciclo: +${pillsGain} 💊`, "success");
   }
 
   return (
@@ -146,76 +272,28 @@ export function CarteTab({
           <div>
             <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950, fontSize: 18 }}>Carte</div>
             <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 700, fontSize: 13 }}>
-              Apri bustine, colleziona e completa la serie
+              Collezione: {completion.unique}/{completion.total}
             </div>
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <div
-              style={{
-                padding: "10px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "#0f172a",
-                color: "rgba(255,255,255,0.90)",
-                fontWeight: 900,
-              }}
-            >
-              Pillole: {pills}
-            </div>
-            <div
-              style={{
-                padding: "10px 12px",
-                borderRadius: 14,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "#0f172a",
-                color: "rgba(255,255,255,0.90)",
-                fontWeight: 900,
-              }}
-            >
-              Free: {freePacks}
-            </div>
+            <div style={pillBox()}>💊 {pills}</div>
+            <div style={pillBox()}>🎁 {freePacks}</div>
           </div>
         </div>
 
         {/* Pack actions */}
         <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            type="button"
-            disabled={opening || pills < packCost}
-            onClick={startOpenPaid}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: opening || pills < packCost ? "rgba(255,255,255,0.06)" : "#0ea5e9",
-              color: opening || pills < packCost ? "rgba(255,255,255,0.55)" : "#020617",
-              fontWeight: 950,
-              cursor: opening || pills < packCost ? "not-allowed" : "pointer",
-            }}
-          >
-            Apri bustina ({packCost} pillole)
+          <button type="button" disabled={opening || pills < packCost} onClick={startOpenPaid} style={btnPrimary(opening || pills < packCost, "#0ea5e9", "#020617")}>
+            Apri bustina ({packCost} 💊)
           </button>
 
-          <button
-            type="button"
-            disabled={opening || freePacks <= 0}
-            onClick={startOpenFree}
-            style={{
-              padding: "12px 14px",
-              borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: opening || freePacks <= 0 ? "rgba(255,255,255,0.06)" : "#22c55e",
-              color: opening || freePacks <= 0 ? "rgba(255,255,255,0.55)" : "#052e16",
-              fontWeight: 950,
-              cursor: opening || freePacks <= 0 ? "not-allowed" : "pointer",
-            }}
-          >
-            Apri bustina GRATIS ({freePacks})
+          <button type="button" disabled={opening || freePacks <= 0} onClick={startOpenFree} style={btnPrimary(opening || freePacks <= 0, "#22c55e", "#052e16")}>
+            Apri GRATIS ({freePacks})
           </button>
         </div>
 
-        {/* Pack image */}
+        {/* Pack image (placeholder) */}
         <div
           style={{
             marginTop: 12,
@@ -229,7 +307,7 @@ export function CarteTab({
         >
           <div
             style={{
-              width: "min(340px, 92%)",
+              width: "min(360px, 96%)",
               aspectRatio: "3/4",
               borderRadius: 22,
               border: "1px solid rgba(255,255,255,0.10)",
@@ -246,18 +324,37 @@ export function CarteTab({
             </div>
           </div>
         </div>
+
+        {/* Recycle */}
+        <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+            <div>
+              <div style={{ fontWeight: 950 }}>Riciclo duplicati</div>
+              <div style={{ opacity: 0.72, fontWeight: 700, fontSize: 12 }}>
+                Lascia 1 copia per carta. Conversione: 2/6/16/40 💊
+              </div>
+            </div>
+            <div style={{ opacity: 0.8, fontWeight: 900, fontSize: 12 }}>
+              {recyclePreview.cardsCount} carte → +{recyclePreview.pillsGain} 💊
+            </div>
+          </div>
+
+          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={recycleAllDuplicates}
+              disabled={recyclePreview.cardsCount <= 0}
+              style={btnPrimary(recyclePreview.cardsCount <= 0, "#f59e0b", "#1f2937")}
+            >
+              Ricicla duplicati
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Last pull */}
       {lastPull && (
-        <div
-          style={{
-            border: "1px solid rgba(255,255,255,0.10)",
-            background: "#0b1220",
-            borderRadius: 20,
-            padding: 14,
-          }}
-        >
+        <div style={cardWrap()}>
           <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950, marginBottom: 10 }}>Hai trovato</div>
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(3, lastPull.length)}, 1fr)`, gap: 12 }}>
             {lastPull.map((c) => (
@@ -291,14 +388,7 @@ export function CarteTab({
       )}
 
       {/* Collection */}
-      <div
-        style={{
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "#0b1220",
-          borderRadius: 20,
-          padding: 14,
-        }}
-      >
+      <div style={cardWrap()}>
         <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950, marginBottom: 10 }}>Collezione</div>
         <CardCollection
           cards={cards}
@@ -317,4 +407,36 @@ export function CarteTab({
       {modalCard && <CardModal card={modalCard} onClose={() => setModalCard(null)} />}
     </div>
   );
+}
+
+function pillBox(): React.CSSProperties {
+  return {
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "#0f172a",
+    color: "rgba(255,255,255,0.90)",
+    fontWeight: 900,
+  };
+}
+
+function btnPrimary(disabled: boolean, bg: string, fg: string): React.CSSProperties {
+  return {
+    padding: "12px 14px",
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: disabled ? "rgba(255,255,255,0.06)" : bg,
+    color: disabled ? "rgba(255,255,255,0.55)" : fg,
+    fontWeight: 950,
+    cursor: disabled ? "not-allowed" : "pointer",
+  };
+}
+
+function cardWrap(): React.CSSProperties {
+  return {
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "#0b1220",
+    borderRadius: 20,
+    padding: 14,
+  };
 }
