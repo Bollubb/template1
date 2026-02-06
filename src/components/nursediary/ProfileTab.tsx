@@ -760,49 +760,50 @@ function Stat({ title: t, value }: { title: string; value: string }) {
     <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "#0b1220", borderRadius: 18, padding: 12 }}>
       <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 900 }}>{t}</div>
       <div style={{ color: "rgba(255,255,255,0.95)", fontSize: 22, fontWeight: 950 }}>{value}</div>
-      {/* Classifica (locale) */}
-      <div style={card()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <div style={title()}>Classifica (locale)</div>
-          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Solo sul dispositivo • pronta per globale</div>
-        </div>
+    </div>
+  );
+}
 
-        {(() => {
-          const map = getWeeklyXpMap();
-          const items = Object.entries(map)
-            .map(([k, v]) => ({ k, v }))
-            .sort((a, b) => b.v - a.v)
-            .slice(0, 5);
 
-          const current = map[weekKey] || 0;
+function Leaderboard({ weekKey }: { weekKey: string }) {
+  const map = getWeeklyXpMap();
+  const items = Object.entries(map)
+    .map(([k, v]) => ({ k, v: Number(v) || 0 }))
+    .sort((a, b) => b.v - a.v)
+    .slice(0, 5);
 
-          return (
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <Stat title="XP settimana" value={String(current)} />
-                <Stat title="Top settimana" value={String(items[0]?.v ?? 0)} />
-              </div>
+  const current = map[weekKey] || 0;
 
-              <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 18, padding: 12, background: "#0f172a" }}>
-                <div style={{ fontWeight: 950, marginBottom: 8 }}>Top settimane (XP)</div>
-                {items.length === 0 ? (
-                  <div style={{ opacity: 0.75, fontWeight: 800, fontSize: 13 }}>Inizia a guadagnare XP per vedere la classifica.</div>
-                ) : (
-                  <div style={{ display: "grid", gap: 6 }}>
-                    {items.map((it, i) => (
-                      <div key={it.k} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontWeight: 900, fontSize: 13 }}>
-                        <div style={{ opacity: 0.85 }}>#{i + 1} • {it.k}</div>
-                        <div style={{ opacity: 0.95 }}>{it.v} XP</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+  return (
+    <div style={card()}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+        <div style={title()}>Classifica (locale)</div>
+        <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Solo sul dispositivo • pronta per globale</div>
       </div>
 
+      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <Stat title="XP settimana" value={String(current)} />
+          <Stat title="Top settimana" value={String(items[0]?.v ?? 0)} />
+        </div>
+
+        <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 18, padding: 12, background: "#0f172a" }}>
+          <div style={{ fontWeight: 950, marginBottom: 8 }}>Top settimane (XP)</div>
+          {items.length === 0 ? (
+            <div style={{ opacity: 0.75, fontWeight: 800, fontSize: 13 }}>Inizia a guadagnare XP per vedere la classifica.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 6 }}>
+              {items.map((it, i) => (
+                <div key={it.k} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontWeight: 900, fontSize: 13 }}>
+                  <div style={{ opacity: 0.85 }}>#{i + 1} • {it.k}</div>
+                  <div style={{ opacity: 0.95 }}>{it.v} XP</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <Leaderboard weekKey={weekKey} />
 
     </div>
   );
