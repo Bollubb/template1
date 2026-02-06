@@ -592,7 +592,7 @@ const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Inf
                     <div style={{ opacity: 0.8, fontWeight: 800, fontSize: 12 }}>
   Progresso: {m.progress}/{tierDef.need} • Reward: +{tierDef.pills} 💊
   {tierDef.xp ? <span>{" "}+{tierDef.xp} XP</span> : null}
-  {tierDef.pack ? <span>{" "}+{tierDef.pack} 🎁</span> : null}
+  {("pack" in tierDef && (tierDef as any).pack) ? <span>{" "}+{(tierDef as any).pack} 🎁</span> : null}
 </div>
 
                     <button
