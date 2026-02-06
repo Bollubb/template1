@@ -6,6 +6,7 @@ import Section from "../layouts/Section";
 import styles from "../styles/Home.module.css";
 
 import { ContentCard } from "../components/nursediary/ContentCard";
+import HomeDashboard from "../components/nursediary/HomeDashboard";
 import { CarteTab } from "../components/nursediary/CarteTab";
 import ProfileTab from "../components/nursediary/ProfileTab";
 import NurseBottomNav, { type NurseTab } from "../components/nursediary/NurseBottomNav";
@@ -43,7 +44,7 @@ export default function Home(): JSX.Element {
 
   // Cards economy (base)
   const [pills, setPills] = useState<number>(0);
-  const [packCost, setPackCost] = useState<number>(30);
+  const [packCost, setPackCost] = useState<number>(40);
 
   const onToggleFavorite = (id: string) => {
     setFavoriteIds((prev) => {
@@ -240,43 +241,9 @@ export default function Home(): JSX.Element {
       {/* HOME */}
       {activeTab === "home" && (
         <Section>
-          <div
-            style={{
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "#0b1220",
-              borderRadius: 20,
-              padding: 14,
-            }}
-          >
-            <h2 style={{ color: "rgba(255,255,255,0.92)", margin: "6px 0 10px" }}>Home</h2>
-
-            <div style={{ display: "grid", gap: 10 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    borderRadius: 16,
-                    padding: 12,
-                    background: "#0f172a",
-                  }}
-                >
-                  <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 700 }}>Preferiti</div>
-                  <div style={{ color: "rgba(255,255,255,0.96)", fontSize: 22, fontWeight: 900 }}>
-                    {favoriteIds.size}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    borderRadius: 16,
-                    padding: 12,
-                    background: "#0f172a",
-                  }}
-                >
-                  <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 700 }}>Non letti</div>
-                  <div style={{ color: "rgba(255,255,255,0.96)", fontSize: 22, fontWeight: 900 }}>
-                    {Math.max(0, items.length - readIds.size)}
+          <HomeDashboard onGoToCards={() => setActiveTab("carte")} onGoToDidattica={() => setActiveTab("didattica")} onGoToProfile={() => setActiveTab("profilo")} />
+        </Section>
+      )}
                   </div>
                 </div>
               </div>
