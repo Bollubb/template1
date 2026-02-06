@@ -56,7 +56,26 @@ export function CardCollection({
               }}
             />
 
-            {locked && (
+            
+            {count > 1 && !locked && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 8,
+                  right: 8,
+                  padding: "3px 7px",
+                  borderRadius: 999,
+                  background: "rgba(2,6,23,0.85)",
+                  border: "1px solid rgba(255,255,255,0.16)",
+                  color: "rgba(255,255,255,0.92)",
+                  fontSize: 11,
+                  fontWeight: 900,
+                }}
+              >
+                x{count}
+              </div>
+            )}
+{locked && (
               <div
                 style={{
                   position: "absolute",

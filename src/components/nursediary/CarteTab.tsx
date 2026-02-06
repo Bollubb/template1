@@ -119,6 +119,8 @@ export function CarteTab({
   // ✅ FREE PACKS
   const [freePacks, setFreePacks] = useState<number>(0);
 
+  const [rarityFilter, setRarityFilter] = useState<CardRarity | "tutte">("tutte");
+
   // ✅ pity
   const [pity, setPity] = useState<PityState>({ sinceEpic: 0, sinceLegend: 0 });
 
@@ -171,6 +173,16 @@ export function CarteTab({
       rarity: c.rarity,
     }));
   }, []);
+
+  const visibleCards = useMemo(() => {
+    if (rarityFilter === "tutte") return cards;
+    return cards.filter((c) => c.rarity === rarityFilter);
+  }, [cards, rarityFilter]);
+
+  const ownedUnique = useMemo(() => {
+    return Object.keys(owned).filter((id) => (owned[id] || 0) > 0).length;
+  }, [owned]);
+
 
   const completion = useMemo(() => {
     const unique = Object.keys(owned).filter((k) => (owned[k] || 0) > 0).length;
@@ -293,7 +305,7 @@ export function CarteTab({
           </button>
         </div>
 
-        {/* Pack image (placeholder) */}
+        {/* Pack image */}
         <div
           style={{
             marginTop: 12,
@@ -307,19 +319,48 @@ export function CarteTab({
         >
           <div
             style={{
-              width: "min(360px, 96%)",
+              width: "min(420px, 96%)",
               aspectRatio: "3/4",
               borderRadius: 22,
               border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.04)",
+              background: "rgba(255,255,255,0.03)",
               display: "grid",
               placeItems: "center",
+              position: "relative",
               transform: opening ? "rotate(-1.5deg) scale(1.02)" : "none",
-              boxShadow: opening ? "0 0 40px rgba(14,165,233,0.25)" : "none",
+              boxShadow: opening ? "0 0 55px rgba(14,165,233,0.22)" : "none",
               transition: "transform 240ms ease, box-shadow 240ms ease",
+              overflow: "hidden",
             }}
           >
-            <div style={{ color: "rgba(255,255,255,0.75)", fontWeight: 950, letterSpacing: 1 }}>
+            <img
+              src="/packs/pack-antibiotici.png"
+              alt="Bustina"
+              style={{
+                width: "92%",
+                height: "92%",
+                objectFit: "contain",
+                opacity: opening ? 0.92 : 1,
+                transform: opening ? "scale(1.03)" : "none",
+                transition: "transform 240ms ease, opacity 240ms ease",
+              }}
+            />
+
+            <div
+              style={{
+                position: "absolute",
+                bottom: 10,
+                left: 0,
+                right: 0,
+                display: "grid",
+                placeItems: "center",
+                fontSize: 12,
+                fontWeight: 950,
+                letterSpacing: 1,
+                color: "rgba(255,255,255,0.78)",
+                textShadow: "0 1px 10px rgba(0,0,0,0.65)",
+              }}
+            >
               {opening ? "APERTURA..." : "BUSTINA"}
             </div>
           </div>
@@ -389,9 +430,35 @@ export function CarteTab({
 
       {/* Collection */}
       <div style={cardWrap()}>
-        <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950, marginBottom: 10 }}>Collezione</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+          <div style={{ color: "rgba(255,255,255,0.92)", fontWeight: 950 }}>Collezione</div>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 900, fontSize: 12 }}>
+            Completamento: {ownedUnique}/{cards.length}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+          {(["tutte", "comune", "rara", "epica", "leggendaria"] as const).map((r) => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRarityFilter(r)}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: rarityFilter === r ? "rgba(14,165,233,0.18)" : "rgba(255,255,255,0.04)",
+                color: "rgba(255,255,255,0.92)",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              {r === "tutte" ? "Tutte" : r.toUpperCase()}
+            </button>
+          ))}
+        </div>
         <CardCollection
-          cards={cards}
+          cards={visibleCards}
           owned={owned}
           onOpen={(c) =>
             setModalCard({

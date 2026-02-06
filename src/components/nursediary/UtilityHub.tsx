@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import { addXp } from "@/features/progress/xp";
 import { incDailyCounter } from "@/features/progress/dailyCounters";
 import { useToast } from "./Toast";
 
@@ -55,10 +54,9 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     });
   }
 
-  function rewardUse(xp: number) {
-    addXp(xp);
+  function rewardUse() {
     incDailyCounter("nd_daily_utility_used", 1);
-    toast.push(`+${xp} XP`, "success");
+    toast.push("Utility usata", "success");
   }
 
   return (
@@ -156,7 +154,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
           </div>
 
           <div style={{ marginTop: 10 }}>
-            <ToolRenderer id={activeDef.id} onUsed={() => rewardUse(activeDef.xp)} />
+            <ToolRenderer id={activeDef.id} onUsed={() => rewardUse()} />
           </div>
         </div>
       )}
