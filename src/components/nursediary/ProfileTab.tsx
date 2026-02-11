@@ -209,7 +209,7 @@ export default function ProfileTab({
     localStorage.setItem(LS.freePacks, String(freePacks));
   }, [freePacks]);
 
-  // countdown ticker
+    // countdown ticker
   useEffect(() => {
     const tick = () => {
       setDailyLeft(getNextDailyResetMs());
@@ -217,81 +217,81 @@ export default function ProfileTab({
     };
     tick();
     const id = window.setInterval(tick, 1000);
-
-function buildAccountExport() {
-  if (!isBrowser()) return;
-  const data: Record<string, string> = {};
-  try {
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const k = localStorage.key(i);
-      if (!k) continue;
-      if (!k.startsWith("nd_")) continue;
-      const v = localStorage.getItem(k);
-      if (v !== null) data[k] = v;
-    }
-  } catch {}
-
-  const payload = {
-    v: 1,
-    exportedAt: new Date().toISOString(),
-    data,
-  };
-
-  const txt = JSON.stringify(payload);
-  setExportText(txt);
-
-  // best-effort copy
-  void navigator?.clipboard
-    ?.writeText(txt)
-    .then(() => toast.push("Account copiato negli appunti", "success"))
-    .catch(() => {});
-}
-
-function applyAccountImport() {
-  if (!isBrowser()) return;
-  const raw = importText.trim();
-  if (!raw) return;
-
-  let parsed: any = null;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    toast.push("Import fallito: JSON non valido", "warning");
-    return;
-  }
-
-  const data: Record<string, string> =
-    parsed?.data && typeof parsed.data === "object" ? parsed.data : parsed;
-
-  if (!data || typeof data !== "object") {
-    toast.push("Import fallito: formato non supportato", "warning");
-    return;
-  }
-
-  try {
-    for (const [k, v] of Object.entries(data)) {
-      if (!k.startsWith("nd_")) continue;
-      if (typeof v !== "string") continue;
-      localStorage.setItem(k, v);
-    }
-  } catch {}
-
-  // refresh in-memory state (no hard reload)
-  setProfile(safeJson(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
-  setAvatar(localStorage.getItem(LS.avatar));
-  setPremium(localStorage.getItem(LS.premium) === "1");
-  setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
-  setReadIds(new Set(safeJson<string[]>(localStorage.getItem(LS.read), [])));
-  setCardsOwned(safeJson<Record<string, number>>(localStorage.getItem(LS.cards), {}));
-  setXp(Number(localStorage.getItem(LS.xp) || 0));
-  setPills(Number(localStorage.getItem(LS.pills) || 0));
-  setFreePacks(Number(localStorage.getItem(LS.freePacks) || 0));
-  setHistory(getHistory());
-  toast.push("Account importato", "success");
-}
-
-  return () => window.clearInterval(id);
+    return () => window.clearInterval(id);
   }, []);
+
+  function buildAccountExport() {
+    if (!isBrowser()) return;
+    const data: Record<string, string> = {};
+    try {
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (!k.startsWith("nd_")) continue;
+        const v = localStorage.getItem(k);
+        if (v !== null) data[k] = v;
+      }
+    } catch {}
+
+    const payload = {
+      v: 1,
+      exportedAt: new Date().toISOString(),
+      data,
+    };
+
+    const txt = JSON.stringify(payload);
+    setExportText(txt);
+
+    // best-effort copy
+    void navigator?.clipboard
+      ?.writeText(txt)
+      .then(() => toast.push("Account copiato negli appunti", "success"))
+      .catch(() => {});
+  }
+
+  function applyAccountImport() {
+    if (!isBrowser()) return;
+    const raw = importText.trim();
+    if (!raw) return;
+
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      toast.push("Import fallito: JSON non valido", "warning");
+      return;
+    }
+
+    const data: Record<string, string> =
+      parsed?.data && typeof parsed.data === "object" ? parsed.data : parsed;
+
+    if (!data || typeof data !== "object") {
+      toast.push("Import fallito: formato non supportato", "warning");
+      return;
+    }
+
+    try {
+      for (const [k, v] of Object.entries(data)) {
+        if (!k.startsWith("nd_")) continue;
+        if (typeof v !== "string") continue;
+        localStorage.setItem(k, v);
+      }
+    } catch {}
+
+    // refresh in-memory state (no hard reload)
+    setProfile(safeJson(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
+    setAvatar(localStorage.getItem(LS.avatar));
+    setPremium(localStorage.getItem(LS.premium) === "1");
+    setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
+    setReadIds(new Set(safeJson<string[]>(localStorage.getItem(LS.read), [])));
+    setCardsOwned(safeJson<Record<string, number>>(localStorage.getItem(LS.cards), {}));
+    setXp(Number(localStorage.getItem(LS.xp) || 0));
+    setPills(Number(localStorage.getItem(LS.pills) || 0));
+    setFreePacks(Number(localStorage.getItem(LS.freePacks) || 0));
+    setHistory(getHistory());
+    toast.push("Account importato", "success");
+  }
+
 
   const uniqueCards = useMemo(
     () => Object.keys(cardsOwned).filter((k) => (cardsOwned[k] || 0) > 0).length,
