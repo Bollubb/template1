@@ -9,7 +9,9 @@ import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import {
 
 // local type-guard helper
-const isDefined = <T,>(v: T | null | undefined): v is T => v != null;
+function isDefined<T>(v: T | null | undefined): v is T {
+  return v != null;
+}
   calcDailyReward,
   calcWeeklyReward,
   getDailyState,
