@@ -7,11 +7,6 @@ import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/
 
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import {
-
-// local type-guard helper
-function isDefined<T>(v: T | null | undefined): v is T {
-  return v != null;
-}
   calcDailyReward,
   calcWeeklyReward,
   getDailyState,
@@ -774,7 +769,7 @@ export default function ProfileTab({
       <div style={card()}>
         <div style={title()}>Obiettivi</div>
         <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-          {achievements.filter(isDefined).map((a) => {
+          {achievements.map((a) => {
             const already = !!claimedA[a.id];
             const can = a.done && !already;
             return (
