@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import UtilityHub from "./UtilityHub";
-import { computeLevel, getXp } from "@/features/progress/xp";
+import { computeLevel, getXp, addXp } from "@/features/progress/xp";
 import { getDailyCounter, getDailyFlag } from "@/features/progress/dailyCounters";
-import { getDailyState, getWeeklyState, getNextDailyResetMs, getNextWeeklyResetMs } from "@/features/cards/quiz/quizLogic";
-import { getLocalProfile, getAvatar as getAvatarLS } from "@/features/profile/profileStore";
+import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
+import { calcDailyReward, calcWeeklyReward, getDailyState, getWeeklyState, setDailyState, setWeeklyState, getNextDailyResetMs, getNextWeeklyResetMs, pushHistory, type QuizHistoryItem } from "@/features/cards/quiz/quizLogic";
 
 const LS = {
   pills: "nd_pills",
@@ -30,6 +30,14 @@ type UtilityHistoryItem = {
   ts: number;
   inputs: Record<string, string | number | boolean>;
   output: string;
+};
+
+type QuizRun = {
+  mode: "daily" | "weekly";
+  idx: number;
+  correct: number;
+  questions: QuizQuestion[];
+  answers: number[]; // per-index selected
 };
 
 
@@ -69,6 +77,11 @@ export default function HomeDashboard({
 
   const [dailyLeft, setDailyLeft] = useState(0);
   const [weeklyLeft, setWeeklyLeft] = useState(0);
+
+  const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [quizFeedback, setQuizFeedback] = useState<string | null>(null);
+  const [quizReview, setQuizReview] = useState<{ q: QuizQuestion; chosen: number }[] | null>(null);
 
   const [favTools, setFavTools] = useState<ToolId[]>([]);
 
@@ -124,7 +137,116 @@ useEffect(() => {
     return { title: "Ottimo! Continua con Utility o Collezione", cta: "Apri Utility", action: "utility" as const };
   }, [loginClaimed, freePacks, daily.status, readsToday]);
 
-  if (mode === "utility") {
+
+function pickRandom<T>(arr: T[], n: number) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+}
+
+function startQuiz(mode: "daily" | "weekly") {
+  const state = mode === "daily" ? getDailyState() : getWeeklyState();
+  if (state.status === "done") return;
+  const n = mode === "daily" ? 5 : 12;
+
+  // anti-ripetizione “soft”
+  const recentKey = "nd_quiz_recent_v1";
+  const recent = safeJson<string[]>(localStorage.getItem(recentKey), []);
+  const candidates = QUIZ_BANK.filter((q) => !recent.includes(q.id));
+  const pool = candidates.length >= n ? candidates : QUIZ_BANK;
+
+  const questions = pickRandom(pool, n);
+  try {
+    const nextRecent = [...questions.map((q) => q.id), ...recent].slice(0, 50);
+    localStorage.setItem(recentKey, JSON.stringify(nextRecent));
+  } catch {}
+
+  setRunQuiz({ mode, idx: 0, correct: 0, questions, answers: [] });
+  setSelected(null);
+  setQuizFeedback(null);
+  setQuizReview(null);
+}
+
+function answerQuiz(i: number) {
+  if (!runQuiz) return;
+  const q = runQuiz.questions[runQuiz.idx];
+  const ok = i === q.answer;
+  const nextCorrect = runQuiz.correct + (ok ? 1 : 0);
+
+  const answers = [...runQuiz.answers];
+  answers[runQuiz.idx] = i;
+
+  setSelected(i);
+
+  window.setTimeout(() => {
+    const isLast = runQuiz.idx >= runQuiz.questions.length - 1;
+    if (!isLast) {
+      setRunQuiz({ ...runQuiz, idx: runQuiz.idx + 1, correct: nextCorrect, answers });
+      setSelected(null);
+      return;
+    }
+
+    const total = runQuiz.questions.length;
+    const perfect = nextCorrect === total;
+
+    // per-category stats (reale)
+    const byCat: Record<string, { correct: number; total: number }> = {};
+    for (let k = 0; k < runQuiz.questions.length; k++) {
+      const qq = runQuiz.questions[k];
+      const cat = (qq.category || "altro") as string;
+      if (!byCat[cat]) byCat[cat] = { correct: 0, total: 0 };
+      byCat[cat].total += 1;
+      if (answers[k] === qq.answer) byCat[cat].correct += 1;
+    }
+
+    // review errori
+    const wrong = runQuiz.questions
+      .map((qq, idx) => ({ q: qq, chosen: answers[idx] }))
+      .filter((x) => x.chosen !== x.q.answer);
+    setQuizReview(wrong);
+
+    // rewards
+    let pillsGain = 0;
+    if (runQuiz.mode === "daily") {
+      const daily = getDailyState();
+      pillsGain = calcDailyReward(nextCorrect, total, perfect, daily.streak);
+      const streakOk = nextCorrect / total >= 0.6;
+      setDailyState({ ...daily, status: "done", streak: streakOk ? daily.streak + 1 : 0 });
+    } else {
+      pillsGain = calcWeeklyReward(nextCorrect, total, perfect);
+      const weekly = getWeeklyState();
+      setWeeklyState({ ...weekly, status: "done" });
+    }
+
+    const xpGain = 20 + nextCorrect * (runQuiz.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
+
+    // persist
+    try {
+      const curPills = Number(localStorage.getItem(LS.pills) || "0") || 0;
+      localStorage.setItem(LS.pills, String(curPills + pillsGain));
+    } catch {}
+    addXp(xpGain); // wrapper already in project
+
+    const item: QuizHistoryItem = {
+      ts: Date.now(),
+      mode: runQuiz.mode,
+      correct: nextCorrect,
+      total,
+      byCategory: byCat,
+    };
+    pushHistory(item);
+
+    setQuizFeedback(`Quiz ${runQuiz.mode}: ${nextCorrect}/${total} • +${pillsGain} 💊 • +${xpGain} XP`);
+    setRunQuiz(null);
+    setSelected(null);
+  }, 450);
+}
+
+
+    if (mode === "utility") {
     return <UtilityHub onBack={() => { setMode("home"); try { loadRecentHistory(); } catch {} }} />;
   }
 
@@ -182,7 +304,7 @@ useEffect(() => {
               else if (recommended.action === "utility") setMode("utility");
               else onGoToProfile();
             }}
-            style={{ ...primaryBtn(), width: "100%" }}
+            style={primaryBtn()}
           >
             {recommended.cta}
           </button>
@@ -190,6 +312,73 @@ useEffect(() => {
             🛠 Utility
           </button>
         </div>
+      </Card>
+
+
+      {/* Quiz (Daily/Weekly) */}
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 950 }}>Quiz</div>
+            <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>
+              Daily e Weekly con timer (solo qui in Home)
+            </div>
+          </div>
+          <div style={{ opacity: 0.75, fontWeight: 900, fontSize: 12 }}>
+            Daily: {msToHMS(dailyLeft)} • Weekly: {msToHMS(weeklyLeft)}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => startQuiz("daily")} disabled={daily.status === "done" || !!runQuiz} style={primaryBtn()}>
+            {daily.status === "done" ? "Daily completato ✅" : "Avvia Daily"}
+          </button>
+          <button type="button" onClick={() => startQuiz("weekly")} disabled={weekly.status === "done" || !!runQuiz} style={ghostBtn()}>
+            {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
+          </button>
+        </div>
+
+        {runQuiz && (
+          <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
+            <div style={{ fontWeight: 950 }}>
+              {runQuiz.mode.toUpperCase()} • Domanda {runQuiz.idx + 1}/{runQuiz.questions.length}
+            </div>
+            <div style={{ marginTop: 6, opacity: 0.88, fontWeight: 800 }}>{runQuiz.questions[runQuiz.idx].q}</div>
+
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              {runQuiz.questions[runQuiz.idx].options.map((op, i) => (
+                <button key={i} type="button" onClick={() => answerQuiz(i)} disabled={selected !== null} style={primaryBtn()}>
+                  {op}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {quizFeedback && (
+          <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.06)", fontWeight: 800 }}>
+            {quizFeedback}
+          </div>
+        )}
+
+        {quizReview && quizReview.length > 0 && (
+          <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
+            <div style={{ fontWeight: 950 }}>Risposte da rivedere</div>
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              {quizReview.slice(0, 8).map((w, idx) => (
+                <div key={idx} style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                  <div style={{ fontWeight: 900 }}>{w.q.q}</div>
+                  <div style={{ marginTop: 6, fontWeight: 800, opacity: 0.85 }}>
+                    La tua: {w.q.options[w.chosen] ?? "—"}
+                  </div>
+                  <div style={{ marginTop: 4, fontWeight: 900 }}>
+                    Corretta: {w.q.options[w.q.answer]}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Utility quick access */}

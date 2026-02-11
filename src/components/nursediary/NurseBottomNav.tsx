@@ -21,19 +21,28 @@ export default function NurseBottomNav({
     <nav
       style={{
         position: "fixed",
-        left: 12,
-        right: 12,
-        bottom: 12,
+        left: 0,
+        right: 0,
+        bottom: 0,
         zIndex: 60,
-        background: "rgba(255,255,255,0.96)",
-        border: "1px solid rgba(0,0,0,0.10)",
-        borderRadius: 18,
-        boxShadow: "0 10px 25px rgba(0,0,0,0.10)",
-        padding: 8,
-        // ❗️No backdrop-filter (evitiamo effetti indesiderati / overlay)
+        padding: "10px 12px",
+        paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
+        background: "transparent",
+        // ❗️No backdrop-filter
       }}
       aria-label="NurseDiary Bottom Navigation"
     >
+      <div
+        style={{
+          maxWidth: 520,
+          margin: "0 auto",
+          background: "rgba(15,23,42,0.98)",
+          border: "1px solid rgba(255,255,255,0.10)",
+          borderRadius: 18,
+          boxShadow: "0 10px 25px rgba(0,0,0,0.30)",
+          padding: 8,
+        }}
+      >
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
         {items.map((it) => {
           const isActive = it.key === active;
@@ -62,6 +71,7 @@ export default function NurseBottomNav({
             </button>
           );
         })}
+      </div>
       </div>
     </nav>
   );

@@ -95,13 +95,20 @@ export function CardCollection({
               style={{
                 fontSize: 11,
                 fontWeight: 800,
-                background: rarityColors[c.rarity],
+                // ✅ niente “blocco” di colore: solo testo colorato
+                background: c.rarity === "leggendaria" ? rarityColors[c.rarity] : "transparent",
                 WebkitBackgroundClip: c.rarity === "leggendaria" ? "text" : undefined,
                 WebkitTextFillColor: c.rarity === "leggendaria" ? "transparent" : undefined,
                 color: c.rarity !== "leggendaria" ? rarityColors[c.rarity] : undefined,
               }}
             >
-              {c.rarity.toUpperCase()}
+              {c.rarity === "comune"
+                ? "Comune"
+                : c.rarity === "rara"
+                ? "Rara"
+                : c.rarity === "epica"
+                ? "Epica"
+                : "Leggendaria"}
             </div>
           </div>
         );
