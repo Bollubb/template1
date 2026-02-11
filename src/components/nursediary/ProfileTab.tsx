@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import { useToast } from "./Toast";
 import MissionHub from "./MissionHub";
+import Leaderboard, { type PlayerCard } from "./Leaderboard";
+import ProfileCardModal from "./ProfileCardModal";
 import { addXp as addXpGlobal, getWeeklyXpMap } from "@/features/progress/xp";
 import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/features/progress/dailyCounters";
 
@@ -31,9 +33,11 @@ const LS = {
   premium: "nd_premium",
   login: "nd_login_daily",
   freePacks: "nd_free_packs",
+  userId: "nd_user_id",
+  players: "nd_players_v1",
 } as const;
 
-type ProfileData = { name: string; role: string };
+type ProfileData = { name: string; profession: string; bio: string };
 type QuizMode = "daily" | "weekly";
 
 type RunState = {
@@ -106,6 +110,63 @@ function computeLevel(xp: number) {
   return { level, into: remaining, need };
 }
 
+
+function makeId() {
+  return Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
+}
+
+function safeParsePlayers(raw: string | null): PlayerCard[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .filter((x) => x && typeof x === "object")
+      .map((x) => ({
+        id: String((x as any).id || ""),
+        name: String((x as any).name || "Utente"),
+        profession: String((x as any).profession || "Infermiere"),
+        bio: String((x as any).bio || ""),
+        avatar: (x as any).avatar ? String((x as any).avatar) : null,
+        xp: Number((x as any).xp || 0),
+      }))
+      .filter((p) => p.id);
+  } catch {
+    return [];
+  }
+}
+
+function seedPlayers(me: PlayerCard): PlayerCard[] {
+  const names = ["Sara", "Luca", "Giulia", "Marco", "Elena", "Davide", "Marta", "Paolo", "Irene", "Fabio", "Chiara", "Simone"];
+  const jobs = ["Infermiere", "OSS", "Studente", "Infermiere pediatrico", "Infermiera ICU", "Soccorritore", "Ostetrica"];
+  const bios = [
+    "Turnista, amante delle checklist.",
+    "Obiettivo: level 50.",
+    "Mi piacciono procedure ed emergenze.",
+    "In pronto soccorso: quiz a raffica.",
+    "Team terapia intensiva.",
+    "Studio e ripasso ogni sera.",
+  ];
+  const others: PlayerCard[] = [];
+  for (let i = 0; i < 10; i += 1) {
+    const id = makeId();
+    const name = names[i % names.length] + (i % 2 === 0 ? "" : " " + String.fromCharCode(65 + i));
+    const profession = jobs[i % jobs.length];
+    const bio = bios[i % bios.length];
+    const xp = 140 + i * 120 + Math.floor(Math.random() * 260);
+    others.push({ id, name, profession, bio, avatar: null, xp });
+  }
+  return [me, ...others];
+}
+
+function upsertMe(list: PlayerCard[], me: PlayerCard): PlayerCard[] {
+  const idx = list.findIndex((p) => p.id === me.id);
+  if (idx === -1) return [me, ...list];
+  const next = [...list];
+  next[idx] = { ...next[idx], ...me };
+  return next;
+}
+
 export default function ProfileTab({
   pills,
   setPills,
@@ -117,11 +178,19 @@ export default function ProfileTab({
 }) {
 
   const toast = useToast();
-  const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
+  const [profile, setProfile] = useState<ProfileData>({ name: "Utente", profession: "Infermiere", bio: "" });
   const [avatar, setAvatar] = useState<string | null>(null);
   const [premium, setPremium] = useState<boolean>(false);
   const [exportText, setExportText] = useState<string>("");
   const [importText, setImportText] = useState<string>("");
+
+  const [userId, setUserId] = useState<string>("");
+  const [players, setPlayers] = useState<PlayerCard[]>([]);
+  const [view, setView] = useState<"overview" | "leaderboard">("overview");
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardPlayer, setCardPlayer] = useState<PlayerCard | null>(null);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+
 
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -175,7 +244,13 @@ export default function ProfileTab({
   useEffect(() => {
     if (!isBrowser()) return;
 
-    setProfile(safeJson(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
+        const pRaw = safeJson<any>(localStorage.getItem(LS.profile), { name: "Utente", profession: "Infermiere", bio: "" });
+    const normalized = {
+      name: String(pRaw?.name || "Utente"),
+      profession: String(pRaw?.profession || pRaw?.role || "Infermiere"),
+      bio: String(pRaw?.bio || ""),
+    };
+    setProfile(normalized);
     setAvatar(localStorage.getItem(LS.avatar));
     setPremium(localStorage.getItem(LS.premium) === "1");
 
@@ -185,6 +260,30 @@ export default function ProfileTab({
 
     setXp(Number(localStorage.getItem(LS.xp) || 0));
     setFreePacks(Number(localStorage.getItem(LS.freePacks) || 0));
+
+    // local user id + local "community" players (no backend)
+    const uid = localStorage.getItem(LS.userId) || makeId();
+    try {
+      localStorage.setItem(LS.userId, uid);
+    } catch {}
+    setUserId(uid);
+
+    const p0 = safeJson<any>(localStorage.getItem(LS.profile), { name: "Utente", profession: "Infermiere", bio: "" });
+    const me: PlayerCard = {
+      id: uid,
+      name: String(p0?.name || "Utente"),
+      profession: String(p0?.profession || p0?.role || "Infermiere"),
+      bio: String(p0?.bio || ""),
+      avatar: localStorage.getItem(LS.avatar),
+      xp: Number(localStorage.getItem(LS.xp) || 0),
+    };
+
+    const existing = safeParsePlayers(localStorage.getItem(LS.players));
+    const seeded = existing.length ? upsertMe(existing, me) : seedPlayers(me);
+    setPlayers(seeded);
+    try {
+      localStorage.setItem(LS.players, JSON.stringify(seeded));
+    } catch {}
 
     setHistory(getHistory());
   }, []);
@@ -209,6 +308,29 @@ export default function ProfileTab({
     if (!isBrowser()) return;
     localStorage.setItem(LS.freePacks, String(freePacks));
   }, [freePacks]);
+
+  // keep local leaderboard in sync (current user only)
+  useEffect(() => {
+    if (!isBrowser()) return;
+    if (!userId) return;
+
+    const me: PlayerCard = {
+      id: userId,
+      name: profile.name || "Utente",
+      profession: profile.profession || "Infermiere",
+      bio: profile.bio || "",
+      avatar,
+      xp,
+    };
+
+    setPlayers((prev) => {
+      const next = upsertMe(prev, me);
+      try {
+        localStorage.setItem(LS.players, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, [userId, profile, avatar, xp]);
 
     // countdown ticker
   useEffect(() => {
@@ -280,7 +402,13 @@ export default function ProfileTab({
     } catch {}
 
     // refresh in-memory state (no hard reload)
-    setProfile(safeJson(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
+        const pRaw = safeJson<any>(localStorage.getItem(LS.profile), { name: "Utente", profession: "Infermiere", bio: "" });
+    const normalized = {
+      name: String(pRaw?.name || "Utente"),
+      profession: String(pRaw?.profession || pRaw?.role || "Infermiere"),
+      bio: String(pRaw?.bio || ""),
+    };
+    setProfile(normalized);
     setAvatar(localStorage.getItem(LS.avatar));
     setPremium(localStorage.getItem(LS.premium) === "1");
     setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
@@ -378,11 +506,19 @@ export default function ProfileTab({
   // Achievements (obiettivi)
   const achievements = useMemo(() => {
     const arr = [
-      { id: "a_read_10", title: "Lettore", desc: "Leggi 10 contenuti", done: readIds.size >= 10, pill: 40, xp: 40 },
+{ id: "a_read_10", title: "Lettore", desc: "Leggi 10 contenuti", done: readIds.size >= 10, pill: 40, xp: 40 },
       { id: "a_fav_5", title: "Curatore", desc: "Aggiungi 5 preferiti", done: favIds.size >= 5, pill: 30, xp: 30 },
       { id: "a_cards_5", title: "Collezionista", desc: "Ottieni 5 carte uniche", done: uniqueCards >= 5, pill: 50, xp: 40 },
       { id: "a_quiz_3", title: "Studioso", desc: "Completa 3 quiz", done: history.length >= 3, pill: 60, xp: 60 },
-      { id: "a_acc_80", title: "Preciso", desc: "Raggiungi 80% accuracy", done: accuracy >= 80 && history.length >= 3, pill: 80, xp: 80 },
+      { id: "a_acc_80", title: "Preciso", desc: "Raggiungi 80% accuracy", done: accuracy >= 80 && history.length >= 3, pill: 80, xp: 80 },,
+      { id: "a_read_50", title: "Bibliofilo", desc: "Leggi 50 contenuti", done: readIds.size >= 50, pill: 160, xp: 160 },
+      { id: "a_fav_20", title: "Archivista", desc: "Aggiungi 20 preferiti", done: favIds.size >= 20, pill: 140, xp: 140 },
+      { id: "a_cards_12", title: "Set completo", desc: "Ottieni 12 carte uniche", done: uniqueCards >= 12, pill: 220, xp: 180, },
+      { id: "a_quiz_25", title: "Master quiz", desc: "Completa 25 quiz", done: history.length >= 25, pill: 260, xp: 260 },
+      { id: "a_acc_90", title: "Chirurgico", desc: "Raggiungi 90% accuracy (min 20 quiz)", done: accuracy >= 90 && history.length >= 20, pill: 320, xp: 320 },
+      { id: "a_login_7", title: "Costante", desc: "Streak login 7 giorni", done: loginInfo.streak >= 7, pill: 140, xp: 120 },
+      { id: "a_lvl_10", title: "In crescita", desc: "Raggiungi livello 10", done: lvl.level >= 10, pill: 200, xp: 200 },
+
     ];
     return arr;
   }, [readIds.size, favIds.size, uniqueCards, history.length, accuracy]);
@@ -466,6 +602,7 @@ export default function ProfileTab({
       // pillole + XP
       setPills((p) => p + reward);
       incDailyCounter("nd_daily_quiz_done", 1);
+      if (perfect) incDailyCounter("nd_daily_quiz_perfect", 1);
       toast.push(`+${reward} 💊`, "success");
       const xpGain = 20 + nextCorrect * (run.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
       setXp((x) => x + xpGain);
@@ -503,60 +640,128 @@ export default function ProfileTab({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button type="button" onClick={() => setView("overview")} style={segBtn(view === "overview")}>
+          Panoramica
+        </button>
+        <button type="button" onClick={() => setView("leaderboard")} style={segBtn(view === "leaderboard")}>
+          Classifica
+        </button>
+      </div>
       {/* Profile header */}
       <div style={card()}>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={avatarBox()}>
+          <div style={{ display: "grid", gap: 8, justifyItems: "center" }}>
+            <div style={avatarBox()}>
             {avatar ? (
               <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
               <span style={{ fontSize: 24 }}>👤</span>
             )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAvatarPickerOpen((v) => !v)}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
+                fontWeight: 950,
+                cursor: "pointer",
+              }}
+              title="Cambia immagine profilo"
+            >
+              ✏️ Cambia immagine
+            </button>
           </div>
 
           <div style={{ flex: 1 }}>
             <input value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} style={inp(true)} />
-            <input value={profile.role} onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))} style={{ ...inp(false), marginTop: 8 }} />
+            <input
+              value={profile.profession}
+              onChange={(e) => setProfile((p) => ({ ...p, profession: e.target.value }))}
+              style={{ ...inp(false), marginTop: 8 }}
+              placeholder="Professione (es. Infermiere)"
+            />
+            <textarea
+              value={profile.bio}
+              onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
+              placeholder="Breve descrizione (max ~160 caratteri)…"
+              style={{ ...inp(false), marginTop: 8, minHeight: 64, resize: "vertical", lineHeight: 1.25 }}
+              maxLength={160}
+            />
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const me = players.find((p) => p.id === userId);
+                  if (!me) return;
+                  setCardPlayer(me);
+                  setCardOpen(true);
+                }}
+                style={chipBtn()}
+              >
+                📇 Scheda profilo
+              </button>
+              <button type="button" onClick={() => setView("leaderboard")} style={chipBtn()}>
+                🏆 Classifica
+              </button>
+            </div>
           </div>
         </div>
 
-        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <label style={chipBtn()}>
-            Carica avatar
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && onPickAvatar(e.target.files[0])} />
-          </label>
+        {avatarPickerOpen ? (
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            <div style={{ opacity: 0.82, fontWeight: 900, fontSize: 12 }}>Scegli immagine</div>
+
+            <label style={chipBtn()}>
+              Dal dispositivo…
+              <input
+                type="file"
+                accept="image/*"
+                style={{ display: "none" }}
+                onChange={(e) => e.target.files?.[0] && onPickAvatar(e.target.files[0])}
+              />
+            </label>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {AVATAR_PRESETS.map((a) => (
+                <button
+                  key={a.label}
+                  type="button"
+                  onClick={() => {
+                    setAvatar(a.data);
+                    try {
+                      localStorage.setItem(LS.avatar, a.data);
+                    } catch {}
+                  }}
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 16,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(255,255,255,0.06)",
+                    cursor: "pointer",
+                    overflow: "hidden",
+                    display: "grid",
+                    placeItems: "center",
+                  }}
+                  title={`Preset ${a.label}`}
+                >
+                  <img src={a.data} alt={a.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
 
-<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-  {AVATAR_PRESETS.map((a) => (
-    <button
-      key={a.label}
-      type="button"
-      onClick={() => {
-        setAvatar(a.data);
-        try {
-          localStorage.setItem(LS.avatar, a.data);
-        } catch {}
-      }}
-      style={{
-        width: 34,
-        height: 34,
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.06)",
-        cursor: "pointer",
-        overflow: "hidden",
-        display: "grid",
-        placeItems: "center",
-      }}
-      title={`Preset ${a.label}`}
-    >
-      <img src={a.data} alt={a.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-    </button>
-  ))}
-</div>
-
-          <div style={chip()}>
+<div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+<div style={chip()}>
             Pillole: <b>{pills}</b>
           </div>
 
@@ -695,6 +900,25 @@ export default function ProfileTab({
         />
       </div>
 
+      {view === "leaderboard" ? (
+        <div style={card()}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+            <div style={title()}>Classifica (livelli)</div>
+            <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Locale • clicca un nome</div>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <Leaderboard
+              players={players}
+              currentUserId={userId}
+              onSelect={(p) => {
+                setCardPlayer(p);
+                setCardOpen(true);
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
 {/* Quiz */}
       <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
@@ -791,6 +1015,14 @@ export default function ProfileTab({
           })}
         </div>
       </div>
+      <ProfileCardModal
+        open={cardOpen}
+        player={cardPlayer}
+        onClose={() => {
+          setCardOpen(false);
+          setCardPlayer(null);
+        }}
+      />
     </div>
   );
 }
@@ -811,6 +1043,19 @@ function inp(bold: boolean): React.CSSProperties {
 function chip(): React.CSSProperties {
   return { padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "#0f172a", color: "rgba(255,255,255,0.88)", fontWeight: 900 };
 }
+function segBtn(active: boolean): React.CSSProperties {
+  return {
+    flex: 1,
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: active ? "rgba(59,130,246,0.92)" : "rgba(255,255,255,0.06)",
+    color: active ? "#0b1220" : "rgba(255,255,255,0.88)",
+    fontWeight: 950,
+    cursor: "pointer",
+  };
+}
+
 function chipBtn(): React.CSSProperties {
   return { padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "#0f172a", color: "rgba(255,255,255,0.92)", fontWeight: 900, cursor: "pointer" };
 }
@@ -832,51 +1077,14 @@ function Stat({ title: t, value }: { title: string; value: string }) {
     <div style={{ border: "1px solid rgba(255,255,255,0.10)", background: "#0b1220", borderRadius: 18, padding: 12 }}>
       <div style={{ color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: 900 }}>{t}</div>
       <div style={{ color: "rgba(255,255,255,0.95)", fontSize: 22, fontWeight: 950 }}>{value}</div>
-    </div>
-  );
-}
-
-
-function Leaderboard({ weekKey }: { weekKey: string }) {
-  const map = getWeeklyXpMap();
-  const items = Object.entries(map)
-    .map(([k, v]) => ({ k, v: Number(v) || 0 }))
-    .sort((a, b) => b.v - a.v)
-    .slice(0, 5);
-
-  const current = map[weekKey] || 0;
-
-  return (
-    <div style={card()}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-        <div style={title()}>Classifica (locale)</div>
-        <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Solo sul dispositivo • pronta per globale</div>
-      </div>
-
-      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <Stat title="XP settimana" value={String(current)} />
-          <Stat title="Top settimana" value={String(items[0]?.v ?? 0)} />
-        </div>
-
-        <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 18, padding: 12, background: "#0f172a" }}>
-          <div style={{ fontWeight: 950, marginBottom: 8 }}>Top settimane (XP)</div>
-          {items.length === 0 ? (
-            <div style={{ opacity: 0.75, fontWeight: 800, fontSize: 13 }}>Inizia a guadagnare XP per vedere la classifica.</div>
-          ) : (
-            <div style={{ display: "grid", gap: 6 }}>
-              {items.map((it, i) => (
-                <div key={it.k} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontWeight: 900, fontSize: 13 }}>
-                  <div style={{ opacity: 0.85 }}>#{i + 1} • {it.k}</div>
-                  <div style={{ opacity: 0.95 }}>{it.v} XP</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-      <Leaderboard weekKey={weekKey} />
-
+      <ProfileCardModal
+        open={cardOpen}
+        player={cardPlayer}
+        onClose={() => {
+          setCardOpen(false);
+          setCardPlayer(null);
+        }}
+      />
     </div>
   );
 }

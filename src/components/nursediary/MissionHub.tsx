@@ -34,6 +34,9 @@ export default function MissionHub({
     const dailyUtility = getDailyCounter("nd_daily_utility_used");
     const dailyPacks = getDailyCounter("nd_daily_packs_opened");
     const dailyRecycled = getDailyCounter("nd_daily_recycled");
+    const dailyQuiz = getDailyCounter("nd_daily_quiz_done");
+    const dailyPerfect = getDailyCounter("nd_daily_quiz_perfect");
+    const dailyLogin = getDailyCounter("nd_daily_login_claimed_count");
     const weeklyXp = getWeeklyXpMap()[weekKey] || 0;
 
     const defs: MissionDef[] = [
@@ -44,8 +47,8 @@ export default function MissionHub({
         progress: dailyReads,
         tiers: [
           { need: 3, pills: 25, xp: 10 },
-          { need: 7, pills: 60, xp: 25 },
-          { need: 15, pills: 120, xp: 60, pack: 1 },
+          { need: 10, pills: 80, xp: 35 },
+          { need: 25, pills: 170, xp: 85, pack: 1 },
         ],
       },
       {
@@ -54,9 +57,31 @@ export default function MissionHub({
         label: "🛠 Utility oggi",
         progress: dailyUtility,
         tiers: [
-          { need: 1, pills: 15, xp: 10 },
-          { need: 3, pills: 40, xp: 25 },
-          { need: 6, pills: 90, xp: 55 },
+          { need: 2, pills: 20, xp: 10 },
+          { need: 6, pills: 65, xp: 30 },
+          { need: 12, pills: 140, xp: 70 },
+        ],
+      },
+      {
+        id: "quiz",
+        scope: dayKey,
+        label: "🧠 Quiz oggi",
+        progress: dailyQuiz,
+        tiers: [
+          { need: 1, pills: 25, xp: 20 },
+          { need: 2, pills: 60, xp: 45 },
+          { need: 4, pills: 140, xp: 100, pack: 1 },
+        ],
+      },
+      {
+        id: "perfect",
+        scope: dayKey,
+        label: "🎯 Quiz perfetti oggi",
+        progress: dailyPerfect,
+        tiers: [
+          { need: 1, pills: 40, xp: 30 },
+          { need: 2, pills: 95, xp: 70 },
+          { need: 3, pills: 170, xp: 140, pack: 1 },
         ],
       },
       {
@@ -66,8 +91,8 @@ export default function MissionHub({
         progress: dailyPacks,
         tiers: [
           { need: 1, pills: 10, xp: 10 },
-          { need: 3, pills: 35, xp: 25 },
-          { need: 6, pills: 80, xp: 55 },
+          { need: 4, pills: 45, xp: 30 },
+          { need: 8, pills: 100, xp: 70 },
         ],
       },
       {
@@ -77,8 +102,19 @@ export default function MissionHub({
         progress: dailyRecycled,
         tiers: [
           { need: 2, pills: 15, xp: 10 },
-          { need: 8, pills: 45, xp: 25 },
-          { need: 20, pills: 110, xp: 60 },
+          { need: 10, pills: 55, xp: 35 },
+          { need: 25, pills: 140, xp: 90 },
+        ],
+      },
+      {
+        id: "login",
+        scope: dayKey,
+        label: "✅ Login reward oggi",
+        progress: dailyLogin,
+        tiers: [
+          { need: 1, pills: 25, xp: 15 },
+          { need: 1, pills: 0 },
+          { need: 1, pills: 0 },
         ],
       },
       {
@@ -87,9 +123,9 @@ export default function MissionHub({
         label: "🏁 XP settimanali",
         progress: weeklyXp,
         tiers: [
-          { need: 120, pills: 60 },
-          { need: 320, pills: 120, pack: 1 },
-          { need: 600, pills: 220, pack: 2 },
+          { need: 200, pills: 80 },
+          { need: 520, pills: 160, pack: 1 },
+          { need: 900, pills: 280, pack: 2 },
         ],
       },
     ];
