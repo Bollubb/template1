@@ -8,6 +8,8 @@ const LS = {
   pills: "nd_pills",
   freePacks: "nd_free_packs",
   favs: "nd_utility_favs",
+  profile: "nd_profile",
+  avatar: "nd_avatar",
 } as const;
 
 type ToolId = "mlh" | "gtt" | "mgkgmin" | "map" | "bmi" | "diuresi";
@@ -51,6 +53,8 @@ export default function HomeDashboard({
   const [pills, setPills] = useState(0);
   const [freePacks, setFreePacks] = useState(0);
   const [xp, setXp] = useState(0);
+  const [profileName, setProfileName] = useState<string>("");
+  const [avatar, setAvatar] = useState<string | null>(null);
 
   const [dailyLeft, setDailyLeft] = useState(0);
   const [weeklyLeft, setWeeklyLeft] = useState(0);
@@ -67,6 +71,9 @@ export default function HomeDashboard({
       setFreePacks(Number(localStorage.getItem(LS.freePacks) || "0") || 0);
       setXp(getXp());
       setFavTools(safeJson<ToolId[]>(localStorage.getItem(LS.favs), []));
+      const p = safeJson<{ name?: string }>(localStorage.getItem(LS.profile), {} as any);
+      setProfileName(String(p?.name || ""));
+      setAvatar(localStorage.getItem(LS.avatar));
     };
 
     tick();
@@ -104,7 +111,19 @@ export default function HomeDashboard({
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <div>
-            <div style={{ fontWeight: 950, fontSize: 18 }}>Home</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", overflow: "hidden" }}>
+                {avatar ? (
+                  <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <span style={{ fontSize: 18 }}>👤</span>
+                )}
+              </div>
+              <div>
+                <div style={{ fontWeight: 950, fontSize: 18 }}>Home</div>
+                <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>{profileName ? `Ciao, ${profileName}` : "Benvenuto"}</div>
+              </div>
+            </div>
             <div style={{ opacity: 0.72, fontWeight: 700, fontSize: 13 }}>Daily brief • guidata e veloce</div>
           </div>
           <div style={{ opacity: 0.75, fontWeight: 900, fontSize: 12 }}>Reset daily: {msToHMS(dailyLeft)}</div>
@@ -163,7 +182,7 @@ export default function HomeDashboard({
             <div key={id} style={quickTile()}>
               <div style={{ fontWeight: 950, fontSize: 12 }}>{TOOL_TITLES[id]}</div>
               <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 11 }}>
-                Oggi: {id === "mlh" ? "" : ""}{utilityToday}
+                Oggi: {utilityToday}
               </div>
             </div>
           ))}

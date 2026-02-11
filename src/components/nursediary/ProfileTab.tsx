@@ -57,6 +57,25 @@ function safeJson<T>(raw: string | null, fallback: T): T {
   }
 }
 
+function svgAvatar(bg: string, emoji: string) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
+  <rect width="256" height="256" rx="64" fill="${bg}"/>
+  <text x="50%" y="56%" text-anchor="middle" font-size="120" font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji" dominant-baseline="middle">${emoji}</text>
+</svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+const AVATAR_PRESETS: { label: string; data: string }[] = [
+  { label: "🩺", data: svgAvatar("#0ea5e9", "🩺") },
+  { label: "💉", data: svgAvatar("#22c55e", "💉") },
+  { label: "🫀", data: svgAvatar("#ef4444", "🫀") },
+  { label: "🧠", data: svgAvatar("#a855f7", "🧠") },
+  { label: "📚", data: svgAvatar("#f59e0b", "📚") },
+  { label: "🧪", data: svgAvatar("#06b6d4", "🧪") },
+  { label: "🛡️", data: svgAvatar("#64748b", "🛡️") },
+  { label: "⭐", data: svgAvatar("#facc15", "⭐") },
+];
+
 function msToHMS(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const hh = String(Math.floor(s / 3600)).padStart(2, "0");
@@ -95,11 +114,13 @@ export default function ProfileTab({
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
 }) {
-  
+
   const toast = useToast();
-const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
+  const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
   const [avatar, setAvatar] = useState<string | null>(null);
   const [premium, setPremium] = useState<boolean>(false);
+  const [exportText, setExportText] = useState<string>("");
+  const [importText, setImportText] = useState<string>("");
 
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -196,7 +217,81 @@ const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Inf
     };
     tick();
     const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
+  
+
+function buildAccountExport() {
+  if (!isBrowser()) return;
+  const data: Record<string, string> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (!k.startsWith("nd_")) continue;
+      const v = localStorage.getItem(k);
+      if (v !== null) data[k] = v;
+    }
+  } catch {}
+
+  const payload = {
+    v: 1,
+    exportedAt: new Date().toISOString(),
+    data,
+  };
+
+  const txt = JSON.stringify(payload);
+  setExportText(txt);
+
+  // best-effort copy
+  void navigator?.clipboard
+    ?.writeText(txt)
+    .then(() => toast.push("Account copiato negli appunti", "success"))
+    .catch(() => {});
+}
+
+function applyAccountImport() {
+  if (!isBrowser()) return;
+  const raw = importText.trim();
+  if (!raw) return;
+
+  let parsed: any = null;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    toast.push("Import fallito: JSON non valido", "error");
+    return;
+  }
+
+  const data: Record<string, string> =
+    parsed?.data && typeof parsed.data === "object" ? parsed.data : parsed;
+
+  if (!data || typeof data !== "object") {
+    toast.push("Import fallito: formato non supportato", "error");
+    return;
+  }
+
+  try {
+    for (const [k, v] of Object.entries(data)) {
+      if (!k.startsWith("nd_")) continue;
+      if (typeof v !== "string") continue;
+      localStorage.setItem(k, v);
+    }
+  } catch {}
+
+  // refresh in-memory state (no hard reload)
+  setProfile(safeJson(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
+  setAvatar(localStorage.getItem(LS.avatar));
+  setPremium(localStorage.getItem(LS.premium) === "1");
+  setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
+  setReadIds(new Set(safeJson<string[]>(localStorage.getItem(LS.read), [])));
+  setCardsOwned(safeJson<Record<string, number>>(localStorage.getItem(LS.cards), {}));
+  setXp(Number(localStorage.getItem(LS.xp) || 0));
+  setPills(Number(localStorage.getItem(LS.pills) || 0));
+  setFreePacks(Number(localStorage.getItem(LS.freePacks) || 0));
+  setHistory(getHistory());
+  toast.push("Account importato", "success");
+}
+
+  return () => window.clearInterval(id);
   }, []);
 
   const uniqueCards = useMemo(
@@ -431,6 +526,36 @@ const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Inf
             <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && onPickAvatar(e.target.files[0])} />
           </label>
 
+
+<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+  {AVATAR_PRESETS.map((a) => (
+    <button
+      key={a.label}
+      type="button"
+      onClick={() => {
+        setAvatar(a.data);
+        try {
+          localStorage.setItem(LS.avatar, a.data);
+        } catch {}
+      }}
+      style={{
+        width: 34,
+        height: 34,
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.06)",
+        cursor: "pointer",
+        overflow: "hidden",
+        display: "grid",
+        placeItems: "center",
+      }}
+      title={`Preset ${a.label}`}
+    >
+      <img src={a.data} alt={a.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+    </button>
+  ))}
+</div>
+
           <div style={chip()}>
             Pillole: <b>{pills}</b>
           </div>
@@ -444,6 +569,61 @@ const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Inf
           </button>
         </div>
       </div>
+
+
+{/* Account locale */}
+<div style={card()}>
+  <div style={title()}>Account locale</div>
+  <div style={{ marginTop: 6, color: "rgba(255,255,255,0.70)", fontWeight: 700, fontSize: 13 }}>
+    Salva/trasferisci il tuo profilo (solo locale, nessun backend). Export/Import include le impostazioni e i progressi salvati su questo dispositivo.
+  </div>
+
+  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+    <button type="button" onClick={buildAccountExport} style={primaryBtn(false)}>
+      Genera export (copia negli appunti)
+    </button>
+
+    <textarea
+      value={exportText}
+      readOnly
+      placeholder="Qui comparirà il JSON export…"
+      style={{
+        width: "100%",
+        minHeight: 84,
+        padding: "10px 12px",
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.06)",
+        color: "rgba(255,255,255,0.92)",
+        fontWeight: 800,
+        outline: "none",
+        resize: "vertical",
+      }}
+    />
+
+    <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Import (incolla JSON e importa)</div>
+    <textarea
+      value={importText}
+      onChange={(e) => setImportText(e.target.value)}
+      placeholder="Incolla qui il JSON esportato…"
+      style={{
+        width: "100%",
+        minHeight: 84,
+        padding: "10px 12px",
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(255,255,255,0.06)",
+        color: "rgba(255,255,255,0.92)",
+        fontWeight: 800,
+        outline: "none",
+        resize: "vertical",
+      }}
+    />
+    <button type="button" onClick={applyAccountImport} style={primaryBtn(false)}>
+      Importa account
+    </button>
+  </div>
+</div>
 
       {/* XP / Level */}
       <div style={card()}>

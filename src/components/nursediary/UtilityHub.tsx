@@ -4,6 +4,7 @@ import { useToast } from "./Toast";
 
 const LS = {
   favs: "nd_utility_favs",
+  history: "nd_utility_history_v1",
 } as const;
 
 type ToolId =
@@ -14,15 +15,22 @@ type ToolId =
   | "bmi"
   | "diuresi";
 
-type ToolDef = { id: ToolId; title: string; subtitle: string; xp: number };
+type ToolDef = { id: ToolId; title: string; subtitle: string };
+
+type UtilityHistoryItem = {
+  tool: ToolId;
+  ts: number;
+  inputs: Record<string, string | number | boolean>;
+  output: string;
+};
 
 const TOOLS: ToolDef[] = [
-  { id: "mlh", title: "Velocità infusione", subtitle: "ml/h da volume e tempo", xp: 3 },
-  { id: "gtt", title: "Gocce/min", subtitle: "con deflussore 20 o 60 gtt", xp: 3 },
-  { id: "mgkgmin", title: "Dose → ml/h", subtitle: "mg/kg/min → ml/h (con concentrazione)", xp: 4 },
-  { id: "map", title: "MAP", subtitle: "pressione arteriosa media", xp: 2 },
-  { id: "bmi", title: "BMI", subtitle: "indice massa corporea", xp: 2 },
-  { id: "diuresi", title: "Diuresi", subtitle: "ml/kg/h", xp: 2 },
+  { id: "mlh", title: "Velocità infusione", subtitle: "ml/h da volume e tempo"},
+  { id: "gtt", title: "Gocce/min", subtitle: "con deflussore 20 o 60 gtt"},
+  { id: "mgkgmin", title: "Dose → ml/h", subtitle: "mg/kg/min → ml/h (con concentrazione)"},
+  { id: "map", title: "MAP", subtitle: "pressione arteriosa media"},
+  { id: "bmi", title: "BMI", subtitle: "indice massa corporea"},
+  { id: "diuresi", title: "Diuresi", subtitle: "ml/kg/h"},
 ];
 
 function safeJson<T>(raw: string | null, fallback: T): T {
@@ -42,7 +50,36 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     return safeJson<ToolId[]>(localStorage.getItem(LS.favs), []);
   });
 
+  const [history, setHistory] = useState<UtilityHistoryItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    return safeJson<UtilityHistoryItem[]>(localStorage.getItem(LS.history), []);
+  });
+
+  const lastByTool = useMemo(() => {
+    const map = {} as Record<ToolId, UtilityHistoryItem | null>;
+    for (const t of TOOLS) map[t.id] = null;
+    for (const h of history) {
+      if (!map[h.tool]) map[h.tool] = h;
+    }
+    return map;
+  }, [history]);
+
+  function pushHistory(item: UtilityHistoryItem) {
+    setHistory((prev) => {
+      const next = [item, ...prev].slice(0, 30);
+      try {
+        localStorage.setItem(LS.history, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }
+
+
   const activeDef = useMemo(() => TOOLS.find((t) => t.id === active) || null, [active]);
+  const activeHistory = useMemo(() => {
+    if (!active) return [] as UtilityHistoryItem[];
+    return history.filter((h) => h.tool === active).slice(0, 5);
+  }, [history, active]);
 
   function toggleFav(id: ToolId) {
     setFavs((prev) => {
@@ -73,7 +110,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
           <div>
             <div style={{ fontWeight: 950, fontSize: 18 }}>🛠 Utility infermieristiche</div>
             <div style={{ opacity: 0.72, fontWeight: 700, fontSize: 13 }}>
-              Calcolatori rapidi (offline). Usarli dà solo XP.
+              Calcolatori rapidi (offline). Usarli dà solo feedback (no XP).
             </div>
           </div>
           <button
@@ -150,32 +187,44 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
             <div style={{ fontWeight: 950 }}>{activeDef.title}</div>
-            <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>+{activeDef.xp} XP</div>
+            <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>Nessuna ricompensa</div>
           </div>
 
           <div style={{ marginTop: 10 }}>
-            <ToolRenderer id={activeDef.id} onUsed={() => rewardUse()} />
+            <ToolRenderer id={activeDef.id} last={lastByTool[activeDef.id]} onSave={pushHistory} onUsed={() => rewardUse()} />
           </div>
+
+{activeHistory.length > 0 && (
+            <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+              <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Ultimi calcoli</div>
+              {activeHistory.map((h) => (
+                <div key={h.ts} style={{ padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.92)" }}>{h.output}</div>
+                  <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>{new Date(h.ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function ToolRenderer({ id, onUsed }: { id: ToolId; onUsed: () => void }) {
+function ToolRenderer({ id, last, onSave, onUsed }: { id: ToolId; last: UtilityHistoryItem | null; onSave: (item: UtilityHistoryItem) => void; onUsed: () => void }) {
   switch (id) {
     case "mlh":
-      return <ToolMlH onUsed={onUsed} />;
+      return <ToolMlH last={last} onSave={onSave} onUsed={onUsed} />;
     case "gtt":
-      return <ToolGtt onUsed={onUsed} />;
+      return <ToolGtt last={last} onSave={onSave} onUsed={onUsed} />;
     case "mgkgmin":
-      return <ToolMgKgMin onUsed={onUsed} />;
+      return <ToolMgKgMin last={last} onSave={onSave} onUsed={onUsed} />;
     case "map":
-      return <ToolMAP onUsed={onUsed} />;
+      return <ToolMAP last={last} onSave={onSave} onUsed={onUsed} />;
     case "bmi":
-      return <ToolBMI onUsed={onUsed} />;
+      return <ToolBMI last={last} onSave={onSave} onUsed={onUsed} />;
     case "diuresi":
-      return <ToolDiuresi onUsed={onUsed} />;
+      return <ToolDiuresi last={last} onSave={onSave} onUsed={onUsed} />;
     default:
       return null;
   }
@@ -224,7 +273,7 @@ function Result({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ToolMlH({ onUsed }: { onUsed: () => void }) {
+function ToolMlH({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; onSave: (item: UtilityHistoryItem) => void; onUsed: () => void }) {
   const [ml, setMl] = useState("");
   const [hours, setHours] = useState("");
   const out = useMemo(() => {
@@ -236,6 +285,15 @@ function ToolMlH({ onUsed }: { onUsed: () => void }) {
 
   return (
     <div>
+      {last?.tool === "mlh" && (
+        <button type="button" onClick={() => {
+          const i = (last.inputs || {}) as any;
+          setMl(String(i.ml ?? ""));
+          setHours(String(i.hours ?? ""));
+        }} style={miniBtn()}>
+          ↩ Usa ultimo
+        </button>
+      )}
       <div style={{ display: "grid", gap: 10 }}>
         <Input label="Volume" value={ml} onChange={setMl} suffix="ml" />
         <Input label="Tempo" value={hours} onChange={setHours} suffix="ore" />
@@ -243,7 +301,10 @@ function ToolMlH({ onUsed }: { onUsed: () => void }) {
       {out !== null && (
         <Result>
           Velocità: {out.toFixed(1)} ml/h{" "}
-          <button type="button" onClick={onUsed} style={miniBtn()}>
+          <button type="button" onClick={() => {
+            onSave({ tool: "gtt", ts: Date.now(), inputs: { ml, minutes, setType }, output: `${out.toFixed(0)} gtt/min` });
+            onUsed();
+          }} style={miniBtn()}>
             Usa
           </button>
         </Result>
@@ -252,7 +313,7 @@ function ToolMlH({ onUsed }: { onUsed: () => void }) {
   );
 }
 
-function ToolGtt({ onUsed }: { onUsed: () => void }) {
+function ToolGtt({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; onSave: (item: UtilityHistoryItem) => void; onUsed: () => void }) {
   const [ml, setMl] = useState("");
   const [minutes, setMinutes] = useState("");
   const [setType, setSetType] = useState<20 | 60>(20);
@@ -267,6 +328,16 @@ function ToolGtt({ onUsed }: { onUsed: () => void }) {
 
   return (
     <div>
+      {last?.tool === "gtt" && (
+        <button type="button" onClick={() => {
+          const i = (last.inputs || {}) as any;
+          setMl(String(i.ml ?? ""));
+          setMinutes(String(i.minutes ?? ""));
+          if (i.setType === 20 || i.setType === 60) setSetType(i.setType);
+        }} style={miniBtn()}>
+          ↩ Usa ultimo
+        </button>
+      )}
       <div style={{ display: "grid", gap: 10 }}>
         <Input label="Volume" value={ml} onChange={setMl} suffix="ml" />
         <Input label="Tempo" value={minutes} onChange={setMinutes} suffix="min" />
@@ -283,7 +354,10 @@ function ToolGtt({ onUsed }: { onUsed: () => void }) {
       {out !== null && (
         <Result>
           Gocce/min: {out.toFixed(0)} gtt/min{" "}
-          <button type="button" onClick={onUsed} style={miniBtn()}>
+          <button type="button" onClick={() => {
+            onSave({ tool: "mgkgmin", ts: Date.now(), inputs: { dose, kg, conc }, output: `${out.toFixed(2)} ml/h` });
+            onUsed();
+          }} style={miniBtn()}>
             Usa
           </button>
         </Result>
@@ -292,7 +366,7 @@ function ToolGtt({ onUsed }: { onUsed: () => void }) {
   );
 }
 
-function ToolMgKgMin({ onUsed }: { onUsed: () => void }) {
+function ToolMgKgMin({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; onSave: (item: UtilityHistoryItem) => void; onUsed: () => void }) {
   const [dose, setDose] = useState(""); // mg/kg/min
   const [kg, setKg] = useState("");
   const [conc, setConc] = useState(""); // mg/ml
@@ -309,6 +383,16 @@ function ToolMgKgMin({ onUsed }: { onUsed: () => void }) {
 
   return (
     <div>
+      {last?.tool === "mgkgmin" && (
+        <button type="button" onClick={() => {
+          const i = (last.inputs || {}) as any;
+          setDose(String(i.dose ?? ""));
+          setKg(String(i.kg ?? ""));
+          setConc(String(i.conc ?? ""));
+        }} style={miniBtn()}>
+          ↩ Usa ultimo
+        </button>
+      )}
       <div style={{ display: "grid", gap: 10 }}>
         <Input label="Dose" value={dose} onChange={setDose} suffix="mg/kg/min" />
         <Input label="Peso" value={kg} onChange={setKg} suffix="kg" />
@@ -317,7 +401,10 @@ function ToolMgKgMin({ onUsed }: { onUsed: () => void }) {
       {out !== null && (
         <Result>
           Velocità: {out.toFixed(2)} ml/h{" "}
-          <button type="button" onClick={onUsed} style={miniBtn()}>
+          <button type="button" onClick={() => {
+            onSave({ tool: "map", ts: Date.now(), inputs: { sys, dia }, output: `${out.toFixed(0)} mmHg` });
+            onUsed();
+          }} style={miniBtn()}>
             Usa
           </button>
         </Result>
@@ -326,7 +413,7 @@ function ToolMgKgMin({ onUsed }: { onUsed: () => void }) {
   );
 }
 
-function ToolMAP({ onUsed }: { onUsed: () => void }) {
+function ToolMAP({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; onSave: (item: UtilityHistoryItem) => void; onUsed: () => void }) {
   const [sys, setSys] = useState("");
   const [dia, setDia] = useState("");
   const out = useMemo(() => {
@@ -338,6 +425,15 @@ function ToolMAP({ onUsed }: { onUsed: () => void }) {
 
   return (
     <div>
+      {last?.tool === "map" && (
+        <button type="button" onClick={() => {
+          const i = (last.inputs || {}) as any;
+          setSys(String(i.sys ?? ""));
+          setDia(String(i.dia ?? ""));
+        }} style={miniBtn()}>
+          ↩ Usa ultimo
+        </button>
+      )}
       <div style={{ display: "grid", gap: 10 }}>
         <Input label="Sistolica" value={sys} onChange={setSys} suffix="mmHg" />
         <Input label="Diastolica" value={dia} onChange={setDia} suffix="mmHg" />
@@ -345,7 +441,10 @@ function ToolMAP({ onUsed }: { onUsed: () => void }) {
       {out !== null && (
         <Result>
           MAP: {out.toFixed(0)} mmHg{" "}
-          <button type="button" onClick={onUsed} style={miniBtn()}>
+          <button type="button" onClick={() => {
+            onSave({ tool: "bmi", ts: Date.now(), inputs: { kg, cm }, output: `${out.toFixed(1)}` });
+            onUsed();
+          }} style={miniBtn()}>
             Usa
           </button>
         </Result>
@@ -354,7 +453,7 @@ function ToolMAP({ onUsed }: { onUsed: () => void }) {
   );
 }
 
-function ToolBMI({ onUsed }: { onUsed: () => void }) {
+function ToolBMI({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; onSave: (item: UtilityHistoryItem) => void; onUsed: () => void }) {
   const [kg, setKg] = useState("");
   const [cm, setCm] = useState("");
   const out = useMemo(() => {
@@ -367,6 +466,15 @@ function ToolBMI({ onUsed }: { onUsed: () => void }) {
 
   return (
     <div>
+      {last?.tool === "bmi" && (
+        <button type="button" onClick={() => {
+          const i = (last.inputs || {}) as any;
+          setKg(String(i.kg ?? ""));
+          setCm(String(i.cm ?? ""));
+        }} style={miniBtn()}>
+          ↩ Usa ultimo
+        </button>
+      )}
       <div style={{ display: "grid", gap: 10 }}>
         <Input label="Peso" value={kg} onChange={setKg} suffix="kg" />
         <Input label="Altezza" value={cm} onChange={setCm} suffix="cm" />
@@ -374,7 +482,10 @@ function ToolBMI({ onUsed }: { onUsed: () => void }) {
       {out !== null && (
         <Result>
           BMI: {out.toFixed(1)}{" "}
-          <button type="button" onClick={onUsed} style={miniBtn()}>
+          <button type="button" onClick={() => {
+            onSave({ tool: "diuresi", ts: Date.now(), inputs: { ml, hours, kg }, output: `${out.toFixed(2)} ml/kg/h` });
+            onUsed();
+          }} style={miniBtn()}>
             Usa
           </button>
         </Result>
@@ -383,7 +494,7 @@ function ToolBMI({ onUsed }: { onUsed: () => void }) {
   );
 }
 
-function ToolDiuresi({ onUsed }: { onUsed: () => void }) {
+function ToolDiuresi({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; onSave: (item: UtilityHistoryItem) => void; onUsed: () => void }) {
   const [ml, setMl] = useState("");
   const [hours, setHours] = useState("");
   const [kg, setKg] = useState("");
@@ -397,6 +508,16 @@ function ToolDiuresi({ onUsed }: { onUsed: () => void }) {
 
   return (
     <div>
+      {last?.tool === "diuresi" && (
+        <button type="button" onClick={() => {
+          const i = (last.inputs || {}) as any;
+          setMl(String(i.ml ?? ""));
+          setHours(String(i.hours ?? ""));
+          setKg(String(i.kg ?? ""));
+        }} style={miniBtn()}>
+          ↩ Usa ultimo
+        </button>
+      )}
       <div style={{ display: "grid", gap: 10 }}>
         <Input label="Volume urine" value={ml} onChange={setMl} suffix="ml" />
         <Input label="Tempo" value={hours} onChange={setHours} suffix="ore" />
@@ -405,7 +526,10 @@ function ToolDiuresi({ onUsed }: { onUsed: () => void }) {
       {out !== null && (
         <Result>
           Diuresi: {out.toFixed(2)} ml/kg/h{" "}
-          <button type="button" onClick={onUsed} style={miniBtn()}>
+          <button type="button" onClick={() => {
+            onSave({ tool: "mlh", ts: Date.now(), inputs: { ml, hours }, output: `${out.toFixed(1)} ml/h` });
+            onUsed();
+          }} style={miniBtn()}>
             Usa
           </button>
         </Result>
