@@ -3,6 +3,7 @@ import UtilityHub from "./UtilityHub";
 import { computeLevel, getXp } from "@/features/progress/xp";
 import { getDailyCounter, getDailyFlag } from "@/features/progress/dailyCounters";
 import { getDailyState, getWeeklyState, getNextDailyResetMs, getNextWeeklyResetMs } from "@/features/cards/quiz/quizLogic";
+import { getLocalProfile, getAvatar as getAvatarLS } from "@/features/profile/profileStore";
 
 const LS = {
   pills: "nd_pills",
@@ -181,7 +182,7 @@ useEffect(() => {
               else if (recommended.action === "utility") setMode("utility");
               else onGoToProfile();
             }}
-            style={primaryBtn()}
+            style={{ ...primaryBtn(), width: "100%" }}
           >
             {recommended.cta}
           </button>

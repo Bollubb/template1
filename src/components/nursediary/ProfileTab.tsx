@@ -5,6 +5,7 @@ import MissionHub from "./MissionHub";
 import Leaderboard, { type PlayerCard } from "./Leaderboard";
 import ProfileCardModal from "./ProfileCardModal";
 import { addXp as addXpGlobal, getWeeklyXpMap } from "@/features/progress/xp";
+import { getLocalProfile, saveLocalProfile, getAvatar as getAvatarLS, setAvatar as setAvatarLS, getAccountCreated as getAccountCreatedLS, setAccountCreated as setAccountCreatedLS } from "@/features/profile/profileStore";
 import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/features/progress/dailyCounters";
 
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
@@ -155,6 +156,10 @@ export default function ProfileTab({
   const toast = useToast();
   const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
   const [section, setSection] = useState<ProfileSection>("overview");
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [editUnlocked, setEditUnlocked] = useState(false);
+  const canEditProfile = !accountCreated || editUnlocked;
+  const [lbMode, setLbMode] = useState<"weekly" | "all">("weekly");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
@@ -265,7 +270,7 @@ export default function ProfileTab({
   // persist profile + xp + premium + free packs
   useEffect(() => {
     if (!isBrowser()) return;
-    localStorage.setItem(LS.profile, JSON.stringify(profile));
+    saveLocalProfile({ name: profile.name, profession: profile.role, bio: profile.bio ?? "" });
   }, [profile]);
 
   // keep "me" in leaderboard in sync
@@ -661,7 +666,20 @@ export default function ProfileTab({
     setCardOpen(true);
   }
 
-  const players = useMemo(() => lbUsers, [lbUsers]);
+  const players = useMemo(() => {
+    if (lbMode === "all") return lbUsers;
+    const weeklyMap = getWeeklyXpMap();
+    const myWeekly = weeklyMap[weekKey] || 0;
+    // For demo users: deterministic pseudo-weekly score
+    const pseudo = (id: string, base: number) => {
+      let h = 0;
+      for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+      h = (h ^ Number(weekKey.replace(/\D/g, ""))) >>> 0;
+      const r = (h % 80) - 20; // -20..59
+      return Math.max(0, Math.round(base * 0.08) + r);
+    };
+    return lbUsers.map((p) => ({ ...p, xp: p.id === userId ? myWeekly : pseudo(p.id, p.xp) }));
+  }, [lbUsers, lbMode, weekKey, userId]);
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -703,6 +721,7 @@ export default function ProfileTab({
 
           <div style={{ flex: 1 }}>
             <input
+              disabled={!canEditProfile}
               value={profile.name}
               onChange={(e) => setProfile((p) => ({ ...p, name: clampText(e.target.value, PROFILE_LIMITS.name) }))}
               style={inp(true)}
@@ -713,6 +732,7 @@ export default function ProfileTab({
             </div>
 
             <input
+              disabled={!canEditProfile}
               value={profile.role}
               onChange={(e) => setProfile((p) => ({ ...p, role: clampText(e.target.value, PROFILE_LIMITS.profession) }))}
               style={{ ...inp(false), marginTop: 8 }}
@@ -722,6 +742,7 @@ export default function ProfileTab({
               {String(profile.role || "").length}/{PROFILE_LIMITS.profession}
             </div>
             <textarea
+              disabled={!canEditProfile}
               value={profile.bio ?? ""}
               onChange={(e) => setProfile((p) => ({ ...p, bio: clampText(e.target.value, PROFILE_LIMITS.bio) }))}
               placeholder="Breve descrizione (max 160 caratteri)"
@@ -793,14 +814,6 @@ export default function ProfileTab({
         )}
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={chip()}>
-            Pillole: <b>{pills}</b>
-          </div>
-
-          <div style={chip()}>
-            Packs FREE: <b>{freePacks}</b>
-          </div>
-
           <button
             type="button"
             onClick={() => setPremium((v) => !v)}
@@ -816,71 +829,85 @@ export default function ProfileTab({
       </div>
 
       {/* Sezioni (per ridurre confusione) */}
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", overflowX: "hidden", paddingBottom: 2 }}>
         <SegBtn active={section === "overview"} onClick={() => setSection("overview")}>Panoramica</SegBtn>
         <SegBtn active={section === "quiz"} onClick={() => setSection("quiz")}>Quiz</SegBtn>
         <SegBtn active={section === "missions"} onClick={() => setSection("missions")}>Missioni</SegBtn>
         <SegBtn active={section === "leaderboard"} onClick={() => setSection("leaderboard")}>Classifica</SegBtn>
         <SegBtn active={section === "account"} onClick={() => setSection("account")}>Account</SegBtn>
       </div>
-
+  )}
 
 {section === "account" && (
   <div style={card()}>
-  <div style={title()}>Account locale</div>
-  <div style={{ marginTop: 6, color: "rgba(255,255,255,0.70)", fontWeight: 700, fontSize: 13 }}>
-    Salva/trasferisci il tuo profilo (solo locale, nessun backend). Export/Import include le impostazioni e i progressi salvati su questo dispositivo.
-  </div>
+    <div style={title()}>Account</div>
+    <div style={{ marginTop: 6, color: "rgba(255,255,255,0.72)", fontWeight: 800, fontSize: 13 }}>
+      Profilo locale (nessun backend). Una volta creato, il profilo è bloccato per evitare modifiche accidentali.
+    </div>
 
-  <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-    <button type="button" onClick={buildAccountExport} style={primaryBtn(false)}>
-      Genera export (copia negli appunti)
-    </button>
+    <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+      {!accountCreated ? (
+        <button
+          type="button"
+          onClick={() => {
+            const nameOk = String(profile.name || "").trim().length >= 2;
+            if (!nameOk) {
+              toast.push("Inserisci un nome (min 2 caratteri)", "warning");
+              return;
+            }
+            saveLocalProfile({ name: profile.name, profession: profile.role, bio: profile.bio ?? "", createdAt: Date.now() });
+            setAccountCreatedLS(true);
+            setAccountCreated(true);
+            setEditUnlocked(false);
+            toast.push("Account creato", "success");
+          }}
+          style={primaryBtn(false)}
+        >
+          Crea account
+        </button>
+      ) : (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {!editUnlocked ? (
+            <button type="button" onClick={() => setEditUnlocked(true)} style={primaryBtn(false)}>
+              Modifica profilo
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                saveLocalProfile({ name: profile.name, profession: profile.role, bio: profile.bio ?? "" });
+                setEditUnlocked(false);
+                toast.push("Profilo salvato", "success");
+              }}
+              style={primaryBtn(false)}
+            >
+              Salva modifiche
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setEditUnlocked(false);
+              toast.push("Modifica bloccata", "info");
+            }}
+            style={ghostBtn()}
+          >
+            Blocca
+          </button>
+        </div>
+      )}
 
-    <textarea
-      value={exportText}
-      readOnly
-      placeholder="Qui comparirà il JSON export…"
-      style={{
-        width: "100%",
-        minHeight: 84,
-        padding: "10px 12px",
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.06)",
-        color: "rgba(255,255,255,0.92)",
-        fontWeight: 800,
-        outline: "none",
-        resize: "vertical",
-      }}
-    />
-
-    <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Import (incolla JSON e importa)</div>
-    <textarea
-      value={importText}
-      onChange={(e) => setImportText(e.target.value)}
-      placeholder="Incolla qui il JSON esportato…"
-      style={{
-        width: "100%",
-        minHeight: 84,
-        padding: "10px 12px",
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.06)",
-        color: "rgba(255,255,255,0.92)",
-        fontWeight: 800,
-        outline: "none",
-        resize: "vertical",
-      }}
-    />
-    <button type="button" onClick={applyAccountImport} style={primaryBtn(false)}>
-      Importa account
-    </button>
-  </div>
+      <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+        <div style={{ fontWeight: 950 }}>Suggerimento</div>
+        <div style={{ marginTop: 6, opacity: 0.75, fontWeight: 750, fontSize: 13 }}>
+          Per cambiare immagine profilo usa la <b>matita sotto l’avatar</b> nella sezione Panoramica.
+        </div>
+      </div>
+    </div>
   </div>
 )}
 
-      {section === "overview" && (
+{section === "overview" && (
       <>
       {/* XP / Level */}
       <div style={card()}>
@@ -927,7 +954,13 @@ export default function ProfileTab({
       {section === "leaderboard" && (
       <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <div style={title()}>Classifica (locale)</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={title()}>Classifica (locale)</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <SegBtn active={lbMode === "weekly"} onClick={() => setLbMode("weekly")}>Settimana</SegBtn>
+              <SegBtn active={lbMode === "all"} onClick={() => setLbMode("all")}>Totale</SegBtn>
+            </div>
+          </div>
           <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
         </div>
         <div style={{ marginTop: 10 }}>
