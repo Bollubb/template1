@@ -257,7 +257,7 @@ function applyAccountImport() {
   try {
     parsed = JSON.parse(raw);
   } catch {
-    toast.push("Import fallito: JSON non valido", "error");
+    toast.push("Import fallito: JSON non valido", "warning");
     return;
   }
 
