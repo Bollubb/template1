@@ -1162,6 +1162,10 @@ function pillBtn(disabled: boolean): React.CSSProperties {
 function primaryBtn(disabled: boolean): React.CSSProperties {
   return { marginTop: 10, width: "100%", padding: "12px 12px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", background: disabled ? "rgba(255,255,255,0.06)" : "#22c55e", color: disabled ? "rgba(255,255,255,0.55)" : "#052e16", fontWeight: 950, cursor: disabled ? "not-allowed" : "pointer" };
 }
+
+function ghostBtn(): React.CSSProperties {
+  return { padding: "12px 12px", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.90)", fontWeight: 950, cursor: "pointer" };
+}
 function smallBtn(disabled: boolean): React.CSSProperties {
   return { padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: disabled ? "rgba(255,255,255,0.06)" : "#22c55e", color: disabled ? "rgba(255,255,255,0.55)" : "#052e16", fontWeight: 950, cursor: disabled ? "not-allowed" : "pointer", whiteSpace: "nowrap" };
 }
