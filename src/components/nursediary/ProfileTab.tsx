@@ -123,6 +123,13 @@ function pickRandom<T>(arr: T[], n: number) {
   return a.slice(0, n);
 }
 
+type ProfileSection = "overview" | "missions" | "quiz" | "leaderboard" | "account";
+
+function clampText(s: string, max: number) {
+  const v = String(s || "");
+  return v.length > max ? v.slice(0, max) : v;
+}
+
 function computeLevel(xp: number) {
   let level = 1;
   let remaining = xp;
@@ -147,6 +154,7 @@ export default function ProfileTab({
 
   const toast = useToast();
   const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
+  const [section, setSection] = useState<ProfileSection>("overview");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
@@ -158,6 +166,8 @@ export default function ProfileTab({
   const [premium, setPremium] = useState<boolean>(false);
   const [exportText, setExportText] = useState<string>("");
   const [importText, setImportText] = useState<string>("");
+
+  const PROFILE_LIMITS = { name: 18, profession: 26, bio: 160 } as const;
 
   const [favIds, setFavIds] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -505,7 +515,49 @@ export default function ProfileTab({
     if (nextMode === "daily" && dailyState.status === "done") return;
     if (nextMode === "weekly" && weeklyState.status === "done") return;
 
-    const questions = pickRandom(QUIZ_BANK, nextMode === "daily" ? 5 : 12);
+    // Anti-ripetizione: evita le domande viste di recente (fallback se non bastano)
+    const SEEN_KEY = "nd_quiz_seen_v1";
+    const seen = (() => {
+      try {
+        const raw = localStorage.getItem(SEEN_KEY);
+        const arr = raw ? (JSON.parse(raw) as string[]) : [];
+        return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+      } catch {
+        return [] as string[];
+      }
+    })();
+
+    const target = nextMode === "daily" ? 5 : 12;
+    const pool0 = QUIZ_BANK.filter((q) => !seen.includes(q.id));
+    const pool = pool0.length >= target ? pool0 : QUIZ_BANK;
+
+    // Piccolo bilanciamento categorie (senza bloccare se non possibile)
+    const shuffled = pickRandom(pool, pool.length);
+    const maxPerCat = nextMode === "daily" ? 2 : 4;
+    const picked: QuizQuestion[] = [];
+    const perCat: Record<string, number> = {};
+    for (const q of shuffled) {
+      const c = q.category || "altro";
+      if ((perCat[c] || 0) >= maxPerCat) continue;
+      picked.push(q);
+      perCat[c] = (perCat[c] || 0) + 1;
+      if (picked.length >= target) break;
+    }
+    // Fallback: se non abbiamo raggiunto target, riempi senza limiti
+    if (picked.length < target) {
+      for (const q of shuffled) {
+        if (picked.find((x) => x.id === q.id)) continue;
+        picked.push(q);
+        if (picked.length >= target) break;
+      }
+    }
+
+    const questions = picked.slice(0, target);
+    try {
+      const nextSeen = [...questions.map((q) => q.id), ...seen].slice(0, 30);
+      localStorage.setItem(SEEN_KEY, JSON.stringify(nextSeen));
+    } catch {}
+
     setRun({ mode: nextMode, idx: 0, correct: 0, questions });
     setSelected(null);
     setFeedback(null);
@@ -650,12 +702,29 @@ export default function ProfileTab({
           </div>
 
           <div style={{ flex: 1 }}>
-            <input value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} style={inp(true)} placeholder="Nome utente" />
-            <input value={profile.role} onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))} style={{ ...inp(false), marginTop: 8 }} placeholder="Professione (es. Infermiere, Medico…)" />
+            <input
+              value={profile.name}
+              onChange={(e) => setProfile((p) => ({ ...p, name: clampText(e.target.value, PROFILE_LIMITS.name) }))}
+              style={inp(true)}
+              placeholder="Nome utente"
+            />
+            <div style={{ marginTop: 4, opacity: 0.65, fontWeight: 800, fontSize: 12 }}>
+              {String(profile.name || "").length}/{PROFILE_LIMITS.name}
+            </div>
+
+            <input
+              value={profile.role}
+              onChange={(e) => setProfile((p) => ({ ...p, role: clampText(e.target.value, PROFILE_LIMITS.profession) }))}
+              style={{ ...inp(false), marginTop: 8 }}
+              placeholder="Professione (es. Infermiere, Medico…)"
+            />
+            <div style={{ marginTop: 4, opacity: 0.65, fontWeight: 800, fontSize: 12 }}>
+              {String(profile.role || "").length}/{PROFILE_LIMITS.profession}
+            </div>
             <textarea
               value={profile.bio ?? ""}
-              onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
-              placeholder="Breve descrizione (max ~120 caratteri)"
+              onChange={(e) => setProfile((p) => ({ ...p, bio: clampText(e.target.value, PROFILE_LIMITS.bio) }))}
+              placeholder="Breve descrizione (max 160 caratteri)"
               style={{
                 ...inp(false),
                 marginTop: 8,
@@ -664,6 +733,9 @@ export default function ProfileTab({
                 fontWeight: 800,
               }}
             />
+            <div style={{ marginTop: 4, opacity: 0.65, fontWeight: 800, fontSize: 12 }}>
+              {String(profile.bio || "").length}/{PROFILE_LIMITS.bio}
+            </div>
           </div>
         </div>
 
@@ -743,8 +815,18 @@ export default function ProfileTab({
         </div>
       </div>
 
-{/* Account locale */}
-<div style={card()}>
+      {/* Sezioni (per ridurre confusione) */}
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+        <SegBtn active={section === "overview"} onClick={() => setSection("overview")}>Panoramica</SegBtn>
+        <SegBtn active={section === "quiz"} onClick={() => setSection("quiz")}>Quiz</SegBtn>
+        <SegBtn active={section === "missions"} onClick={() => setSection("missions")}>Missioni</SegBtn>
+        <SegBtn active={section === "leaderboard"} onClick={() => setSection("leaderboard")}>Classifica</SegBtn>
+        <SegBtn active={section === "account"} onClick={() => setSection("account")}>Account</SegBtn>
+      </div>
+
+
+{section === "account" && (
+  <div style={card()}>
   <div style={title()}>Account locale</div>
   <div style={{ marginTop: 6, color: "rgba(255,255,255,0.70)", fontWeight: 700, fontSize: 13 }}>
     Salva/trasferisci il tuo profilo (solo locale, nessun backend). Export/Import include le impostazioni e i progressi salvati su questo dispositivo.
@@ -795,8 +877,11 @@ export default function ProfileTab({
       Importa account
     </button>
   </div>
-</div>
+  </div>
+)}
 
+      {section === "overview" && (
+      <>
       {/* XP / Level */}
       <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -819,24 +904,6 @@ export default function ProfileTab({
         <Stat title="Accuracy quiz" value={`${accuracy}%`} />
       </div>
 
-
-      {/* Classifica locale */}
-      <div style={card()}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <div style={title()}>Classifica (locale)</div>
-          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
-        </div>
-        <div style={{ marginTop: 10 }}>
-          <Leaderboard
-            players={players}
-            currentUserId={userId}
-            onSelect={(p) => {
-              setCardPlayer(p);
-              setCardOpen(true);
-            }}
-          />
-        </div>
-      </div>
       {/* Daily login */}
       <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
@@ -854,8 +921,29 @@ export default function ProfileTab({
         </button>
       </div>
 
-      
-      {/* Missioni (tier) */}
+      </>
+      )}
+
+      {section === "leaderboard" && (
+      <div style={card()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <div style={title()}>Classifica (locale)</div>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <Leaderboard
+            players={players}
+            currentUserId={userId}
+            onSelect={(p) => {
+              setCardPlayer(p);
+              setCardOpen(true);
+            }}
+          />
+        </div>
+      </div>
+      )}
+
+      {section === "missions" && (
       <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <div style={title()}>Missioni</div>
@@ -884,8 +972,9 @@ export default function ProfileTab({
           }}
         />
       </div>
+      )}
 
-{/* Quiz */}
+      {section === "quiz" && (
       <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <div>
@@ -954,8 +1043,9 @@ export default function ProfileTab({
           </div>
         </div>
       </div>
+      )}
 
-      {/* Achievements */}
+      {section === "overview" && (
       <div style={card()}>
         <div style={title()}>Obiettivi</div>
         <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
@@ -981,11 +1071,41 @@ export default function ProfileTab({
           })}
         </div>
       </div>
+      )}
     </div>
   );
 }
 
 /* styles (no duplicate keys, no blur) */
+function SegBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "8px 12px",
+        borderRadius: 999,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: active ? "rgba(59,130,246,0.20)" : "rgba(255,255,255,0.06)",
+        color: active ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.85)",
+        fontWeight: 950,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function card(): React.CSSProperties {
   return { border: "1px solid rgba(255,255,255,0.10)", background: "#0b1220", borderRadius: 20, padding: 14 };
 }

@@ -15,6 +15,16 @@ export default function ProfileCardModal({
 
   const lvl = computeLevel(player.xp);
 
+  const shareText = `NurseDiary — Scheda profilo\n\n${player.name}\n${player.profession}\n\nLv ${lvl.level} • ${player.xp} XP\n\n${player.bio?.trim() ? player.bio.trim() : "Nessuna descrizione."}`;
+
+  async function copyShare() {
+    try {
+      await navigator.clipboard.writeText(shareText);
+    } catch {
+      // no-op: clipboard might be blocked
+    }
+  }
+
   return (
     <div
       style={{
@@ -45,21 +55,39 @@ export default function ProfileCardModal({
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
           <div style={{ fontWeight: 950 }}>Scheda profilo</div>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: "8px 10px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.92)",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            Chiudi
-          </button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              type="button"
+              onClick={copyShare}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+              title="Copia testo scheda"
+            >
+              Copia
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              Chiudi
+            </button>
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
