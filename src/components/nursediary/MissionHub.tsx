@@ -73,6 +73,7 @@ export default function MissionHub({
           { need: 2, pills: 60, xp: 45 },
           { need: 4, pills: 140, xp: 100, pack: 1 },
         ],
+      },
       {
         id: "combo",
         scope: dayKey,
@@ -84,7 +85,6 @@ export default function MissionHub({
           { need: 28, pills: 210, xp: 150, pack: 1 },
           { need: 45, pills: 360, xp: 260, pack: 2 },
         ],
-      },
       },
       {
         id: "perfect",
