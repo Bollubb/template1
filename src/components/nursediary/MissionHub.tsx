@@ -134,12 +134,11 @@ export default function MissionHub({
         scope: weekKey,
         label: "🏁 XP settimanali",
         progress: weeklyXp,
-        tiers: [
-          { need: 200, pills: 80 },
-          { need: 520, pills: 160, pack: 1 },
-          { need: 900, pills: 280, pack: 2 },
-          { need: 1400, pills: 420, pack: 3 },
-        ],
+      tiers: [
+  { need: 200, pills: 80 },
+  { need: 520, pills: 160, pack: 1 },
+  { need: 900, pills: 280, pack: 2 },
+],
       },
     ];
     return defs;
