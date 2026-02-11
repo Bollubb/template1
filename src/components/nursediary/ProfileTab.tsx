@@ -217,9 +217,6 @@ export default function ProfileTab({
     };
     tick();
     const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
-  }, []);
-
 
 function buildAccountExport() {
   if (!isBrowser()) return;
