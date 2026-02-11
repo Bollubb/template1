@@ -75,17 +75,16 @@ export default function MissionHub({
         ],
       },
       {
-        id: "combo",
-        scope: dayKey,
-        label: "🧾 Combo oggi (letture+utility+quiz)",
-        progress: dailyCombo,
-        tiers: [
-          { need: 6, pills: 35, xp: 20 },
-          { need: 14, pills: 95, xp: 60 },
-          { need: 28, pills: 210, xp: 150, pack: 1 },
-          { need: 45, pills: 360, xp: 260, pack: 2 },
-        ],
-      },
+  id: "combo",
+  scope: dayKey,
+  label: "🧾 Combo oggi (letture+utility+quiz)",
+  progress: dailyCombo,
+  tiers: [
+    { need: 6, pills: 35, xp: 20 },
+    { need: 14, pills: 95, xp: 60 },
+    { need: 28, pills: 210, xp: 150, pack: 1 },
+  ],
+},
       {
         id: "perfect",
         scope: dayKey,
