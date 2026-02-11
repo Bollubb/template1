@@ -10,6 +10,7 @@ const LS = {
   favs: "nd_utility_favs",
   profile: "nd_profile",
   avatar: "nd_avatar",
+  history: "nd_utility_history_v1",
 } as const;
 
 type ToolId = "mlh" | "gtt" | "mgkgmin" | "map" | "bmi" | "diuresi";
@@ -22,6 +23,14 @@ const TOOL_TITLES: Record<ToolId, string> = {
   bmi: "BMI",
   diuresi: "Diuresi",
 };
+
+type UtilityHistoryItem = {
+  tool: string;
+  ts: number;
+  inputs: Record<string, string | number | boolean>;
+  output: string;
+};
+
 
 function safeJson<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -55,13 +64,26 @@ export default function HomeDashboard({
   const [xp, setXp] = useState(0);
   const [profileName, setProfileName] = useState<string>("");
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [recentHistory, setRecentHistory] = useState<UtilityHistoryItem[]>([]);
 
   const [dailyLeft, setDailyLeft] = useState(0);
   const [weeklyLeft, setWeeklyLeft] = useState(0);
 
   const [favTools, setFavTools] = useState<ToolId[]>([]);
 
-  useEffect(() => {
+  
+  const loadRecentHistory = () => {
+    try {
+      const raw = localStorage.getItem(LS.history);
+      const list = raw ? (JSON.parse(raw) as UtilityHistoryItem[]) : [];
+      if (Array.isArray(list)) setRecentHistory(list.slice(0, 3));
+      else setRecentHistory([]);
+    } catch {
+      setRecentHistory([]);
+    }
+  };
+
+useEffect(() => {
     if (typeof window === "undefined") return;
 
     const tick = () => {
@@ -102,7 +124,7 @@ export default function HomeDashboard({
   }, [loginClaimed, freePacks, daily.status, readsToday]);
 
   if (mode === "utility") {
-    return <UtilityHub onBack={() => setMode("home")} />;
+    return <UtilityHub onBack={() => { setMode("home"); try { loadRecentHistory(); } catch {} }} />;
   }
 
   return (
@@ -186,7 +208,31 @@ export default function HomeDashboard({
               </div>
             </div>
           ))}
-        </div>
+        
+        {recentHistory.length ? (
+          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            <div style={{ fontWeight: 950, fontSize: 12, opacity: 0.85 }}>Ultimi calcoli</div>
+            {recentHistory.slice(0, 3).map((h, i) => (
+              <div
+                key={i}
+                style={{
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  borderRadius: 14,
+                  padding: "10px 12px",
+                  background: "rgba(255,255,255,0.04)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 10,
+                }}
+              >
+                <div style={{ fontWeight: 900, fontSize: 12, opacity: 0.9 }}>{TOOL_TITLES[h.tool as ToolId] || String(h.tool)}</div>
+                <div style={{ fontWeight: 950, fontSize: 12 }}>{h.output}</div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+</div>
 
         <div style={{ marginTop: 10, opacity: 0.75, fontWeight: 800, fontSize: 12 }}>
           Oggi: {utilityToday} utility • {packsToday} bustine • {recycledToday} riciclate

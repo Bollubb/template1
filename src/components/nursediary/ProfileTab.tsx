@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import { useToast } from "./Toast";
+import MissionHub from "./MissionHub";
 import { addXp as addXpGlobal, getWeeklyXpMap } from "@/features/progress/xp";
 import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/features/progress/dailyCounters";
 
@@ -674,132 +675,24 @@ export default function ProfileTab({
           Completa uno step, riscotta la reward, poi si sblocca lo step successivo (più difficile).
         </div>
 
-        {(() => {
-          const dailyReads = getDailyCounter("nd_daily_reads");
-          const dailyUtility = getDailyCounter("nd_daily_utility_used");
-          const dailyPacks = getDailyCounter("nd_daily_packs_opened");
-          const dailyRecycled = getDailyCounter("nd_daily_recycled");
-
-          const weeklyXp = (getWeeklyXpMap()[weekKey] || 0);
-
-          const missions = [
-            {
-              id: "reads",
-              scope: dayKey,
-              label: "📚 Letture oggi",
-              progress: dailyReads,
-              tiers: [
-                { need: 3, pills: 25, xp: 10 },
-                { need: 7, pills: 60, xp: 25 },
-                { need: 15, pills: 120, xp: 60, pack: 1 },
-              ],
-            },
-            {
-              id: "utility",
-              scope: dayKey,
-              label: "🛠 Utility oggi",
-              progress: dailyUtility,
-              tiers: [
-                { need: 1, pills: 15, xp: 10 },
-                { need: 3, pills: 40, xp: 25 },
-                { need: 6, pills: 90, xp: 55 },
-              ],
-            },
-            {
-              id: "packs",
-              scope: dayKey,
-              label: "🎴 Bustine oggi",
-              progress: dailyPacks,
-              tiers: [
-                { need: 1, pills: 10, xp: 10 },
-                { need: 3, pills: 35, xp: 25 },
-                { need: 6, pills: 80, xp: 55 },
-              ],
-            },
-            {
-              id: "recycle",
-              scope: dayKey,
-              label: "♻️ Riciclo oggi",
-              progress: dailyRecycled,
-              tiers: [
-                { need: 2, pills: 15, xp: 10 },
-                { need: 8, pills: 45, xp: 25 },
-                { need: 20, pills: 110, xp: 60 },
-              ],
-            },
-            {
-              id: "weekly_xp",
-              scope: weekKey,
-              label: "🏁 XP settimanali",
-              progress: weeklyXp,
-              tiers: [
-                { need: 120, pills: 60, xp: 0 },
-                { need: 320, pills: 120, xp: 0, pack: 1 },
-                { need: 600, pills: 220, xp: 0, pack: 2 },
-              ],
-            },
-          ] as const;
-
-          return (
-            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-              {missions.map((m) => {
-                const claimed = getClaimed(m.scope, m.id);
-                const nextTier = Math.min(3, claimed + 1);
-                const tierDef = m.tiers[nextTier - 1];
-                const done = m.progress >= tierDef.need;
-                const maxed = claimed >= 3;
-
-                return (
-                  <div
-                    key={`${m.scope}:${m.id}`}
-                    style={{
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      borderRadius: 16,
-                      padding: 12,
-                      background: maxed ? "rgba(34,197,94,0.10)" : "#0f172a",
-                      display: "grid",
-                      gap: 8,
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                      <div style={{ fontWeight: 950 }}>{m.label}</div>
-                      <div style={{ opacity: 0.8, fontWeight: 900, fontSize: 12 }}>
-                        Step {maxed ? 3 : nextTier}/3
-                      </div>
-                    </div>
-
-                    <div style={{ opacity: 0.8, fontWeight: 800, fontSize: 12 }}>
-  Progresso: {m.progress}/{tierDef.need} • Reward: +{tierDef.pills} 💊
-  {tierDef.xp ? <span>{" "}+{tierDef.xp} XP</span> : null}
-  {("pack" in tierDef && (tierDef as any).pack) ? <span>{" "}+{(tierDef as any).pack} 🎁</span> : null}
-</div>
-
-                    <button
-                      type="button"
-                      disabled={maxed || !done}
-                      onClick={() => {
-                        if (maxed || !done) return;
-                        // grant
-                        setPills((p) => p + tierDef.pills);
-                        if (tierDef.xp) {
-                          setXp((x) => x + tierDef.xp);
-                          addXpGlobal(tierDef.xp);
-                          toast.push(`+${tierDef.xp} XP`, "success");
-                        }
-                        if ("pack" in tierDef && (tierDef as any).pack) setFreePacks((v) => v + (tierDef as any).pack);
-                        setClaimed(m.scope, m.id, nextTier);
-                        toast.push(`Missione completata: +${tierDef.pills} 💊`, "success");
-                      }}
-                      style={primaryBtn(maxed || !done)}
-                    >
-                      {maxed ? "Completata" : done ? "Riscatta reward" : "In corso"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+        <MissionHub
+          dayKey={dayKey}
+          weekKey={weekKey}
+          dailyLeft={dailyLeft}
+          weeklyLeft={weeklyLeft}
+          getClaimed={getClaimed}
+          setClaimed={setClaimed}
+          onGrant={(reward, meta) => {
+            setPills((p) => p + reward.pills);
+            if (reward.xp) {
+              setXp((x) => x + reward.xp!);
+              addXpGlobal(reward.xp!);
+              toast.push(`+${reward.xp} XP`, "success");
+            }
+            if (reward.pack) setFreePacks((v) => v + reward.pack!);
+            toast.push(`Reward riscattata: +${reward.pills} 💊`, "success");
+          }}
+        />
       </div>
 
 {/* Quiz */}
