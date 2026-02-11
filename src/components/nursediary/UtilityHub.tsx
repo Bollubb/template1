@@ -302,7 +302,7 @@ function ToolMlH({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; on
         <Result>
           Velocità: {out.toFixed(1)} ml/h{" "}
           <button type="button" onClick={() => {
-            onSave({ tool: "gtt", ts: Date.now(), inputs: { ml, minutes, setType }, output: `${out.toFixed(0)} gtt/min` });
+            onSave({ tool: "mlh", ts: Date.now(), inputs: { ml, hours }, output: `${out.toFixed(1)} ml/h` });
             onUsed();
           }} style={miniBtn()}>
             Usa
@@ -355,7 +355,7 @@ function ToolGtt({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; on
         <Result>
           Gocce/min: {out.toFixed(0)} gtt/min{" "}
           <button type="button" onClick={() => {
-            onSave({ tool: "mgkgmin", ts: Date.now(), inputs: { dose, kg, conc }, output: `${out.toFixed(2)} ml/h` });
+            onSave({ tool: "gtt", ts: Date.now(), inputs: { ml, minutes, setType }, output: `${out.toFixed(0)} gtt/min` });
             onUsed();
           }} style={miniBtn()}>
             Usa
@@ -402,7 +402,7 @@ function ToolMgKgMin({ last, onSave, onUsed }: { last: UtilityHistoryItem | null
         <Result>
           Velocità: {out.toFixed(2)} ml/h{" "}
           <button type="button" onClick={() => {
-            onSave({ tool: "map", ts: Date.now(), inputs: { sys, dia }, output: `${out.toFixed(0)} mmHg` });
+            onSave({ tool: "mgkgmin", ts: Date.now(), inputs: { dose, kg, conc }, output: `${out.toFixed(2)} ml/h` });
             onUsed();
           }} style={miniBtn()}>
             Usa
@@ -442,7 +442,7 @@ function ToolMAP({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; on
         <Result>
           MAP: {out.toFixed(0)} mmHg{" "}
           <button type="button" onClick={() => {
-            onSave({ tool: "bmi", ts: Date.now(), inputs: { kg, cm }, output: `${out.toFixed(1)}` });
+            onSave({ tool: "map", ts: Date.now(), inputs: { sys, dia }, output: `${out.toFixed(0)} mmHg` });
             onUsed();
           }} style={miniBtn()}>
             Usa
@@ -483,7 +483,7 @@ function ToolBMI({ last, onSave, onUsed }: { last: UtilityHistoryItem | null; on
         <Result>
           BMI: {out.toFixed(1)}{" "}
           <button type="button" onClick={() => {
-            onSave({ tool: "diuresi", ts: Date.now(), inputs: { ml, hours, kg }, output: `${out.toFixed(2)} ml/kg/h` });
+            onSave({ tool: "bmi", ts: Date.now(), inputs: { kg, cm }, output: `${out.toFixed(1)}` });
             onUsed();
           }} style={miniBtn()}>
             Usa
@@ -527,7 +527,7 @@ function ToolDiuresi({ last, onSave, onUsed }: { last: UtilityHistoryItem | null
         <Result>
           Diuresi: {out.toFixed(2)} ml/kg/h{" "}
           <button type="button" onClick={() => {
-            onSave({ tool: "mlh", ts: Date.now(), inputs: { ml, hours }, output: `${out.toFixed(1)} ml/h` });
+            onSave({ tool: "diuresi", ts: Date.now(), inputs: { ml, hours, kg }, output: `${out.toFixed(2)} ml/kg/h` });
             onUsed();
           }} style={miniBtn()}>
             Usa
