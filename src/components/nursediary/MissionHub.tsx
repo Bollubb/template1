@@ -36,6 +36,7 @@ export default function MissionHub({
     const dailyRecycled = getDailyCounter("nd_daily_recycled");
     const dailyQuiz = getDailyCounter("nd_daily_quiz_done");
     const dailyPerfect = getDailyCounter("nd_daily_quiz_perfect");
+    const dailyCombo = dailyReads + dailyUtility + dailyQuiz;
     const dailyLogin = getDailyCounter("nd_daily_login_claimed_count");
     const weeklyXp = getWeeklyXpMap()[weekKey] || 0;
 
@@ -72,6 +73,18 @@ export default function MissionHub({
           { need: 2, pills: 60, xp: 45 },
           { need: 4, pills: 140, xp: 100, pack: 1 },
         ],
+      {
+        id: "combo",
+        scope: dayKey,
+        label: "🧾 Combo oggi (letture+utility+quiz)",
+        progress: dailyCombo,
+        tiers: [
+          { need: 6, pills: 35, xp: 20 },
+          { need: 14, pills: 95, xp: 60 },
+          { need: 28, pills: 210, xp: 150, pack: 1 },
+          { need: 45, pills: 360, xp: 260, pack: 2 },
+        ],
+      },
       },
       {
         id: "perfect",
@@ -126,6 +139,7 @@ export default function MissionHub({
           { need: 200, pills: 80 },
           { need: 520, pills: 160, pack: 1 },
           { need: 900, pills: 280, pack: 2 },
+          { need: 1400, pills: 420, pack: 3 },
         ],
       },
     ];

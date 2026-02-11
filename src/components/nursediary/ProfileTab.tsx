@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import { useToast } from "./Toast";
 import MissionHub from "./MissionHub";
+import Leaderboard, { type PlayerCard } from "./Leaderboard";
+import ProfileCardModal from "./ProfileCardModal";
 import { addXp as addXpGlobal, getWeeklyXpMap } from "@/features/progress/xp";
 import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/features/progress/dailyCounters";
 
@@ -31,9 +33,11 @@ const LS = {
   premium: "nd_premium",
   login: "nd_login_daily",
   freePacks: "nd_free_packs",
+  userId: "nd_user_id",
+  leaderboard: "nd_leaderboard_users",
 } as const;
 
-type ProfileData = { name: string; role: string };
+type ProfileData = { name: string; role: string; bio?: string };
 type QuizMode = "daily" | "weekly";
 
 type RunState = {
@@ -77,6 +81,31 @@ const AVATAR_PRESETS: { label: string; data: string }[] = [
   { label: "⭐", data: svgAvatar("#facc15", "⭐") },
 ];
 
+function seedLeaderboard(me: PlayerCard): PlayerCard[] {
+  // demo "community locale" - deterministic-ish
+  const presets = [
+    { name: "Sara", profession: "Infermiere", bio: "Turnista, terapia intensiva." },
+    { name: "Luca", profession: "OSS", bio: "Reparto medico, focus su comfort." },
+    { name: "Giulia", profession: "Infermiere", bio: "Area critica, triage." },
+    { name: "Marco", profession: "Studente", bio: "Sto imparando: quiz a manetta." },
+    { name: "Elena", profession: "Infermiere", bio: "Wound care & accessi venosi." },
+    { name: "Davide", profession: "Medico", bio: "Emergenza-urgenza, amante delle checklist." },
+  ];
+
+  const base = Math.max(120, Math.min(1200, me.xp + 200));
+  return presets.map((p, idx) => {
+    const xp = Math.max(0, Math.round(base * (0.55 + idx * 0.12) + (idx % 2 ? 35 : 0)));
+    return {
+      id: `demo_${idx}_${xp}`,
+      name: p.name,
+      profession: p.profession,
+      bio: p.bio,
+      avatar: null,
+      xp,
+    };
+  });
+}
+
 function msToHMS(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const hh = String(Math.floor(s / 3600)).padStart(2, "0");
@@ -119,6 +148,13 @@ export default function ProfileTab({
   const toast = useToast();
   const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+  const [showPresets, setShowPresets] = useState(false);
+
+  const [userId, setUserId] = useState<string>("me");
+  const [lbUsers, setLbUsers] = useState<PlayerCard[]>([]);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [cardPlayer, setCardPlayer] = useState<PlayerCard | null>(null);
   const [premium, setPremium] = useState<boolean>(false);
   const [exportText, setExportText] = useState<string>("");
   const [importText, setImportText] = useState<string>("");
@@ -175,16 +211,43 @@ export default function ProfileTab({
   useEffect(() => {
     if (!isBrowser()) return;
 
-    setProfile(safeJson(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
-    setAvatar(localStorage.getItem(LS.avatar));
+    const prof = safeJson<ProfileData>(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere", bio: "" });
+    const av = localStorage.getItem(LS.avatar);
+    const xpVal = Number(localStorage.getItem(LS.xp) || 0);
+
+    setProfile(prof);
+    setAvatar(av);
     setPremium(localStorage.getItem(LS.premium) === "1");
 
     setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
     setReadIds(new Set(safeJson<string[]>(localStorage.getItem(LS.read), [])));
     setCardsOwned(safeJson<Record<string, number>>(localStorage.getItem(LS.cards), {}));
 
-    setXp(Number(localStorage.getItem(LS.xp) || 0));
+    setXp(xpVal);
     setFreePacks(Number(localStorage.getItem(LS.freePacks) || 0));
+
+    // user id + leaderboard seed (locale)
+    let uid = localStorage.getItem(LS.userId);
+    if (!uid) {
+      uid = `u_${Math.random().toString(16).slice(2)}_${Date.now().toString(16)}`;
+      try {
+        localStorage.setItem(LS.userId, uid);
+      } catch {}
+    }
+    setUserId(uid);
+
+    const me: PlayerCard = {
+      id: uid,
+      name: prof.name || "Utente",
+      profession: prof.role || "Infermiere",
+      bio: (prof.bio || "").slice(0, 140),
+      avatar: av,
+      xp: xpVal,
+    };
+
+    const saved = safeJson<PlayerCard[]>(localStorage.getItem(LS.leaderboard), []);
+    const others = saved.length ? saved : seedLeaderboard(me);
+    setLbUsers([me, ...others.filter((p) => p.id !== me.id)]);
 
     setHistory(getHistory());
   }, []);
@@ -194,6 +257,38 @@ export default function ProfileTab({
     if (!isBrowser()) return;
     localStorage.setItem(LS.profile, JSON.stringify(profile));
   }, [profile]);
+
+  // keep "me" in leaderboard in sync
+  useEffect(() => {
+    if (!isBrowser()) return;
+    if (!userId) return;
+    setLbUsers((prev) => {
+      const me: PlayerCard = {
+        id: userId,
+        name: profile.name || "Utente",
+        profession: profile.role || "Infermiere",
+        bio: (profile.bio || "").slice(0, 140),
+        avatar,
+        xp,
+      };
+      const idx = prev.findIndex((p) => p.id === userId);
+      if (idx === -1) return [me, ...prev];
+      const curr = prev[idx];
+      const same = curr.name === me.name && curr.profession === me.profession && curr.bio === me.bio && curr.avatar === me.avatar && curr.xp === me.xp;
+      if (same) return prev;
+      const next = prev.slice();
+      next[idx] = me;
+      return next;
+    });
+  }, [userId, profile, avatar, xp]);
+
+  useEffect(() => {
+    if (!isBrowser()) return;
+    try {
+      const others = lbUsers.filter((p) => p.id !== userId);
+      localStorage.setItem(LS.leaderboard, JSON.stringify(others));
+    } catch {}
+  }, [lbUsers, userId]);
 
   useEffect(() => {
     if (!isBrowser()) return;
@@ -501,61 +596,131 @@ export default function ProfileTab({
     reader.readAsDataURL(file);
   }
 
+  function openSelfCard() {
+    const me: PlayerCard = {
+      id: userId,
+      name: profile.name || "Utente",
+      profession: profile.role || "Infermiere",
+      bio: (profile.bio || "").slice(0, 140),
+      avatar,
+      xp,
+    };
+    setCardPlayer(me);
+    setCardOpen(true);
+  }
+
+  const players = useMemo(() => lbUsers, [lbUsers]);
+
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      <ProfileCardModal open={cardOpen} player={cardPlayer} onClose={() => setCardOpen(false)} />
+
       {/* Profile header */}
       <div style={card()}>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <div style={avatarBox()}>
-            {avatar ? (
-              <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <span style={{ fontSize: 24 }}>👤</span>
-            )}
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div style={{ display: "grid", justifyItems: "center", gap: 8 }}>
+            <div style={avatarBox()}>
+              {avatar ? (
+                <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <span style={{ fontSize: 24 }}>👤</span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAvatarPickerOpen((v) => !v)}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+              title="Cambia immagine profilo"
+            >
+              ✏️ Cambia immagine
+            </button>
+
+            <button type="button" onClick={() => openSelfCard()} style={{ ...chipBtn(), padding: "6px 10px" }}>
+              📇 Scheda profilo
+            </button>
           </div>
 
           <div style={{ flex: 1 }}>
-            <input value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} style={inp(true)} />
-            <input value={profile.role} onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))} style={{ ...inp(false), marginTop: 8 }} />
+            <input value={profile.name} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} style={inp(true)} placeholder="Nome utente" />
+            <input value={profile.role} onChange={(e) => setProfile((p) => ({ ...p, role: e.target.value }))} style={{ ...inp(false), marginTop: 8 }} placeholder="Professione (es. Infermiere, Medico…)" />
+            <textarea
+              value={profile.bio ?? ""}
+              onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
+              placeholder="Breve descrizione (max ~120 caratteri)"
+              style={{
+                ...inp(false),
+                marginTop: 8,
+                minHeight: 70,
+                resize: "vertical",
+                fontWeight: 800,
+              }}
+            />
           </div>
         </div>
 
+        {avatarPickerOpen && (
+          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={chipBtn()}>
+                📷 Da telefono
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={(e) => e.target.files?.[0] && onPickAvatar(e.target.files[0])}
+                />
+              </label>
+
+              <button type="button" onClick={() => setShowPresets((v) => !v)} style={chipBtn()}>
+                {showPresets ? "Nascondi preset" : "🧩 Scegli preset"}
+              </button>
+            </div>
+
+            {showPresets && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                {AVATAR_PRESETS.map((a) => (
+                  <button
+                    key={a.label}
+                    type="button"
+                    onClick={() => {
+                      setAvatar(a.data);
+                      try {
+                        localStorage.setItem(LS.avatar, a.data);
+                      } catch {}
+                      setAvatarPickerOpen(false);
+                      setShowPresets(false);
+                    }}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.06)",
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                    title={`Preset ${a.label}`}
+                  >
+                    <img src={a.data} alt={a.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <label style={chipBtn()}>
-            Carica avatar
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && onPickAvatar(e.target.files[0])} />
-          </label>
-
-
-<div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-  {AVATAR_PRESETS.map((a) => (
-    <button
-      key={a.label}
-      type="button"
-      onClick={() => {
-        setAvatar(a.data);
-        try {
-          localStorage.setItem(LS.avatar, a.data);
-        } catch {}
-      }}
-      style={{
-        width: 34,
-        height: 34,
-        borderRadius: 14,
-        border: "1px solid rgba(255,255,255,0.12)",
-        background: "rgba(255,255,255,0.06)",
-        cursor: "pointer",
-        overflow: "hidden",
-        display: "grid",
-        placeItems: "center",
-      }}
-      title={`Preset ${a.label}`}
-    >
-      <img src={a.data} alt={a.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-    </button>
-  ))}
-</div>
-
           <div style={chip()}>
             Pillole: <b>{pills}</b>
           </div>
@@ -564,12 +729,19 @@ export default function ProfileTab({
             Packs FREE: <b>{freePacks}</b>
           </div>
 
-          <button type="button" onClick={() => setPremium((v) => !v)} style={{ ...chipBtn(), background: premium ? "#f59e0b" : "#0f172a", color: premium ? "#1f1300" : "rgba(255,255,255,0.9)" }}>
+          <button
+            type="button"
+            onClick={() => setPremium((v) => !v)}
+            style={{
+              ...chipBtn(),
+              background: premium ? "#f59e0b" : "#0f172a",
+              color: premium ? "#1f1300" : "rgba(255,255,255,0.9)",
+            }}
+          >
             {premium ? "Premium attivo" : "Premium (demo)"}
           </button>
         </div>
       </div>
-
 
 {/* Account locale */}
 <div style={card()}>
@@ -647,6 +819,24 @@ export default function ProfileTab({
         <Stat title="Accuracy quiz" value={`${accuracy}%`} />
       </div>
 
+
+      {/* Classifica locale */}
+      <div style={card()}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+          <div style={title()}>Classifica (locale)</div>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
+        </div>
+        <div style={{ marginTop: 10 }}>
+          <Leaderboard
+            players={players}
+            currentUserId={userId}
+            onSelect={(p) => {
+              setCardPlayer(p);
+              setCardOpen(true);
+            }}
+          />
+        </div>
+      </div>
       {/* Daily login */}
       <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
