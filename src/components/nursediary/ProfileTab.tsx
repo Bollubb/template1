@@ -843,7 +843,7 @@ export default function ProfileTab({
     <div style={{ marginTop: 6, color: "rgba(255,255,255,0.72)", fontWeight: 800, fontSize: 13 }}>
       Profilo locale (nessun backend). Una volta creato, il profilo è bloccato per evitare modifiche accidentali.
     </div>
-)}
+
     <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
       {!accountCreated ? (
         <button
