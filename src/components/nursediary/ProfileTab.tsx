@@ -265,7 +265,7 @@ function applyAccountImport() {
     parsed?.data && typeof parsed.data === "object" ? parsed.data : parsed;
 
   if (!data || typeof data !== "object") {
-    toast.push("Import fallito: formato non supportato", "error");
+    toast.push("Import fallito: formato non supportato", "warning");
     return;
   }
 
