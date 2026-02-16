@@ -150,10 +150,12 @@ function computeLevel(xp: number) {
 }
 
 export default function ProfileTab({
+  openSection,
   pills,
   setPills,
   totalContent,
 }: {
+  openSection?: "profile" | "missioni" | "classifica";
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
@@ -337,7 +339,60 @@ export default function ProfileTab({
     };
     tick();
     const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
+  
+  // Quick navigation sections (driven by header menu)
+  if (section === "missioni") {
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
+        <MissionHub
+          dayKey={dayKey}
+          weekKey={weekKey}
+          dailyLeft={dailyLeft}
+          weeklyLeft={weeklyLeft}
+          getClaimed={getClaimed}
+          setClaimed={setClaimed}
+          onGrant={onGrant}
+        />
+        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
+          ← Torna al profilo
+        </button>
+      </div>
+    );
+  }
+
+  if (section === "classifica") {
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
+        <Leaderboard
+          mode="weekly"
+          players={players}
+          currentUserId={userId}
+          onSelect={(p) => {
+            setSelectedPlayer(p);
+            setProfileModalOpen(true);
+          }}
+        />
+        <div style={{ marginTop: 10 }}>
+          <Leaderboard
+            mode="global"
+            players={players}
+            currentUserId={userId}
+            onSelect={(p) => {
+              setSelectedPlayer(p);
+              setProfileModalOpen(true);
+            }}
+          />
+        </div>
+        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
+          ← Torna al profilo
+        </button>
+      </div>
+    );
+  }
+
+  return () => window.clearInterval(id);
   }, []);
 
   function buildAccountExport() {

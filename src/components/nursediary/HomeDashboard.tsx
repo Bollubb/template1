@@ -64,15 +64,17 @@ function msToHMS(ms: number) {
 }
 
 export default function HomeDashboard({
+  openSection,
   onGoToCards,
   onGoToDidattica,
   onGoToProfile,
 }: {
+  openSection?: "quiz" | "utility";
   onGoToCards: () => void;
   onGoToDidattica: () => void;
   onGoToProfile: () => void;
 }) {
-  const [mode, setMode] = useState<"home" | "utility">("home");
+  const [mode, setMode] = useState<"quiz" | "utility">(openSection ?? "quiz");
   const [pills, setPills] = useState(0);
   const [freePacks, setFreePacks] = useState(0);
   const [xp, setXp] = useState(0);
@@ -92,6 +94,11 @@ export default function HomeDashboard({
   const [openLearnId, setOpenLearnId] = useState<string | null>(null);
 
   const [favTools, setFavTools] = useState<ToolId[]>([]);
+
+  useEffect(() => {
+    if (!openSection) return;
+    setMode(openSection);
+  }, [openSection]);
 
   
   const loadRecentHistory = () => {
