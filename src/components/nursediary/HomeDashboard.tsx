@@ -4,8 +4,9 @@ import { computeLevel, getXp, addXp } from "@/features/progress/xp";
 import { getDailyCounter, getDailyFlag } from "@/features/progress/dailyCounters";
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import { calcDailyReward, calcWeeklyReward, getDailyState, getWeeklyState, setDailyState, setWeeklyState, getNextDailyResetMs, getNextWeeklyResetMs, pushHistory, type QuizHistoryItem } from "@/features/cards/quiz/quizLogic";
-import { pickAdaptiveQuestionsBalanced, recordQuizAnswer } from "@/features/cards/quiz/quizAdaptive";
-import { xpMultiplier } from "@/features/profile/premium";
+import { recordQuizAnswer, pickSimulationQuestions } from "@/features/cards/quiz/quizAdaptive";
+import { isPremium, xpMultiplier } from "@/features/profile/premium";
+import PremiumUpsellModal from "./PremiumUpsellModal";
 
 const LS = {
   pills: "nd_pills",
@@ -35,7 +36,7 @@ type UtilityHistoryItem = {
 };
 
 type QuizRun = {
-  mode: "daily" | "weekly";
+  mode: "daily" | "weekly" | "sim";
   idx: number;
   correct: number;
   questions: QuizQuestion[];
@@ -81,6 +82,8 @@ export default function HomeDashboard({
   const [weeklyLeft, setWeeklyLeft] = useState(0);
 
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
+  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
+
   const [selected, setSelected] = useState<number | null>(null);
   const [quizFeedback, setQuizFeedback] = useState<string | null>(null);
   const [quizReview, setQuizReview] = useState<{ q: QuizQuestion; chosen: number }[] | null>(null);
@@ -140,6 +143,15 @@ useEffect(() => {
   }, [loginClaimed, freePacks, daily.status, readsToday]);
 
 
+function pickRandom<T>(arr: T[], n: number) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a.slice(0, n);
+}
+
 function startQuiz(mode: "daily" | "weekly") {
   const state = mode === "daily" ? getDailyState() : getWeeklyState();
   if (state.status === "done") return;
@@ -151,12 +163,7 @@ function startQuiz(mode: "daily" | "weekly") {
   const candidates = QUIZ_BANK.filter((q) => !recent.includes(q.id));
   const pool = candidates.length >= n ? candidates : QUIZ_BANK;
 
-  // ✅ quiz adattivo: favorisce categorie deboli, mantenendo varietà
-  const plan = mode === "daily"
-    ? { easy: 2, medium: 2, hard: 1 }
-    : { easy: 4, medium: 5, hard: 3 };
-
-  const questions = pickAdaptiveQuestionsBalanced(pool, plan, { excludeIds: recent });
+  const questions = pickRandom(pool, n);
   try {
     const nextRecent = [...questions.map((q) => q.id), ...recent].slice(0, 50);
     localStorage.setItem(recentKey, JSON.stringify(nextRecent));
@@ -168,30 +175,41 @@ function startQuiz(mode: "daily" | "weekly") {
   setQuizReview(null);
 }
 
+function startSimulation() {
+  const recentKey = "nd_quiz_recent_v1";
+  const recent = safeJson<string[]>(localStorage.getItem(recentKey), []);
+
+  if (!isPremium()) {
+    setPremiumModalOpen(true);
+    return;
+  }
+
+  const count = 25;
+  const questions = pickSimulationQuestions(QUIZ_BANK, count, recent);
+
+  try {
+    const nextRecent = [...questions.map((q) => q.id), ...recent].slice(0, 50);
+    localStorage.setItem(recentKey, JSON.stringify(nextRecent));
+  } catch {}
+
+  setRunQuiz({ mode: "sim", idx: 0, correct: 0, questions, answers: Array(questions.length).fill(-1) });
+  setSelected(null);
+  setQuizFeedback(null);
+  setQuizReview(null);
+}
+
+
 function answerQuiz(i: number) {
   if (!runQuiz) return;
   const q = runQuiz.questions[runQuiz.idx];
   const ok = i === q.answer;
-
-  // ✅ aggiorna profilo adattivo (local only)
   recordQuizAnswer(q, ok);
-
   const nextCorrect = runQuiz.correct + (ok ? 1 : 0);
 
   const answers = [...runQuiz.answers];
   answers[runQuiz.idx] = i;
 
   setSelected(i);
-
-  // feedback immediato (valore didattico + spiegazione)
-  const correctOp = q.options[q.answer];
-  const chosenOp = q.options[i];
-  const diffLabel = q.difficulty === "easy" ? "Facile" : q.difficulty === "medium" ? "Media" : "Difficile";
-  setQuizFeedback(
-    `${ok ? "✅ Corretto" : "❌ Sbagliato"} • ${diffLabel} • ${q.category.toUpperCase()}\n` +
-      `${ok ? "" : `Corretta: ${correctOp}. `}` +
-      `${q.explain}`
-  );
 
   window.setTimeout(() => {
     const isLast = runQuiz.idx >= runQuiz.questions.length - 1;
@@ -227,13 +245,16 @@ function answerQuiz(i: number) {
       pillsGain = calcDailyReward(nextCorrect, total, perfect, daily.streak);
       const streakOk = nextCorrect / total >= 0.6;
       setDailyState({ ...daily, status: "done", streak: streakOk ? daily.streak + 1 : 0 });
-    } else {
+    } else if (runQuiz.mode === "weekly") {
       pillsGain = calcWeeklyReward(nextCorrect, total, perfect);
       const weekly = getWeeklyState();
       setWeeklyState({ ...weekly, status: "done" });
+    } else {
+      // simulazione: niente reset/streak, solo XP (no pill farming)
+      pillsGain = 0;
     }
-
-    const baseXpGain = 20 + nextCorrect * (runQuiz.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
+    const perCorrect = runQuiz.mode === "daily" ? 6 : runQuiz.mode === "weekly" ? 8 : 5;
+    const baseXpGain = 20 + nextCorrect * perCorrect + (perfect ? (runQuiz.mode === "sim" ? 25 : 20) : 0);
     const xpGain = baseXpGain * xpMultiplier();
 
     // persist
@@ -252,9 +273,7 @@ function answerQuiz(i: number) {
     };
     pushHistory(item);
 
-    setQuizFeedback(
-      `Quiz ${runQuiz.mode}: ${nextCorrect}/${total} • +${pillsGain} 💊 • +${xpGain} XP${xpMultiplier() > 1 ? " (Boost)" : ""}`
-    );
+    setQuizFeedback(`Quiz ${runQuiz.mode}: ${nextCorrect}/${total} • +${pillsGain} 💊 • +${xpGain} XP`);
     setRunQuiz(null);
     setSelected(null);
   }, 450);
@@ -309,7 +328,7 @@ function answerQuiz(i: number) {
       {/* Recommended */}
       <Card>
         <div style={{ fontWeight: 950 }}>Azione consigliata</div>
-        <div style={{ marginTop: 6, opacity: 0.8, fontWeight: 800, whiteSpace: "pre-line" }}>{recommended.title}</div>
+        <div style={{ marginTop: 6, opacity: 0.8, fontWeight: 800 }}>{recommended.title}</div>
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
             type="button"
@@ -351,12 +370,18 @@ function answerQuiz(i: number) {
           <button type="button" onClick={() => startQuiz("weekly")} disabled={weekly.status === "done" || !!runQuiz} style={ghostBtn()}>
             {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
           </button>
-        </div>
+                  <button type="button" onClick={() => startSimulation()} disabled={!!runQuiz} style={ghostBtn()}>
+            {isPremium() ? "Simulazione (25)" : "Simulazione (Premium)"}
+          </button>
+</div>
 
         {runQuiz && (
           <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
             <div style={{ fontWeight: 950 }}>
-              {runQuiz.mode.toUpperCase()} • Domanda {runQuiz.idx + 1}/{runQuiz.questions.length}
+              {(runQuiz.mode === "sim" ? "SIMULAZIONE" : runQuiz.mode.toUpperCase())} • Domanda {runQuiz.idx + 1}/{runQuiz.questions.length}
+            </div>
+            <div style={{ marginTop: 8, height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+              <div style={{ height: "100%", width: `${Math.round(((runQuiz.idx + 1) / runQuiz.questions.length) * 100)}%`, background: "linear-gradient(90deg, rgba(56,189,248,0.95), rgba(34,197,94,0.90))", transition: "width 220ms ease" }} />
             </div>
             <div style={{ marginTop: 6, opacity: 0.88, fontWeight: 800 }}>{runQuiz.questions[runQuiz.idx].q}</div>
 
@@ -474,7 +499,16 @@ function MiniStat({ label, value }: { label: string; value: string }) {
     >
       <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>{label}</div>
       <div style={{ fontWeight: 950, fontSize: 18, marginTop: 4 }}>{value}</div>
-    </div>
+    
+      <PremiumUpsellModal
+        open={premiumModalOpen}
+        title="Sblocca Simulazione estesa"
+        subtitle="Con Boost ottieni 2× XP e simulazioni più lunghe per allenarti davvero."
+        bullets={["2× XP su quiz", "Simulazione (25 domande)", "Analytics avanzate in Profilo"]}
+        cta="Attiva Boost (demo)"
+        onClose={() => setPremiumModalOpen(false)}
+      />
+</div>
   );
 }
 

@@ -9,6 +9,9 @@ import { getLocalProfile, saveLocalProfile, getAvatar as getAvatarLS, setAvatar 
 import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/features/progress/dailyCounters";
 
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
+import { getAdaptiveCategorySummary, recordQuizAnswer } from "@/features/cards/quiz/quizAdaptive";
+import { isPremium, setPremium as setPremiumFlag, xpMultiplier } from "@/features/profile/premium";
+import PremiumUpsellModal from "./PremiumUpsellModal";
 import {
   calcDailyReward,
   calcWeeklyReward,
@@ -91,15 +94,6 @@ function seedLeaderboard(me: PlayerCard): PlayerCard[] {
     { name: "Marco", profession: "Studente", bio: "Sto imparando: quiz a manetta." },
     { name: "Elena", profession: "Infermiere", bio: "Wound care & accessi venosi." },
     { name: "Davide", profession: "Medico", bio: "Emergenza-urgenza, amante delle checklist." },
-    { name: "Chiara", profession: "Infermiere", bio: "Pronto soccorso, precisione e velocità." },
-    { name: "Federico", profession: "Studente", bio: "Ripasso concorsi: 10 min al giorno." },
-    { name: "Martina", profession: "Infermiere", bio: "Pediatria, dosaggi e sicurezza." },
-    { name: "Andrea", profession: "Infermiere", bio: "Medicina interna, terapia e monitoraggi." },
-    { name: "Francesca", profession: "Infermiere", bio: "Sala operatoria, checklist sempre." },
-    { name: "Alessio", profession: "OSS", bio: "Assistenza e organizzazione reparto." },
-    { name: "Valentina", profession: "Infermiere", bio: "Dialisi, gestione accessi." },
-    { name: "Paolo", profession: "Infermiere", bio: "Cardiologia, ECG e farmaci." },
-    { name: "Ilaria", profession: "Infermiere", bio: "Oncologia, supporto e terapia." },
   ];
 
   const base = Math.max(120, Math.min(1200, me.xp + 200));
@@ -110,9 +104,8 @@ function seedLeaderboard(me: PlayerCard): PlayerCard[] {
       name: p.name,
       profession: p.profession,
       bio: p.bio,
-      avatar: AVATAR_PRESETS[idx % AVATAR_PRESETS.length]?.data ?? null,
+      avatar: null,
       xp,
-      totalXp: xp,
     };
   });
 }
@@ -169,7 +162,7 @@ export default function ProfileTab({
   const [accountCreated, setAccountCreated] = useState(false);
   const [editUnlocked, setEditUnlocked] = useState(false);
   const canEditProfile = !accountCreated || editUnlocked;
-  const [lbMode, setLbMode] = useState<"weekly" | "global">("weekly");
+  const [lbMode, setLbMode] = useState<"weekly" | "all">("weekly");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
@@ -179,6 +172,9 @@ export default function ProfileTab({
   const [cardOpen, setCardOpen] = useState(false);
   const [cardPlayer, setCardPlayer] = useState<PlayerCard | null>(null);
   const [premium, setPremium] = useState<boolean>(false);
+  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
+
   const [exportText, setExportText] = useState<string>("");
   const [importText, setImportText] = useState<string>("");
 
@@ -268,13 +264,11 @@ export default function ProfileTab({
       bio: (prof.bio || "").slice(0, 140),
       avatar: av,
       xp: xpVal,
-      totalXp: xpVal,
     };
 
     const saved = safeJson<PlayerCard[]>(localStorage.getItem(LS.leaderboard), []);
     const others = saved.length ? saved : seedLeaderboard(me);
-    const normOthers = others.map((p) => ({ ...p, totalXp: typeof p.totalXp === "number" ? p.totalXp : p.xp }));
-    setLbUsers([me, ...normOthers.filter((p) => p.id !== me.id)]);
+    setLbUsers([me, ...others.filter((p) => p.id !== me.id)]);
 
     setHistory(getHistory());
   }, []);
@@ -297,18 +291,11 @@ export default function ProfileTab({
         bio: (profile.bio || "").slice(0, 140),
         avatar,
         xp,
-        totalXp: xp,
       };
       const idx = prev.findIndex((p) => p.id === userId);
       if (idx === -1) return [me, ...prev];
       const curr = prev[idx];
-      const same =
-        curr.name === me.name &&
-        curr.profession === me.profession &&
-        curr.bio === me.bio &&
-        curr.avatar === me.avatar &&
-        curr.xp === me.xp &&
-        (curr.totalXp ?? curr.xp) === (me.totalXp ?? me.xp);
+      const same = curr.name === me.name && curr.profession === me.profession && curr.bio === me.bio && curr.avatar === me.avatar && curr.xp === me.xp;
       if (same) return prev;
       const next = prev.slice();
       next[idx] = me;
@@ -591,6 +578,7 @@ export default function ProfileTab({
     if (!run) return;
     const q = run.questions[run.idx];
     const ok = idx === q.answer;
+    recordQuizAnswer(q, ok);
     const nextCorrect = run.correct + (ok ? 1 : 0);
 
     setSelected(idx);
@@ -639,10 +627,10 @@ export default function ProfileTab({
       incDailyCounter("nd_daily_quiz_done", 1);
       toast.push(`+${reward} 💊`, "success");
       const baseXpGain = 20 + nextCorrect * (run.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
-      const xpGain = baseXpGain * (premium ? 2 : 1);
+      const xpGain = baseXpGain * xpMultiplier();
       setXp((x) => x + xpGain);
-      addXpGlobal(xpGain);
-      toast.push(`+${xpGain} XP${premium ? " (Boost)" : ""}`, "success");
+    addXpGlobal(xpGain);
+      toast.push(`+${xpGain} XP`, "success");
 
       const item: QuizHistoryItem = {
         ts: Date.now(),
@@ -655,7 +643,7 @@ export default function ProfileTab({
       const newHist = [item, ...history].slice(0, 50);
       setHistory(newHist);
 
-      setFeedback(`Quiz ${run.mode}: ${nextCorrect}/${total} — +${reward} pillole, +${xpGain} XP${premium ? " (Boost)" : ""}`);
+      setFeedback(`Quiz ${run.mode}: ${nextCorrect}/${total} — +${reward} pillole, +${xpGain} XP`);
       setRun(null);
       setSelected(null);
     }, 450);
@@ -681,16 +669,13 @@ export default function ProfileTab({
       bio: (profile.bio || "").slice(0, 140),
       avatar,
       xp,
-      totalXp: xp,
     };
     setCardPlayer(me);
     setCardOpen(true);
   }
 
   const players = useMemo(() => {
-    if (lbMode === "global") {
-      return lbUsers.map((p) => ({ ...p, xp: typeof p.totalXp === "number" ? p.totalXp : p.xp }));
-    }
+    if (lbMode === "all") return lbUsers;
     const weeklyMap = getWeeklyXpMap();
     const myWeekly = weeklyMap[weekKey] || 0;
     // For demo users: deterministic pseudo-weekly score
@@ -699,16 +684,9 @@ export default function ProfileTab({
       for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
       h = (h ^ Number(weekKey.replace(/\D/g, ""))) >>> 0;
       const r = (h % 80) - 20; // -20..59
-      return Math.max(0, Math.round(base * 0.075) + r);
+      return Math.max(0, Math.round(base * 0.08) + r);
     };
-    return lbUsers.map((p) => {
-      const total = typeof p.totalXp === "number" ? p.totalXp : p.xp;
-      return {
-        ...p,
-        totalXp: total,
-        xp: p.id === userId ? myWeekly : pseudo(p.id, total),
-      };
-    });
+    return lbUsers.map((p) => ({ ...p, xp: p.id === userId ? myWeekly : pseudo(p.id, p.xp) }));
   }, [lbUsers, lbMode, weekKey, userId]);
 
   return (
@@ -846,14 +824,18 @@ export default function ProfileTab({
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <button
             type="button"
-            onClick={() => setPremium((v) => !v)}
+            onClick={() => {
+              const next = !premium;
+              setPremium(next);
+              setPremiumFlag(next);
+            }}
             style={{
               ...chipBtn(),
               background: premium ? "#f59e0b" : "#0f172a",
               color: premium ? "#1f1300" : "rgba(255,255,255,0.9)",
             }}
           >
-            {premium ? "Premium attivo" : "Premium (demo)"}
+            {premium ? "Boost attivo" : "Boost (demo)"}
           </button>
         </div>
       </div>
@@ -984,51 +966,18 @@ export default function ProfileTab({
       <div style={card()}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <div style={title()}>Classifica</div>
+            <div style={title()}>Classifica (locale)</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <SegBtn active={lbMode === "weekly"} onClick={() => setLbMode("weekly")}>Settimana</SegBtn>
-              <SegBtn active={lbMode === "global"} onClick={() => setLbMode("global")}>Globale</SegBtn>
+              <SegBtn active={lbMode === "all"} onClick={() => setLbMode("all")}>Totale</SegBtn>
             </div>
           </div>
-          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>
-            {lbMode === "weekly" ? "XP fatti questa settimana" : "Livello + XP totali"}
-          </div>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
         </div>
-        <div
-          style={{
-            marginTop: 10,
-            display: "grid",
-            gap: 12,
-            gridTemplateColumns: lbMode === "weekly" ? "1fr" : "1fr",
-          }}
-        >
-          {lbMode === "weekly" ? (
-            <div
-              style={{
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.04)",
-                borderRadius: 16,
-                padding: 12,
-                display: "flex",
-                justifyContent: "space-between",
-                gap: 10,
-                alignItems: "center",
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ fontWeight: 950 }}>Ricompense settimanali</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <div style={{ ...chipBtn(), background: "rgba(245,158,11,0.18)", borderColor: "rgba(245,158,11,0.30)" }}>🥇 1°: 300 💊</div>
-                <div style={{ ...chipBtn(), background: "rgba(148,163,184,0.14)", borderColor: "rgba(148,163,184,0.28)" }}>🥈 2°: 175 💊</div>
-                <div style={{ ...chipBtn(), background: "rgba(234,88,12,0.14)", borderColor: "rgba(234,88,12,0.26)" }}>🥉 3°: 100 💊</div>
-              </div>
-            </div>
-          ) : null}
-
+        <div style={{ marginTop: 10 }}>
           <Leaderboard
             players={players}
             currentUserId={userId}
-            mode={lbMode === "weekly" ? "weekly" : "global"}
             onSelect={(p) => {
               setCardPlayer(p);
               setCardOpen(true);
@@ -1089,6 +1038,23 @@ export default function ProfileTab({
           </button>
         </div>
 
+        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (!isPremium()) {
+                setPremiumModalOpen(true);
+                return;
+              }
+              setShowAnalytics((v) => !v);
+            }}
+            style={{ ...pillBtn(false), background: "rgba(56,189,248,0.12)" }}
+          >
+            {isPremium() ? (showAnalytics ? "Nascondi analytics" : "Analytics avanzate") : "Analytics (Premium)"}
+          </button>
+        </div>
+
+
         {run && (
           <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
             <div style={{ color: "rgba(255,255,255,0.90)", fontWeight: 900 }}>
@@ -1115,6 +1081,37 @@ export default function ProfileTab({
         {/* History + category stats */}
         <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
           <div style={{ color: "rgba(255,255,255,0.90)", fontWeight: 900 }}>Storico & categorie</div>
+          <div style={{ marginTop: 6, color: "rgba(255,255,255,0.70)", fontWeight: 750, fontSize: 12 }}>
+            {isPremium() ? "Analytics avanzate: categorie deboli (in base agli errori)" : "Analytics avanzate disponibili con Boost"}
+          </div>
+
+          {showAnalytics && isPremium() && (
+            <div style={{ marginTop: 10, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", padding: 12 }}>
+              <div style={{ fontWeight: 950, marginBottom: 8 }}>Categorie deboli</div>
+              <div style={{ display: "grid", gap: 10 }}>
+                {getAdaptiveCategorySummary().slice(0, 6).map((r) => {
+                  const pct = Math.round(r.accuracy * 100);
+                  return (
+                    <div key={r.category} style={{ display: "grid", gap: 6 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontWeight: 850 }}>
+                        <div style={{ opacity: 0.92 }}>{r.category.toUpperCase()}</div>
+                        <div style={{ opacity: 0.78 }}>{pct}% • {r.total} risp.</div>
+                      </div>
+                      <div style={{ height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${pct}%`, background: "linear-gradient(90deg, rgba(34,197,94,0.92), rgba(56,189,248,0.92))", transition: "width 220ms ease" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+                {getAdaptiveCategorySummary().length === 0 ? (
+                  <div style={{ opacity: 0.75, fontWeight: 800 }}>
+                    Fai qualche quiz per sbloccare le analytics.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
             {byCategory.length === 0 ? (
               <div style={{ color: "rgba(255,255,255,0.65)", fontWeight: 700, fontSize: 13 }}>Completa qualche quiz per vedere le statistiche.</div>
@@ -1167,6 +1164,15 @@ export default function ProfileTab({
         </div>
       </div>
       )}
+    <PremiumUpsellModal
+      open={premiumModalOpen}
+      title="Sblocca Boost"
+      subtitle="Boost rende la progressione più veloce e sblocca analytics e simulazioni."
+      bullets={["2× XP su quiz", "Analytics avanzate (categorie deboli)", "Simulazione estesa (25 domande)"]}
+      cta="Attiva Boost (demo)"
+      onClose={() => setPremiumModalOpen(false)}
+    />
+
     </div>
   );
 }
