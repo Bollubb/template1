@@ -16,18 +16,6 @@ import { isPremium, setPremium as setPremiumFlag, xpMultiplier } from "@/feature
 import PremiumUpsellModal from "./PremiumUpsellModal";
 import {
 
-function SlideIn({ children }: { children: React.ReactNode }) {
-  const [enter, setEnter] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setEnter(true), 0);
-    return () => clearTimeout(t);
-  }, []);
-  return (
-    <div style={{ transform: enter ? "translateY(0px)" : "translateY(10px)", opacity: enter ? 1 : 0, transition: "all 220ms ease" }}>
-      {children}
-    </div>
-  );
-}
 
   calcDailyReward,
   calcWeeklyReward,
@@ -41,6 +29,20 @@ function SlideIn({ children }: { children: React.ReactNode }) {
   pushHistory,
   type QuizHistoryItem,
 } from "@/features/cards/quiz/quizLogic";
+
+
+function SlideIn({ children }: { children: React.ReactNode }) {
+  const [enter, setEnter] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setEnter(true), 0);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div style={{ transform: enter ? "translateY(0px)" : "translateY(10px)", opacity: enter ? 1 : 0, transition: "all 220ms ease" }}>
+      {children}
+    </div>
+  );
+}
 
 const LS = {
   profile: "nd_profile",
