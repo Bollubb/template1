@@ -7,7 +7,13 @@ export type PlayerCard = {
   profession: string;
   bio: string;
   avatar: string | null;
+  /**
+   * In "weekly" mode this is XP gained this week.
+   * In "global" mode this is total XP.
+   */
   xp: number;
+  /** Optional: total XP (used to display level in weekly mode). */
+  totalXp?: number;
 };
 
 function rowCard(): React.CSSProperties {
@@ -40,24 +46,54 @@ export default function Leaderboard({
   players,
   currentUserId,
   onSelect,
+  mode,
 }: {
   players: PlayerCard[];
   currentUserId: string;
   onSelect: (p: PlayerCard) => void;
+  mode: "weekly" | "global";
 }) {
   const rows = useMemo(() => {
+    if (mode === "weekly") {
+      const scored = players.map((p) => {
+        const base = typeof p.totalXp === "number" ? p.totalXp : p.xp;
+        return { p, lvl: computeLevel(base).level };
+      });
+      scored.sort((a, b) => {
+        if (b.p.xp !== a.p.xp) return b.p.xp - a.p.xp;
+        return a.p.name.localeCompare(b.p.name);
+      });
+      return scored.map((x, idx) => ({ ...x, rank: idx + 1 }));
+    }
+
     const scored = players.map((p) => ({ p, lvl: computeLevel(p.xp).level }));
     scored.sort((a, b) => {
       if (b.lvl !== a.lvl) return b.lvl - a.lvl;
       return b.p.xp - a.p.xp;
     });
     return scored.map((x, idx) => ({ ...x, rank: idx + 1 }));
-  }, [players]);
+  }, [players, mode]);
+
+  const medal = (rank: number) => {
+    if (rank === 1) return { emoji: "🥇", glow: "rgba(245,158,11,0.25)" };
+    if (rank === 2) return { emoji: "🥈", glow: "rgba(148,163,184,0.22)" };
+    if (rank === 3) return { emoji: "🥉", glow: "rgba(234,88,12,0.22)" };
+    return null;
+  };
+
+  const weeklyReward = (rank: number) => {
+    if (rank === 1) return 300;
+    if (rank === 2) return 175;
+    if (rank === 3) return 100;
+    return 0;
+  };
 
   return (
     <div style={{ display: "grid", gap: 10 }}>
       {rows.map(({ p, lvl, rank }) => {
         const me = p.id === currentUserId;
+        const m = medal(rank);
+        const reward = mode === "weekly" ? weeklyReward(rank) : 0;
         return (
           <div
             key={p.id}
@@ -66,6 +102,7 @@ export default function Leaderboard({
               ...rowCard(),
               outline: me ? "2px solid rgba(59,130,246,0.55)" : "none",
               background: me ? "rgba(59,130,246,0.10)" : "#0f172a",
+              boxShadow: m ? `0 0 0 1px rgba(255,255,255,0.06), 0 0 0 6px ${m.glow}` : "none",
             }}
           >
             <div
@@ -91,7 +128,7 @@ export default function Leaderboard({
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
                 <div style={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {rank}. {p.name}
+                  {m ? `${m.emoji} ` : ""}{rank}. {p.name}
                 </div>
                 <div style={miniBadge()}>Lv {lvl}</div>
               </div>
@@ -101,7 +138,12 @@ export default function Leaderboard({
             </div>
 
             <div style={{ textAlign: "right", display: "grid", gap: 4 }}>
-              <div style={{ fontWeight: 950 }}>{p.xp} XP</div>
+              <div style={{ fontWeight: 950 }}>
+                {mode === "weekly" ? `${p.xp} XP sett.` : `${p.xp} XP`}
+              </div>
+              {mode === "weekly" && reward > 0 ? (
+                <div style={{ ...miniBadge(), justifySelf: "end" }}>+{reward} 💊</div>
+              ) : null}
               {me ? <div style={{ ...miniBadge(), justifySelf: "end" }}>Tu</div> : null}
             </div>
           </div>

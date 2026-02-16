@@ -5,6 +5,7 @@ import { getDailyCounter, getDailyFlag } from "@/features/progress/dailyCounters
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import { calcDailyReward, calcWeeklyReward, getDailyState, getWeeklyState, setDailyState, setWeeklyState, getNextDailyResetMs, getNextWeeklyResetMs, pushHistory, type QuizHistoryItem } from "@/features/cards/quiz/quizLogic";
 import { pickAdaptiveQuestionsBalanced, recordQuizAnswer } from "@/features/cards/quiz/quizAdaptive";
+import { xpMultiplier } from "@/features/profile/premium";
 
 const LS = {
   pills: "nd_pills",
@@ -232,7 +233,8 @@ function answerQuiz(i: number) {
       setWeeklyState({ ...weekly, status: "done" });
     }
 
-    const xpGain = 20 + nextCorrect * (runQuiz.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
+    const baseXpGain = 20 + nextCorrect * (runQuiz.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
+    const xpGain = baseXpGain * xpMultiplier();
 
     // persist
     try {
@@ -250,7 +252,9 @@ function answerQuiz(i: number) {
     };
     pushHistory(item);
 
-    setQuizFeedback(`Quiz ${runQuiz.mode}: ${nextCorrect}/${total} • +${pillsGain} 💊 • +${xpGain} XP`);
+    setQuizFeedback(
+      `Quiz ${runQuiz.mode}: ${nextCorrect}/${total} • +${pillsGain} 💊 • +${xpGain} XP${xpMultiplier() > 1 ? " (Boost)" : ""}`
+    );
     setRunQuiz(null);
     setSelected(null);
   }, 450);
