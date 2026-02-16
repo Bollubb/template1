@@ -438,7 +438,8 @@ function answerQuiz(i: number) {
               </div>
             </div>
           ))}
-        
+        </div>
+
         {recentHistory.length ? (
           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
             <div style={{ fontWeight: 950, fontSize: 12, opacity: 0.85 }}>Ultimi calcoli</div>
@@ -462,12 +463,19 @@ function answerQuiz(i: number) {
           </div>
         ) : null}
 
-</div>
-
         <div style={{ marginTop: 10, opacity: 0.75, fontWeight: 800, fontSize: 12 }}>
           Oggi: {utilityToday} utility • {packsToday} bustine • {recycledToday} riciclate
         </div>
       </Card>
+
+      <PremiumUpsellModal
+        open={premiumModalOpen}
+        title="Sblocca Simulazione estesa"
+        subtitle="Con Boost ottieni 2× XP e simulazioni più lunghe per allenarti davvero."
+        bullets={["2× XP su quiz", "Simulazione (25 domande)", "Analytics avanzate in Profilo"]}
+        cta="Attiva Boost (demo)"
+        onClose={() => setPremiumModalOpen(false)}
+      />
     </div>
   );
 }
@@ -499,16 +507,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
     >
       <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>{label}</div>
       <div style={{ fontWeight: 950, fontSize: 18, marginTop: 4 }}>{value}</div>
-    
-      <PremiumUpsellModal
-        open={premiumModalOpen}
-        title="Sblocca Simulazione estesa"
-        subtitle="Con Boost ottieni 2× XP e simulazioni più lunghe per allenarti davvero."
-        bullets={["2× XP su quiz", "Simulazione (25 domande)", "Analytics avanzate in Profilo"]}
-        cta="Attiva Boost (demo)"
-        onClose={() => setPremiumModalOpen(false)}
-      />
-</div>
+    </div>
   );
 }
 
