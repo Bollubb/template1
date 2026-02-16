@@ -156,7 +156,7 @@ export default function ProfileTab({
   setPills,
   totalContent,
 }: {
-  openSection?: "profile" | "missioni" | "classifica";
+  openSection?: ProfileSection | "profile" | "missioni" | "classifica";
   onCloseSection?: () => void;
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
@@ -708,7 +708,7 @@ export default function ProfileTab({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      {section !== "profile" && (
+      {section !== "overview" && (
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
           <button type="button" onClick={() => onCloseSection?.()} style={ghostBtn()}>
             ← Profilo
