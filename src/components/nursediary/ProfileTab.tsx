@@ -978,6 +978,7 @@ export default function ProfileTab({
           <Leaderboard
             players={players}
             currentUserId={userId}
+            mode="global"
             onSelect={(p) => {
               setCardPlayer(p);
               setCardOpen(true);
