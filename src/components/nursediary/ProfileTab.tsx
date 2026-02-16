@@ -57,7 +57,6 @@ type RunState = {
 const LEVEL_XP = (lvl: number) => 120 + (lvl - 1) * 60;
 
 function isBrowser(){
-  const section = openSection ?? "profile";
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
