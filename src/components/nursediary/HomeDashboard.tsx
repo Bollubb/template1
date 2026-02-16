@@ -4,6 +4,7 @@ import { computeLevel, getXp, addXp } from "@/features/progress/xp";
 import { getDailyCounter, getDailyFlag } from "@/features/progress/dailyCounters";
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import { calcDailyReward, calcWeeklyReward, getDailyState, getWeeklyState, setDailyState, setWeeklyState, getNextDailyResetMs, getNextWeeklyResetMs, pushHistory, type QuizHistoryItem } from "@/features/cards/quiz/quizLogic";
+import { pickAdaptiveQuestions, recordQuizAnswer } from "@/features/cards/quiz/quizAdaptive";
 
 const LS = {
   pills: "nd_pills",
@@ -138,15 +139,6 @@ useEffect(() => {
   }, [loginClaimed, freePacks, daily.status, readsToday]);
 
 
-function pickRandom<T>(arr: T[], n: number) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a.slice(0, n);
-}
-
 function startQuiz(mode: "daily" | "weekly") {
   const state = mode === "daily" ? getDailyState() : getWeeklyState();
   if (state.status === "done") return;
@@ -158,7 +150,8 @@ function startQuiz(mode: "daily" | "weekly") {
   const candidates = QUIZ_BANK.filter((q) => !recent.includes(q.id));
   const pool = candidates.length >= n ? candidates : QUIZ_BANK;
 
-  const questions = pickRandom(pool, n);
+  // ✅ quiz adattivo: favorisce categorie deboli, mantenendo varietà
+  const questions = pickAdaptiveQuestions(pool, n, { excludeIds: recent });
   try {
     const nextRecent = [...questions.map((q) => q.id), ...recent].slice(0, 50);
     localStorage.setItem(recentKey, JSON.stringify(nextRecent));
@@ -174,6 +167,10 @@ function answerQuiz(i: number) {
   if (!runQuiz) return;
   const q = runQuiz.questions[runQuiz.idx];
   const ok = i === q.answer;
+
+  // ✅ aggiorna profilo adattivo (local only)
+  recordQuizAnswer(q, ok);
+
   const nextCorrect = runQuiz.correct + (ok ? 1 : 0);
 
   const answers = [...runQuiz.answers];

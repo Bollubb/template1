@@ -60,8 +60,9 @@ export default function NurseBottomNav({
                 borderRadius: 14,
                 border: "none",
                 cursor: "pointer",
-                background: isActive ? "rgba(14,165,233,0.14)" : "transparent",
-                color: isActive ? "#0369a1" : "rgba(0,0,0,0.70)",
+                background: isActive ? "rgba(14,165,233,0.18)" : "transparent",
+                // ✅ readable on dark bottom bar
+                color: isActive ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.72)",
                 fontWeight: isActive ? 700 : 600,
                 fontSize: 13,
               }}
