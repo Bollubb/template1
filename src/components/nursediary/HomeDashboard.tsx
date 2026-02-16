@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import UtilityHub from "./UtilityHub";
 import { computeLevel, getXp, addXp } from "@/features/progress/xp";
 import { getDailyCounter, getDailyFlag } from "@/features/progress/dailyCounters";
@@ -7,6 +7,7 @@ import { calcDailyReward, calcWeeklyReward, getDailyState, getWeeklyState, setDa
 import { recordQuizAnswer, pickSimulationQuestions } from "@/features/cards/quiz/quizAdaptive";
 import { isPremium, xpMultiplier } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
+import CelebrationPop from "./CelebrationPop";
 
 const LS = {
   pills: "nd_pills",
@@ -84,6 +85,11 @@ export default function HomeDashboard({
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
 
+  // B5 extra: micro-animazioni (solo momenti chiave)
+  const [levelUpOpen, setLevelUpOpen] = useState(false);
+  const [levelUpLevel, setLevelUpLevel] = useState<number>(1);
+  const prevLevelRef = useRef<number>(1);
+
   const [selected, setSelected] = useState<number | null>(null);
   const [quizFeedback, setQuizFeedback] = useState<string | null>(null);
   const [quizReview, setQuizReview] = useState<{ q: QuizQuestion; chosen: number }[] | null>(null);
@@ -123,6 +129,16 @@ useEffect(() => {
   }, []);
 
   const lvl = useMemo(() => computeLevel(xp), [xp]);
+
+  useEffect(() => {
+    const cur = lvl.level;
+    const prev = prevLevelRef.current;
+    if (cur > prev) {
+      setLevelUpLevel(cur);
+      setLevelUpOpen(true);
+    }
+    prevLevelRef.current = cur;
+  }, [lvl.level]);
 
   const daily = useMemo(() => getDailyState(), [dailyLeft]);
   const weekly = useMemo(() => getWeeklyState(), [weeklyLeft]);
@@ -286,6 +302,15 @@ function answerQuiz(i: number) {
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      <CelebrationPop
+        open={levelUpOpen}
+        icon="🧬"
+        title={`Level up! Livello ${levelUpLevel}`}
+        subtitle="Continua così: il tuo percorso sta crescendo."
+        accent="rgba(34,197,94,0.9)"
+        onClose={() => setLevelUpOpen(false)}
+      />
+
       {/* Daily Brief */}
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
