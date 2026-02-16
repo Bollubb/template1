@@ -65,16 +65,27 @@ function msToHMS(ms: number) {
 
 export default function HomeDashboard({
   openSection,
+  onCloseSection,
   onGoToCards,
   onGoToDidattica,
   onGoToProfile,
 }: {
   openSection?: "quiz" | "utility";
+  onCloseSection?: () => void;
   onGoToCards: () => void;
   onGoToDidattica: () => void;
   onGoToProfile: () => void;
 }) {
-  const [mode, setMode] = useState<"quiz" | "utility">(openSection ?? "quiz");
+  const [mode, setMode] = useState<"home" | "quiz" | "utility">(openSection ?? "home");
+
+  useEffect(() => {
+    // Home stays clean by default; Quiz/Utility open only from the top-left dropdown.
+    if (!openSection) {
+      setMode("home");
+      return;
+    }
+    setMode(openSection);
+  }, [openSection]);
   const [pills, setPills] = useState(0);
   const [freePacks, setFreePacks] = useState(0);
   const [xp, setXp] = useState(0);
@@ -342,7 +353,92 @@ function miniLearnBullets(q: QuizQuestion): string[] {
     return <UtilityHub onBack={() => { setMode("quiz"); try { loadRecentHistory(); } catch {} }} />;
   }
 
-  return (
+  
+  if (mode === "home") {
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+        <button type="button" onClick={() => { setMode("home"); onCloseSection?.(); }} style={ghostBtn()}>
+          ← Home
+        </button>
+      </div>
+        {/* Daily Brief (clean) */}
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", overflow: "hidden" }}>
+                  {avatar ? (
+                    <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <span style={{ fontSize: 18 }}>👤</span>
+                  )}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 950, fontSize: 18 }}>Home</div>
+                  <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>{profileName ? `Ciao, ${profileName}` : "Benvenuto"}</div>
+                </div>
+              </div>
+              <div style={{ opacity: 0.72, fontWeight: 700, fontSize: 13 }}>Daily brief • guidata e veloce</div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <MiniStat label="💊 Pillole" value={String(pills)} />
+              <MiniStat label="🎁 Free pack" value={String(freePacks)} />
+              <MiniStat label="🧬 Livello" value={`${lvl.level} (${Math.floor(lvl.pct * 100)}%)`} />
+              <MiniStat label="🔥 Streak quiz" value={String(daily.streak ?? 0)} />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <BriefRow ok={loginClaimed} label="Login giornaliero" right={loginClaimed ? "✅" : "⏳"} />
+              <BriefRow ok={readsToday >= 3} label="Letture oggi" right={`${readsToday}/3`} />
+              <BriefRow ok={daily.status === "done"} label="Quiz Daily" right={daily.status === "done" ? "✅" : "⏳"} />
+              <BriefRow ok={weekly.status === "done"} label="Quiz Weekly" right={weekly.status === "done" ? "✅" : "⏳"} />
+            </div>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" onClick={onGoToDidattica} style={primaryBtn()}>
+                Vai alla Didattica
+              </button>
+              <button type="button" onClick={onGoToCards} style={ghostBtn()}>
+                Carte
+              </button>
+              <button type="button" onClick={onGoToProfile} style={ghostBtn()}>
+                Profilo
+              </button>
+            </div>
+
+            <div style={{ opacity: 0.72, fontWeight: 750, fontSize: 12, lineHeight: 1.35 }}>
+              Per <b>Quiz</b> e <b>Utility</b> usa il <b>Menu rapido</b> in alto a sinistra.
+            </div>
+          </div>
+        </Card>
+
+        {/* Recommended (no Utility shortcut) */}
+        <Card>
+          <div style={{ fontWeight: 950 }}>Azione consigliata</div>
+          <div style={{ marginTop: 6, opacity: 0.8, fontWeight: 800 }}>{recommended.title}</div>
+          <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (recommended.action === "cards") onGoToCards();
+                else if (recommended.action === "didattica") onGoToDidattica();
+                else onGoToProfile();
+              }}
+              style={primaryBtn()}
+            >
+              {recommended.cta}
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+return (
     <div style={{ display: "grid", gap: 12 }}>
       {/* Daily Brief */}
       <Card>

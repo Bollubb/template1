@@ -56,7 +56,8 @@ type RunState = {
 
 const LEVEL_XP = (lvl: number) => 120 + (lvl - 1) * 60;
 
-function isBrowser() {
+function isBrowser(){
+  const section = openSection ?? "profile";
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
@@ -151,11 +152,13 @@ function computeLevel(xp: number) {
 
 export default function ProfileTab({
   openSection,
+  onCloseSection,
   pills,
   setPills,
   totalContent,
 }: {
   openSection?: "profile" | "missioni" | "classifica";
+  onCloseSection?: () => void;
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
@@ -706,6 +709,14 @@ export default function ProfileTab({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
+      {section !== "profile" && (
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+          <button type="button" onClick={() => onCloseSection?.()} style={ghostBtn()}>
+            ← Profilo
+          </button>
+        </div>
+      )}
+
       <ProfileCardModal open={cardOpen} player={cardPlayer} onClose={() => setCardOpen(false)} />
 
       {/* Profile header */}
@@ -989,6 +1000,7 @@ export default function ProfileTab({
           </div>
           <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
         </div>
+        {section === "classifica" && (
         <div style={{ marginTop: 10 }}>
           <Leaderboard
             players={players}
@@ -1013,6 +1025,7 @@ export default function ProfileTab({
           Completa uno step, riscotta la reward, poi si sblocca lo step successivo (più difficile).
         </div>
 
+        {section === "missioni" && (
         <MissionHub
           dayKey={dayKey}
           weekKey={weekKey}
@@ -1031,6 +1044,7 @@ export default function ProfileTab({
             toast.push(`Reward riscattata: +${reward.pills} 💊`, "success");
           }}
         />
+      )}
       </div>
       )}
 
