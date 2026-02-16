@@ -1014,7 +1014,7 @@ export default function ProfileTab({
           </div>
           <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
         </div>
-        {section === "leaderboard" && (
+
         <div style={{ marginTop: 10 }}>
           <Leaderboard
             players={players}
@@ -1039,7 +1039,6 @@ export default function ProfileTab({
           Completa uno step, riscotta la reward, poi si sblocca lo step successivo (più difficile).
         </div>
 
-        {section === "missioni" && (
         <MissionHub
           dayKey={dayKey}
           weekKey={weekKey}
@@ -1058,7 +1057,6 @@ export default function ProfileTab({
             toast.push(`Reward riscattata: +${reward.pills} 💊`, "success");
           }}
         />
-      )}
       </div>
       )}
 
