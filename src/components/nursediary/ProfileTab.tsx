@@ -1162,7 +1162,7 @@ export default function ProfileTab({
                 type="button"
                 onClick={() => {
                   clearLearned();
-                  toast.push("Pulito", \"success\");
+                  toast.push("Pulito", "success");
                 }}
                 style={ghostBtn()}
               >
