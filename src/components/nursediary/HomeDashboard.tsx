@@ -7,6 +7,8 @@ import { calcDailyReward, calcWeeklyReward, getDailyState, getWeeklyState, setDa
 import { recordQuizAnswer, pickSimulationQuestions } from "@/features/cards/quiz/quizAdaptive";
 import { isPremium, xpMultiplier } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
+import CareerPicker from "./CareerPicker";
+import DailyPlanCard from "./DailyPlanCard";
 
 const LS = {
   pills: "nd_pills",
@@ -62,8 +64,6 @@ function msToHMS(ms: number) {
 }
 
 
-import CareerPicker from "./CareerPicker";
-import DailyPlanCard from "./DailyPlanCard";
 
 export default function HomeDashboard({
   onGoToCards,
@@ -123,9 +123,7 @@ useEffect(() => {
 
     tick();
     const id = window.setInterval(tick, 1000);
-    return (<>
-<CareerPicker />
-<DailyPlanCard />) => window.clearInterval(id);
+    return () => window.clearInterval(id);
   }, []);
 
   const lvl = useMemo(() => computeLevel(xp), [xp]);
@@ -290,10 +288,9 @@ function answerQuiz(i: number) {
     return <UtilityHub onBack={() => { setMode("home"); try { loadRecentHistory(); } catch {} }} />;
   }
 
-  return (<>
-<CareerPicker />
-<DailyPlanCard />
-    <div style={{ display: "grid", gap: 12 }}>
+  return (<div style={{ display: "grid", gap: 12 }}>
+      <CareerPicker />
+      <DailyPlanCard />
       {/* Daily Brief */}
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
@@ -489,10 +486,7 @@ function answerQuiz(i: number) {
 }
 
 function Card({ children }: { children: React.ReactNode }) {
-  return (<>
-<CareerPicker />
-<DailyPlanCard />
-    <div
+  return (<div
       style={{
         border: "1px solid rgba(255,255,255,0.08)",
         background: "#0b1220",
@@ -506,10 +500,7 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 function MiniStat({ label, value }: { label: string; value: string }) {
-  return (<>
-<CareerPicker />
-<DailyPlanCard />
-    <div
+  return (<div
       style={{
         border: "1px solid rgba(255,255,255,0.10)",
         borderRadius: 16,
@@ -524,10 +515,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 }
 
 function BriefRow({ ok, label, right }: { ok: boolean; label: string; right: string }) {
-  return (<>
-<CareerPicker />
-<DailyPlanCard />
-    <div
+  return (<div
       style={{
         border: "1px solid rgba(255,255,255,0.10)",
         borderRadius: 16,
