@@ -1161,9 +1161,9 @@ export default function ProfileTab({
                 type="button"
                 onClick={() => {
                   clearLearned();
-                  toast.push("Pulito", "success");
+                  toast.success("Pulito");
                 }}
-                style={linkBtn()}
+                style={ghostBtn()}
               >
                 Pulisci
               </button>
