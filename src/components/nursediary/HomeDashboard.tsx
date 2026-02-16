@@ -4,7 +4,7 @@ import { computeLevel, getXp, addXp } from "@/features/progress/xp";
 import { getDailyCounter, getDailyFlag } from "@/features/progress/dailyCounters";
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import { calcDailyReward, calcWeeklyReward, getDailyState, getWeeklyState, setDailyState, setWeeklyState, getNextDailyResetMs, getNextWeeklyResetMs, pushHistory, type QuizHistoryItem } from "@/features/cards/quiz/quizLogic";
-import { pickAdaptiveQuestions, recordQuizAnswer } from "@/features/cards/quiz/quizAdaptive";
+import { pickAdaptiveQuestionsBalanced, recordQuizAnswer } from "@/features/cards/quiz/quizAdaptive";
 
 const LS = {
   pills: "nd_pills",
@@ -151,7 +151,11 @@ function startQuiz(mode: "daily" | "weekly") {
   const pool = candidates.length >= n ? candidates : QUIZ_BANK;
 
   // ✅ quiz adattivo: favorisce categorie deboli, mantenendo varietà
-  const questions = pickAdaptiveQuestions(pool, n, { excludeIds: recent });
+  const plan = mode === "daily"
+    ? { easy: 2, medium: 2, hard: 1 }
+    : { easy: 4, medium: 5, hard: 3 };
+
+  const questions = pickAdaptiveQuestionsBalanced(pool, plan, { excludeIds: recent });
   try {
     const nextRecent = [...questions.map((q) => q.id), ...recent].slice(0, 50);
     localStorage.setItem(recentKey, JSON.stringify(nextRecent));
@@ -177,6 +181,16 @@ function answerQuiz(i: number) {
   answers[runQuiz.idx] = i;
 
   setSelected(i);
+
+  // feedback immediato (valore didattico + spiegazione)
+  const correctOp = q.options[q.answer];
+  const chosenOp = q.options[i];
+  const diffLabel = q.difficulty === "easy" ? "Facile" : q.difficulty === "medium" ? "Media" : "Difficile";
+  setQuizFeedback(
+    `${ok ? "✅ Corretto" : "❌ Sbagliato"} • ${diffLabel} • ${q.category.toUpperCase()}\n` +
+      `${ok ? "" : `Corretta: ${correctOp}. `}` +
+      `${q.explain}`
+  );
 
   window.setTimeout(() => {
     const isLast = runQuiz.idx >= runQuiz.questions.length - 1;
@@ -291,7 +305,7 @@ function answerQuiz(i: number) {
       {/* Recommended */}
       <Card>
         <div style={{ fontWeight: 950 }}>Azione consigliata</div>
-        <div style={{ marginTop: 6, opacity: 0.8, fontWeight: 800 }}>{recommended.title}</div>
+        <div style={{ marginTop: 6, opacity: 0.8, fontWeight: 800, whiteSpace: "pre-line" }}>{recommended.title}</div>
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
             type="button"
