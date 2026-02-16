@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getWeeklyChallenge, isWeeklyChallengeClaimed, claimWeeklyChallengeReward } from "@/features/social/weeklyChallenge";
-import { getCareer } from "@/features/career/career";
 
 import { useToast } from "./Toast";
 import MissionHub from "./MissionHub";
