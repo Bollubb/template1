@@ -345,61 +345,6 @@ export default function ProfileTab({
     return () => window.clearInterval(id);
   }, []);
 
-  // Quick navigation sections (driven by header menu)
-  if (section === "missions") {
-    return (
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
-        <MissionHub
-          dayKey={dayKey}
-          weekKey={weekKey}
-          dailyLeft={dailyLeft}
-          weeklyLeft={weeklyLeft}
-          getClaimed={getClaimed}
-          setClaimed={setClaimed}
-          onGrant={onGrant}
-        />
-        <button type="button" onClick={() => setSection("overview")} style={ghostBtn()}>
-          ← Torna al profilo
-        </button>
-      </div>
-    );
-  }
-
-  if (section === "leaderboard") {
-    return (
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
-        <Leaderboard
-          mode="weekly"
-          players={players}
-          currentUserId={userId}
-          onSelect={(p) => {
-            setSelectedPlayer(p);
-            setProfileModalOpen(true);
-          }}
-        />
-        <div style={{ marginTop: 10 }}>
-          <Leaderboard
-            mode="global"
-            players={players}
-            currentUserId={userId}
-            onSelect={(p) => {
-              setSelectedPlayer(p);
-              setProfileModalOpen(true);
-            }}
-          />
-        </div>
-        <button type="button" onClick={() => setSection("overview")} style={ghostBtn()}>
-          ← Torna al profilo
-        </button>
-      </div>
-    );
-  }
-
-  return () => window.clearInterval(id);
-  }, []);
-
   function buildAccountExport() {
     if (!isBrowser()) return;
     const data: Record<string, string> = {};
