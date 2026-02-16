@@ -339,7 +339,7 @@ function miniLearnBullets(q: QuizQuestion): string[] {
 
 
     if (mode === "utility") {
-    return <UtilityHub onBack={() => { setMode("home"); try { loadRecentHistory(); } catch {} }} />;
+    return <UtilityHub onBack={() => { setMode("quiz"); try { loadRecentHistory(); } catch {} }} />;
   }
 
   return (
