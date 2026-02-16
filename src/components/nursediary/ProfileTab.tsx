@@ -723,7 +723,7 @@ export default function ProfileTab({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      {section !== "profile" && (
+      {section !== "overview" && (
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
           <button type="button" onClick={() => onCloseSection?.()} style={ghostBtn()}>
             ← Profilo
