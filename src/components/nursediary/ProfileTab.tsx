@@ -1156,7 +1156,8 @@ export default function ProfileTab({
           {/* Mini-learn library (lightweight, local-only) */}
           <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", padding: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-              <div style={{ fontWeight: 950 }}>Mini-learn salvati</div>
+              <>
+<div style={{ fontWeight: 950 }}>Mini-learn salvati</div>
               <button
                 type="button"
                 onClick={() => {
@@ -1167,7 +1168,8 @@ export default function ProfileTab({
               >
                 Pulisci
               </button>
-            </div>
+            </>
+</div>
             {learnedPreview.length === 0 ? (
               <div style={{ marginTop: 6, opacity: 0.75, fontWeight: 800, fontSize: 12 }}>
                 Apri “Approfondisci (10 sec)” dopo un quiz per salvare qui le domande.
