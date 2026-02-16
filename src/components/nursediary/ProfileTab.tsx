@@ -331,17 +331,20 @@ export default function ProfileTab({
     localStorage.setItem(LS.freePacks, String(freePacks));
   }, [freePacks]);
 
-    // countdown ticker
-  useEffect(() => {
-    const tick = () => {
-      setDailyLeft(getNextDailyResetMs());
-      setWeeklyLeft(getNextWeeklyResetMs());
-    };
-    tick();
-    const id = window.setInterval(tick, 1000);
-  
+	  // countdown ticker
+	  useEffect(() => {
+	    if (!isBrowser()) return;
+	    const tick = () => {
+	      setDailyLeft(getNextDailyResetMs());
+	      setWeeklyLeft(getNextWeeklyResetMs());
+	    };
+	    tick();
+	    const id = window.setInterval(tick, 1000);
+	    return () => window.clearInterval(id);
+	  }, []);
+
   // Quick navigation sections (driven by header menu)
-  if (section === "missioni") {
+	  if (section === "missions") {
     return (
       <div style={{ display: "grid", gap: 12 }}>
         <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
@@ -354,14 +357,14 @@ export default function ProfileTab({
           setClaimed={setClaimed}
           onGrant={onGrant}
         />
-        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
+	        <button type="button" onClick={() => setSection("overview")} style={ghostBtn()}>
           ← Torna al profilo
         </button>
       </div>
     );
   }
 
-  if (section === "classifica") {
+	  if (section === "leaderboard") {
     return (
       <div style={{ display: "grid", gap: 12 }}>
         <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
@@ -385,7 +388,7 @@ export default function ProfileTab({
             }}
           />
         </div>
-        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
+	        <button type="button" onClick={() => setSection("overview")} style={ghostBtn()}>
           ← Torna al profilo
         </button>
       </div>
