@@ -15,6 +15,20 @@ import { clearLearned, getLearnedIds } from "@/features/cards/quiz/quizLearn";
 import { isPremium, setPremium as setPremiumFlag, xpMultiplier } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
 import {
+
+function SlideIn({ children }: { children: React.ReactNode }) {
+  const [enter, setEnter] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setEnter(true), 0);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div style={{ transform: enter ? "translateY(0px)" : "translateY(10px)", opacity: enter ? 1 : 0, transition: "all 220ms ease" }}>
+      {children}
+    </div>
+  );
+}
+
   calcDailyReward,
   calcWeeklyReward,
   getDailyState,
@@ -149,16 +163,68 @@ function computeLevel(xp: number) {
 }
 
 export default function ProfileTab({
+  openSection,
+  onCloseSection,
   pills,
   setPills,
   totalContent,
 }: {
+  openSection?: "profile" | "missioni" | "classifica";
+  onCloseSection?: () => void;
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
 }) {
 
   const toast = useToast();
+
+
+// STANDALONE_MODULE_RETURNS: render modules as standalone screens when opened from header dropdown
+if (openSection === "missioni") {
+  return (
+    <SlideIn>
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
+          <button
+            type="button"
+            onClick={() => { onCloseSection?.(); }}
+            style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", padding: "8px 10px", fontWeight: 850, cursor: "pointer" }}
+          >
+            Chiudi
+          </button>
+        </div>
+        <MissionHub />
+      </div>
+    </SlideIn>
+  );
+}
+
+if (openSection === "classifica") {
+  return (
+    <SlideIn>
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
+          <button
+            type="button"
+            onClick={() => { onCloseSection?.(); }}
+            style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", padding: "8px 10px", fontWeight: 850, cursor: "pointer" }}
+          >
+            Chiudi
+          </button>
+        </div>
+        <Leaderboard
+          players={lbUsers}
+          currentUserId={userId}
+          onSelect={(p) => { setCardPlayer(p); setCardOpen(true); }}
+          mode="weekly"
+        />
+      </div>
+    </SlideIn>
+  );
+}
+
 
   // STANDALONE_SECTION: when opened from the header dropdown, render modules as standalone pages (no Profile content).
   if (openSection === "missioni") {

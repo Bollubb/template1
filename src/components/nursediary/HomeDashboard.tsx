@@ -10,6 +10,67 @@ import { recordLearn } from "@/features/cards/quiz/quizLearn";
 import { isPremium, xpMultiplier } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
 
+function SlideIn({ children }: { children: React.ReactNode }) {
+  const [enter, setEnter] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setEnter(true), 0);
+    return () => clearTimeout(t);
+  }, []);
+  function renderQuizModule() {
+    return (
+      <div style={{ fontWeight: 950, fontSize: 16 }}>Quiz</div>
+                <div style={{ marginTop: 6, opacity: 0.72, fontWeight: 700, fontSize: 13 }}>
+                  Apri il Quiz dal <b>Menu rapido</b> in alto a sinistra.
+                </div>
+    );
+  }
+
+
+
+// STANDALONE_MODULE_RETURNS: render modules as standalone screens when opened from header dropdown
+if (openSection === "utility") {
+  return (
+    <SlideIn>
+      <UtilityHub onBack={() => { onCloseSection?.(); }} />
+    </SlideIn>
+  );
+}
+
+if (openSection === "quiz") {
+  return (
+    <SlideIn>
+      <Card>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div style={{ fontWeight: 950, fontSize: 18 }}>Quiz</div>
+          <button
+            type="button"
+            onClick={() => { onCloseSection?.(); }}
+            style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", padding: "8px 10px", fontWeight: 850, cursor: "pointer" }}
+          >
+            Chiudi
+          </button>
+        </div>
+        <div style={{ marginTop: 10 }}>{renderQuizModule()}</div>
+      </Card>
+    </SlideIn>
+  );
+}
+
+
+  return (
+    <div
+      style={{
+        transform: enter ? "translateY(0px)" : "translateY(10px)",
+        opacity: enter ? 1 : 0,
+        transition: "all 220ms ease",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+
 const LS = {
   pills: "nd_pills",
   freePacks: "nd_free_packs",
@@ -64,10 +125,14 @@ function msToHMS(ms: number) {
 }
 
 export default function HomeDashboard({
+  openSection,
+  onCloseSection,
   onGoToCards,
   onGoToDidattica,
   onGoToProfile,
 }: {
+  openSection?: "quiz" | "utility";
+  onCloseSection?: () => void;
   onGoToCards: () => void;
   onGoToDidattica: () => void;
   onGoToProfile: () => void;
@@ -345,11 +410,11 @@ function miniLearnBullets(q: QuizQuestion): string[] {
         return (
           <div style={{ display: "grid", gap: 12 }}>
             <Card>
-          <div style={{ fontWeight: 950, fontSize: 16 }}>Quiz</div>
-          <div style={{ marginTop: 6, opacity: 0.72, fontWeight: 700, fontSize: 13 }}>
-            Apri il Quiz dal <b>Menu rapido</b> in alto a sinistra.
-          </div>
-        </Card>
+  <div style={{ fontWeight: 950, fontSize: 16 }}>Quiz</div>
+  <div style={{ marginTop: 6, opacity: 0.72, fontWeight: 700, fontSize: 13 }}>
+    Apri il Quiz dal <b>Menu rapido</b> in alto a sinistra.
+  </div>
+</Card>
           </div>
         );
       }
