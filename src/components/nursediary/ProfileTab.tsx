@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getCareer } from "@/features/career/career";
 
 import { useToast } from "./Toast";
 import MissionHub from "./MissionHub";
