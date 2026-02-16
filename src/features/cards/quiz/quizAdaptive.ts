@@ -119,3 +119,42 @@ export function pickAdaptiveQuestions(
 
   return shuffle(picked).slice(0, n);
 }
+
+
+export function pickAdaptiveQuestionsBalanced(
+  bank: QuizQuestion[],
+  plan: { easy: number; medium: number; hard: number },
+  opts?: { excludeIds?: string[] }
+) {
+  const exclude = new Set(opts?.excludeIds || []);
+  const pool = bank.filter((q) => !exclude.has(q.id));
+  const byDiff = {
+    easy: pool.filter((q) => q.difficulty === "easy"),
+    medium: pool.filter((q) => q.difficulty === "medium"),
+    hard: pool.filter((q) => q.difficulty === "hard"),
+  } as const;
+
+  const picked: QuizQuestion[] = [];
+
+  const pickFrom = (arr: QuizQuestion[], n: number) => {
+    if (n <= 0) return;
+    const already = new Set(picked.map((p) => p.id));
+    const filtered = arr.filter((q) => !already.has(q.id));
+    picked.push(...pickAdaptiveQuestions(filtered, n));
+  };
+
+  pickFrom(byDiff.easy, plan.easy);
+  pickFrom(byDiff.medium, plan.medium);
+  pickFrom(byDiff.hard, plan.hard);
+
+  // fallback: if we couldn't fill (e.g., small bucket), fill from remaining pool
+  const target = plan.easy + plan.medium + plan.hard;
+  const remaining = target - picked.length;
+  if (remaining > 0) {
+    const already = new Set(picked.map((p) => p.id));
+    const rest = pool.filter((q) => !already.has(q.id));
+    picked.push(...shuffle(rest).slice(0, remaining));
+  }
+
+  return shuffle(picked).slice(0, target);
+}
