@@ -1,4 +1,5 @@
 import type { QuizQuestion } from "./quizBank";
+import { recordMistake } from "./quizMistakes";
 
 type CatStats = { correct: number; total: number; lastTs: number };
 
@@ -42,6 +43,10 @@ export function recordQuizAnswer(q: QuizQuestion, ok: boolean) {
   if (ok) c.correct += 1;
   c.lastTs = now;
   s.cats[cat] = c;
+
+  if (!ok) {
+    recordMistake(q.id);
+  }
 
   setState(s);
 }

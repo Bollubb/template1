@@ -1,4 +1,4 @@
-export type QuizMode = "daily" | "weekly" | "sim";
+export type QuizMode = "daily" | "weekly" | "sim" | "review";
 
 export type QuizHistoryItem = {
   ts: number;
