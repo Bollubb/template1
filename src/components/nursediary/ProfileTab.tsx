@@ -331,15 +331,20 @@ export default function ProfileTab({
     localStorage.setItem(LS.freePacks, String(freePacks));
   }, [freePacks]);
 
-    // countdown ticker
+  // countdown ticker
   useEffect(() => {
+    if (!isBrowser()) return;
+
     const tick = () => {
       setDailyLeft(getNextDailyResetMs());
       setWeeklyLeft(getNextWeeklyResetMs());
     };
+
     tick();
     const id = window.setInterval(tick, 1000);
-  
+    return () => window.clearInterval(id);
+  }, []);
+
   // Quick navigation sections (driven by header menu)
   if (section === "missioni") {
     return (
