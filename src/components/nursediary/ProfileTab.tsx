@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { getCareer } from "@/features/career/career";
 
 import { useToast } from "./Toast";
 import MissionHub from "./MissionHub";
@@ -56,7 +55,7 @@ type RunState = {
 
 const LEVEL_XP = (lvl: number) => 120 + (lvl - 1) * 60;
 
-function isBrowser(){
+function isBrowser() {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
 }
 
@@ -132,21 +131,6 @@ function pickRandom<T>(arr: T[], n: number) {
 
 type ProfileSection = "overview" | "missions" | "quiz" | "leaderboard" | "account";
 
-type OpenSectionParam = ProfileSection | "profile" | "missioni" | "classifica";
-const normalizeOpenSection = (s?: OpenSectionParam): ProfileSection => {
-  switch (s) {
-    case "profile":
-      return "overview";
-    case "missioni":
-      return "missions";
-    case "classifica":
-      return "leaderboard";
-    default:
-      return (s as ProfileSection) ?? "overview";
-  }
-};
-
-
 function clampText(s: string, max: number) {
   const v = String(s || "");
   return v.length > max ? v.slice(0, max) : v;
@@ -165,31 +149,60 @@ function computeLevel(xp: number) {
 }
 
 export default function ProfileTab({
-  openSection,
-  onCloseSection,
   pills,
   setPills,
   totalContent,
 }: {
-  openSection?: ProfileSection | "profile" | "missioni" | "classifica";
-  onCloseSection?: () => void;
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
 }) {
 
   const toast = useToast();
+
+  // STANDALONE_SECTION: when opened from the header dropdown, render modules as standalone pages (no Profile content).
+  if (openSection === "missioni") {
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
+          <button
+            type="button"
+            onClick={() => { onCloseSection?.(); }}
+            style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", padding: "8px 10px", fontWeight: 850, cursor: "pointer" }}
+          >
+            Chiudi
+          </button>
+        </div>
+        <MissionHub />
+      </div>
+    );
+  }
+
+  if (openSection === "classifica") {
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+          <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
+          <button
+            type="button"
+            onClick={() => { onCloseSection?.(); }}
+            style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", padding: "8px 10px", fontWeight: 850, cursor: "pointer" }}
+          >
+            Chiudi
+          </button>
+        </div>
+        <Leaderboard
+          players={lbUsers}
+          currentUserId={userId}
+          onSelect={(p) => { setCardPlayer(p); setCardOpen(true); }}
+          mode="weekly"
+        />
+      </div>
+    );
+  }
   const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
   const [section, setSection] = useState<ProfileSection>("overview");
-
-  // External navigation from the header dropdown
-  useEffect(() => {
-    if (!openSection) return;
-    if (openSection === "missioni") setSection("missions");
-    else if (openSection === "classifica") setSection("leaderboard");
-    else if (openSection === "profile") setSection("overview");
-  }, [openSection]);
-
   const [accountCreated, setAccountCreated] = useState(false);
   const [editUnlocked, setEditUnlocked] = useState(false);
   const canEditProfile = !accountCreated || editUnlocked;
@@ -357,15 +370,12 @@ export default function ProfileTab({
     localStorage.setItem(LS.freePacks, String(freePacks));
   }, [freePacks]);
 
-  // countdown ticker
+    // countdown ticker
   useEffect(() => {
-    if (!isBrowser()) return;
-
     const tick = () => {
       setDailyLeft(getNextDailyResetMs());
       setWeeklyLeft(getNextWeeklyResetMs());
     };
-
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
@@ -732,14 +742,6 @@ export default function ProfileTab({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      {section !== "overview" && (
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-          <button type="button" onClick={() => onCloseSection?.()} style={ghostBtn()}>
-            ← Profilo
-          </button>
-        </div>
-      )}
-
       <ProfileCardModal open={cardOpen} player={cardPlayer} onClose={() => setCardOpen(false)} />
 
       {/* Profile header */}
@@ -1023,7 +1025,6 @@ export default function ProfileTab({
           </div>
           <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
         </div>
-
         <div style={{ marginTop: 10 }}>
           <Leaderboard
             players={players}
@@ -1081,8 +1082,12 @@ export default function ProfileTab({
         </div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {/* Quiz moved to Menu rapido */}
-          {/* Quiz moved to Menu rapido */}
+          <button type="button" onClick={() => startQuiz("daily")} disabled={dailyState.status === "done" || !!run} style={pillBtn(dailyState.status === "done" || !!run)}>
+            Daily
+          </button>
+          <button type="button" onClick={() => startQuiz("weekly")} disabled={weeklyState.status === "done" || !!run} style={pillBtn(weeklyState.status === "done" || !!run)}>
+            Weekly
+          </button>
         </div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -1193,20 +1198,18 @@ export default function ProfileTab({
           {/* Mini-learn library (lightweight, local-only) */}
           <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", padding: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-              <>
-<div style={{ fontWeight: 950 }}>Mini-learn salvati</div>
+              <div style={{ fontWeight: 950 }}>Mini-learn salvati</div>
               <button
                 type="button"
                 onClick={() => {
                   clearLearned();
-                  toast.push("Pulito", "success");
+                  toast.success("Pulito");
                 }}
-                style={ghostBtn()}
+                style={linkBtn()}
               >
                 Pulisci
               </button>
-            </>
-</div>
+            </div>
             {learnedPreview.length === 0 ? (
               <div style={{ marginTop: 6, opacity: 0.75, fontWeight: 800, fontSize: 12 }}>
                 Apri “Approfondisci (10 sec)” dopo un quiz per salvare qui le domande.
