@@ -1,5 +1,5 @@
 import Head from "next/head";
-import React from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ToastProvider } from "../components/nursediary/Toast";
 
 export type PageProps = {
@@ -7,8 +7,39 @@ export type PageProps = {
   children: React.ReactNode;
 };
 
+type NavTarget = { tab: "home" | "profilo"; section: "quiz" | "utility" | "missioni" | "classifica" };
+
+function dispatchNav(target: NavTarget) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("nd:navigate", { detail: target }));
+}
+
 export default function Page({ title = "NurseDiary", children }: PageProps): JSX.Element {
   const pageTitle = title ? `NurseDiary | ${title}` : "NurseDiary";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      const el = menuRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) setMenuOpen(false);
+    };
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [menuOpen]);
+
+  const items = useMemo(
+    () =>
+      [
+        { label: "Quiz", sub: "Daily, Weekly, Simulazione", icon: "🧠", t: { tab: "home", section: "quiz" } as const },
+        { label: "Utility", sub: "Calcoli e strumenti", icon: "🛠️", t: { tab: "home", section: "utility" } as const },
+        { label: "Missioni", sub: "Obiettivi e ricompense", icon: "🎯", t: { tab: "profilo", section: "missioni" } as const },
+        { label: "Classifica", sub: "Settimanale / Globale", icon: "🏆", t: { tab: "profilo", section: "classifica" } as const },
+      ] as const,
+    []
+  );
 
   return (
     <>
@@ -18,53 +49,143 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
       </Head>
 
       <ToastProvider>
-      <div
-        style={{
-          minHeight: "100vh",
-          overflowX: "hidden",
-          color: "rgba(255,255,255,0.92)",
-
-          /* ✅ ZERO cerchi: niente radial-gradient, niente immagini */
-          backgroundColor: "rgb(2,6,23)",
-          backgroundImage: "linear-gradient(180deg, rgba(11,18,32,0.45), rgba(2,6,23,0) 55%)",
-          backgroundRepeat: "no-repeat",
-          backgroundSize: "cover",
-        }}
-      >
-        <header
+        <div
           style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 50,
-            padding: "10px 14px",
-            borderBottom: "1px solid rgba(255,255,255,0.08)",
-            background: "rgba(2,6,23,0.85)",
-            /* puoi anche togliere blur se vuoi ultra-clean */
-            backdropFilter: "blur(10px)",
+            minHeight: "100vh",
+            overflowX: "hidden",
+            color: "rgba(255,255,255,0.92)",
+            backgroundColor: "rgb(2,6,23)",
+            // Subtle premium background: clean + sanitary, no noisy circles.
+            backgroundImage:
+              "linear-gradient(180deg, rgba(11,18,32,0.70), rgba(2,6,23,0) 60%), linear-gradient(135deg, rgba(56,189,248,0.06), rgba(34,197,94,0.04) 35%, rgba(2,6,23,0) 75%)",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "cover",
           }}
         >
-          <div
+          <header
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              maxWidth: 520,
-              margin: "0 auto",
+              position: "sticky",
+              top: 0,
+              zIndex: 50,
+              padding: "10px 14px",
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(2,6,23,0.88)",
+              backdropFilter: "blur(12px)",
             }}
           >
-            <img src="/logo.png" alt="NurseDiary" width={28} height={28} style={{ borderRadius: 8 }} />
-            <div style={{ fontWeight: 800, fontSize: 18, letterSpacing: 0.2 }}>NurseDiary</div>
-          </div>
-        </header>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                maxWidth: 520,
+                margin: "0 auto",
+              }}
+            >
+              {/* Logo + dropdown trigger */}
+              <div ref={menuRef} style={{ position: "relative" }}>
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen((v) => !v)}
+                  aria-label="Apri menu"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.92)",
+                    padding: "8px 10px",
+                    borderRadius: 14,
+                    cursor: "pointer",
+                    boxShadow: "0 10px 28px rgba(0,0,0,0.30)",
+                  }}
+                >
+                  <img src="/logo.png" alt="NurseDiary" width={26} height={26} style={{ borderRadius: 8 }} />
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.05 }}>
+                    <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: 0.2 }}>NurseDiary</div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>Menu rapido</div>
+                  </div>
+                  <div style={{ marginLeft: 2, color: "rgba(255,255,255,0.70)", fontSize: 14 }}>{menuOpen ? "▲" : "▼"}</div>
+                </button>
 
-        <main style={{ paddingBottom: 96 }}>
-          <div style={{ maxWidth: 520, margin: "0 auto", padding: "16px 14px" }}>{children}</div>
-        </main>
+                {menuOpen && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: "calc(100% + 10px)",
+                      width: 298,
+                      borderRadius: 18,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(2,6,23,0.92)",
+                      boxShadow: "0 18px 50px rgba(0,0,0,0.55)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div style={{ padding: "10px 12px", borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
+                      <div style={{ fontWeight: 950, fontSize: 13 }}>Sezioni</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>
+                        Vai direttamente a quiz, missioni, classifica e utility.
+                      </div>
+                    </div>
 
-        <footer style={{ padding: "18px 16px", color: "rgba(255,255,255,0.55)", textAlign: "center" }}>
-          <small>© {new Date().getFullYear()} NurseDiary</small>
-        </footer>
-      </div>
+                    <div style={{ padding: 8, display: "grid", gap: 6 }}>
+                      {items.map((it) => (
+                        <button
+                          key={it.label}
+                          type="button"
+                          onClick={() => {
+                            dispatchNav(it.t);
+                            setMenuOpen(false);
+                          }}
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: "10px 10px",
+                            borderRadius: 14,
+                            border: "1px solid rgba(255,255,255,0.08)",
+                            background: "rgba(255,255,255,0.04)",
+                            color: "rgba(255,255,255,0.92)",
+                            cursor: "pointer",
+                            textAlign: "left",
+                          }}
+                        >
+                          <div style={{ width: 30, height: 30, borderRadius: 12, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.06)" }}>
+                            <span style={{ fontSize: 16 }}>{it.icon}</span>
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 850, fontSize: 13 }}>{it.label}</div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>{it.sub}</div>
+                          </div>
+                          <div style={{ color: "rgba(255,255,255,0.55)" }}>→</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ padding: "10px 12px", borderTop: "1px solid rgba(255,255,255,0.10)", fontSize: 11, color: "rgba(255,255,255,0.60)" }}>
+                      Suggerimento: usa il menu per una home più pulita e focalizzata.
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right side spacer (future quick actions) */}
+              <div style={{ width: 32 }} />
+            </div>
+          </header>
+
+          <main style={{ paddingBottom: 96 }}>
+            <div style={{ maxWidth: 520, margin: "0 auto", padding: "16px 14px" }}>{children}</div>
+          </main>
+
+          <footer style={{ padding: "18px 16px", color: "rgba(255,255,255,0.55)", textAlign: "center" }}>
+            <small>© {new Date().getFullYear()} NurseDiary</small>
+          </footer>
+        </div>
       </ToastProvider>
     </>
   );
