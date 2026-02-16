@@ -270,6 +270,7 @@ if (openSection === "classifica") {
     );
   }
   const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
+  const [lbUsers, setLbUsers] = useState<PlayerCard[]>([]);
   const [section, setSection] = useState<ProfileSection>("overview");
   const [accountCreated, setAccountCreated] = useState(false);
   const [editUnlocked, setEditUnlocked] = useState(false);
@@ -280,7 +281,6 @@ if (openSection === "classifica") {
   const [showPresets, setShowPresets] = useState(false);
 
   const [userId, setUserId] = useState<string>("me");
-  const [lbUsers, setLbUsers] = useState<PlayerCard[]>([]);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardPlayer, setCardPlayer] = useState<PlayerCard | null>(null);
   const [premium, setPremium] = useState<boolean>(false);
