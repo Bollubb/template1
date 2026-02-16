@@ -331,69 +331,20 @@ export default function ProfileTab({
     localStorage.setItem(LS.freePacks, String(freePacks));
   }, [freePacks]);
 
-    // countdown ticker
+  // countdown ticker
   useEffect(() => {
+    if (!isBrowser()) return;
+
     const tick = () => {
       setDailyLeft(getNextDailyResetMs());
       setWeeklyLeft(getNextWeeklyResetMs());
     };
+
     tick();
     const id = window.setInterval(tick, 1000);
-  
-  // Quick navigation sections (driven by header menu)
-  if (section === "missioni") {
-    return (
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
-        <MissionHub
-          dayKey={dayKey}
-          weekKey={weekKey}
-          dailyLeft={dailyLeft}
-          weeklyLeft={weeklyLeft}
-          getClaimed={getClaimed}
-          setClaimed={setClaimed}
-          onGrant={onGrant}
-        />
-        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
-          ← Torna al profilo
-        </button>
-      </div>
-    );
-  }
-
-  if (section === "classifica") {
-    return (
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
-        <Leaderboard
-          mode="weekly"
-          players={players}
-          currentUserId={userId}
-          onSelect={(p) => {
-            setSelectedPlayer(p);
-            setProfileModalOpen(true);
-          }}
-        />
-        <div style={{ marginTop: 10 }}>
-          <Leaderboard
-            mode="global"
-            players={players}
-            currentUserId={userId}
-            onSelect={(p) => {
-              setSelectedPlayer(p);
-              setProfileModalOpen(true);
-            }}
-          />
-        </div>
-        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
-          ← Torna al profilo
-        </button>
-      </div>
-    );
-  }
-
-  return () => window.clearInterval(id);
+    return () => window.clearInterval(id);
   }, []);
+
 
   function buildAccountExport() {
     if (!isBrowser()) return;
@@ -1071,14 +1022,15 @@ export default function ProfileTab({
           getClaimed={getClaimed}
           setClaimed={setClaimed}
           onGrant={(reward, meta) => {
-            setPills((p) => p + (reward.pills ?? 0));
+            const pills = reward.pills ?? 0;
+            if (pills) setPills((p) => p + pills);
             if (reward.xp) {
               setXp((x) => x + reward.xp!);
               addXpGlobal(reward.xp!);
               toast.push(`+${reward.xp} XP`, "success");
             }
             if (reward.pack) setFreePacks((v) => v + reward.pack!);
-            toast.push(`Reward riscattata: +${reward.pills} 💊`, "success");
+            toast.push(`Reward riscattata: +${pills} 💊`, "success");
           }}
         />
       </div>
