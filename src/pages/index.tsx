@@ -25,7 +25,7 @@ const LS = {
 
 export default function Home(): JSX.Element {
   const [activeTab, setActiveTab] = useState<NurseTab>("home");
-  const [homeSection, setHomeSection] = useState<"quiz" | "utility">("quiz");
+  const [homeSection, setHomeSection] = useState<"home" | "quiz" | "utility">("home");
   const [profileSection, setProfileSection] = useState<"profile" | "missioni" | "classifica">("profile");
 
   // Didattica data
@@ -266,7 +266,7 @@ export default function Home(): JSX.Element {
       {/* HOME */}
       {activeTab === "home" && (
         <Section>
-          <HomeDashboard openSection={homeSection} onGoToCards={() => setActiveTab("carte")} onGoToDidattica={() => setActiveTab("didattica")} onGoToProfile={() => setActiveTab("profilo")} />
+          <HomeDashboard openSection={homeSection === "home" ? undefined : homeSection} onCloseSection={() => setHomeSection("home")} onGoToCards={() => setActiveTab("carte")} onGoToDidattica={() => setActiveTab("didattica")} onGoToProfile={() => setActiveTab("profilo")} />
         </Section>
       )}
 
@@ -409,7 +409,7 @@ export default function Home(): JSX.Element {
       {/* PROFILO */}
       {activeTab === "profilo" && (
         <Section>
-          <ProfileTab openSection={profileSection} pills={pills} setPills={setPills} totalContent={items.length} />
+          <ProfileTab openSection={profileSection} onCloseSection={() => setProfileSection("profile")} pills={pills} setPills={setPills} totalContent={items.length} />
         </Section>
       )}
 
