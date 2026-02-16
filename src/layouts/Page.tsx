@@ -66,7 +66,11 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
               zIndex: 50,
               padding: "10px 14px",
               borderBottom: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(2,6,23,0.88)",
+              background: "linear-gradient(180deg, rgba(7,12,24,0.88) 0%, rgba(7,12,24,0.94) 55%, rgba(7,12,24,0.98) 100%)",
+        backgroundImage: "url(/background-main.png)",
+        backgroundSize: "cover",
+        backgroundPosition: "center top",
+        backgroundAttachment: "fixed",
               backdropFilter: "blur(12px)",
             }}
           >
