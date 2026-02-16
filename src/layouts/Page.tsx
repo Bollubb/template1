@@ -2,10 +2,7 @@ import Head from "next/head";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ToastProvider } from "../components/nursediary/Toast";
 
-export type PageProps = {
-  title?: string;
-  children: React.ReactNode;
-};
+export type PageProps = { title?: string; children: React.ReactNode; headerOverride?: { title: string; subtitle?: string; showBack?: boolean; onBack?: () => void; }; };
 
 type NavTarget = { tab: "home" | "profilo"; section: "quiz" | "utility" | "missioni" | "classifica" };
 
@@ -14,7 +11,7 @@ function dispatchNav(target: NavTarget) {
   window.dispatchEvent(new CustomEvent("nd:navigate", { detail: target }));
 }
 
-export default function Page({ title = "NurseDiary", children }: PageProps): JSX.Element {
+export default function Page({ title = "NurseDiary", children, headerOverride }: PageProps): JSX.Element {
   const pageTitle = title ? `NurseDiary | ${title}` : "NurseDiary";
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -102,10 +99,13 @@ export default function Page({ title = "NurseDiary", children }: PageProps): JSX
                     boxShadow: "0 10px 28px rgba(0,0,0,0.30)",
                   }}
                 >
+                  {headerOverride?.showBack ? (
+                    <span style={{ fontSize: 16, marginRight: 2 }}>←</span>
+                  ) : null}
                   <img src="/logo.png" alt="NurseDiary" width={26} height={26} style={{ borderRadius: 8 }} />
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.05 }}>
-                    <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: 0.2 }}>NurseDiary</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>Menu rapido</div>
+                    <div style={{ fontWeight: 900, fontSize: 15, letterSpacing: 0.2 }}>{headerOverride?.title ?? "NurseDiary"}</div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)" }}>{headerOverride?.subtitle ?? "Menu rapido"}</div>
                   </div>
                   <div style={{ marginLeft: 2, color: "rgba(255,255,255,0.70)", fontSize: 14 }}>{menuOpen ? "▲" : "▼"}</div>
                 </button>
