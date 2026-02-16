@@ -346,7 +346,7 @@ export default function ProfileTab({
   }, []);
 
   // Quick navigation sections (driven by header menu)
-  if (section === "missioni") {
+  if (section === "missions") {
     return (
       <div style={{ display: "grid", gap: 12 }}>
         <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
@@ -359,14 +359,14 @@ export default function ProfileTab({
           setClaimed={setClaimed}
           onGrant={onGrant}
         />
-        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
+        <button type="button" onClick={() => setSection("overview")} style={ghostBtn()}>
           ← Torna al profilo
         </button>
       </div>
     );
   }
 
-  if (section === "classifica") {
+  if (section === "leaderboard") {
     return (
       <div style={{ display: "grid", gap: 12 }}>
         <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
@@ -390,7 +390,7 @@ export default function ProfileTab({
             }}
           />
         </div>
-        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
+        <button type="button" onClick={() => setSection("overview")} style={ghostBtn()}>
           ← Torna al profilo
         </button>
       </div>
