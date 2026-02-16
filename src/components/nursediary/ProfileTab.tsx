@@ -132,6 +132,21 @@ function pickRandom<T>(arr: T[], n: number) {
 
 type ProfileSection = "overview" | "missions" | "quiz" | "leaderboard" | "account";
 
+type OpenSectionParam = ProfileSection | "profile" | "missioni" | "classifica";
+const normalizeOpenSection = (s?: OpenSectionParam): ProfileSection => {
+  switch (s) {
+    case "profile":
+      return "overview";
+    case "missioni":
+      return "missions";
+    case "classifica":
+      return "leaderboard";
+    default:
+      return (s as ProfileSection) ?? "overview";
+  }
+};
+
+
 function clampText(s: string, max: number) {
   const v = String(s || "");
   return v.length > max ? v.slice(0, max) : v;
@@ -708,7 +723,7 @@ export default function ProfileTab({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      {section !== "overview" && (
+      {section !== "profile" && (
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
           <button type="button" onClick={() => onCloseSection?.()} style={ghostBtn()}>
             ← Profilo
@@ -999,7 +1014,7 @@ export default function ProfileTab({
           </div>
           <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
         </div>
-        {section === "classifica" && (
+        {section === "leaderboard" && (
         <div style={{ marginTop: 10 }}>
           <Leaderboard
             players={players}
