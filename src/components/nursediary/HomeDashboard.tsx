@@ -6,6 +6,7 @@ import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import { calcDailyReward, calcWeeklyReward, getDailyState, getWeeklyState, setDailyState, setWeeklyState, getNextDailyResetMs, getNextWeeklyResetMs, pushHistory, type QuizHistoryItem } from "@/features/cards/quiz/quizLogic";
 import { recordQuizAnswer, pickSimulationQuestions } from "@/features/cards/quiz/quizAdaptive";
 import { getTopMistakes, pickMistakeReviewQuestions } from "@/features/cards/quiz/quizMistakes";
+import { recordLearn } from "@/features/cards/quiz/quizLearn";
 import { isPremium, xpMultiplier } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
 
@@ -143,6 +144,11 @@ useEffect(() => {
     if (readsToday < 3) return { title: `Missione letture: ${readsToday}/3`, cta: "Vai alla Didattica", action: "didattica" as const };
     return { title: "Ottimo! Continua con Utility o Collezione", cta: "Apri Utility", action: "utility" as const };
   }, [loginClaimed, freePacks, daily.status, readsToday]);
+
+  const topMistakesPreview = useMemo(() => {
+    if (typeof window === "undefined") return [];
+    return getTopMistakes(QUIZ_BANK, 3);
+  }, [xp, dailyLeft]);
 
 
 function pickRandom<T>(arr: T[], n: number) {
@@ -302,20 +308,26 @@ function answerQuiz(i: number) {
 }
 
 function miniLearnBullets(q: QuizQuestion): string[] {
+  // Prefer explicit bullets if present (extensible without touching UI).
+  const anyQ = q as any;
+  if (Array.isArray(anyQ?.learn) && anyQ.learn.length) return anyQ.learn.slice(0, 3);
+
   const cat = (q.category || "altro") as string;
+  const diff = String((q as any).difficulty || "").toLowerCase();
+  const hardHint = diff === "difficile" || diff === "hard" ? "Domanda difficile: ricontrolla sempre i passaggi e le controindicazioni." : null;
   if (cat === "procedure") {
-    return ["Focus: asepsi e sicurezza del paziente.", "Errore comune: saltare un controllo o un passaggio chiave."];
+    return ["Focus: asepsi e sicurezza del paziente.", "Errore comune: saltare un controllo o un passaggio chiave.", ...(hardHint ? [hardHint] : [])];
   }
   if (cat === "emergenza") {
-    return ["In emergenza: ragiona per priorità (ABCDE).", "Prima stabilizza, poi approfondisci."];
+    return ["In emergenza: ragiona per priorità (ABCDE).", "Prima stabilizza, poi approfondisci.", ...(hardHint ? [hardHint] : [])];
   }
   if (cat === "antibiotici") {
-    return ["Pensa a sito, spettro e rischio resistenze.", "Valuta allergie e interazioni prima di somministrare."];
+    return ["Pensa a sito, spettro e rischio resistenze.", "Valuta allergie e interazioni prima di somministrare.", ...(hardHint ? [hardHint] : [])];
   }
   if (cat === "farmaci") {
-    return ["Ricorda le 5G e la via corretta.", "Controlla compatibilità e monitoraggio effetti."];
+    return ["Ricorda le 5G e la via corretta.", "Controlla compatibilità e monitoraggio effetti.", ...(hardHint ? [hardHint] : [])];
   }
-  return ["Ragiona per sicurezza e priorità cliniche.", "Se hai dubbi: verifica prima di agire."];
+  return ["Ragiona per sicurezza e priorità cliniche.", "Se hai dubbi: verifica prima di agire.", ...(hardHint ? [hardHint] : [])];
 }
 
 
@@ -344,7 +356,7 @@ function miniLearnBullets(q: QuizQuestion): string[] {
             </div>
             <div style={{ opacity: 0.72, fontWeight: 700, fontSize: 13 }}>Daily brief • guidata e veloce</div>
           </div>
-          <div style={{ opacity: 0.75, fontWeight: 900, fontSize: 12 }}>Reset daily: {msToHMS(dailyLeft)}</div>
+          {/* countdown shown only in the Quiz card (less noise) */}
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
@@ -358,7 +370,7 @@ function miniLearnBullets(q: QuizQuestion): string[] {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <BriefRow ok={loginClaimed} label="Login giornaliero" right={loginClaimed ? "✅" : "⏳"} />
             <BriefRow ok={daily.status === "done"} label="Quiz Daily" right={daily.status === "done" ? "✅" : "⏳"} />
-            <BriefRow ok={weekly.status === "done"} label="Quiz Weekly" right={weekly.status === "done" ? "✅" : `Reset ${msToHMS(weeklyLeft)}`} />
+            <BriefRow ok={weekly.status === "done"} label="Quiz Weekly" right={weekly.status === "done" ? "✅" : "⏳"} />
             <BriefRow ok={readsToday >= 3} label="Letture oggi" right={`${readsToday}/3`} />
           </div>
         </div>
@@ -393,9 +405,7 @@ function miniLearnBullets(q: QuizQuestion): string[] {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <div>
             <div style={{ fontWeight: 950 }}>Quiz</div>
-            <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>
-              Daily e Weekly con timer (solo qui in Home)
-            </div>
+            <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Daily + Weekly • timer</div>
           </div>
           <div style={{ opacity: 0.75, fontWeight: 900, fontSize: 12 }}>
             Daily: {msToHMS(dailyLeft)} • Weekly: {msToHMS(weeklyLeft)}
@@ -421,7 +431,27 @@ function miniLearnBullets(q: QuizQuestion): string[] {
           >
             Ripasso errori
           </button>
-</div>
+        </div>
+
+        {topMistakesPreview.length > 0 && !runQuiz && (
+          <div style={{ marginTop: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", padding: 12 }}>
+            <div style={{ fontWeight: 950, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+              <span>Errori più frequenti</span>
+              <span style={{ opacity: 0.75, fontWeight: 900, fontSize: 12 }}>Top 3</span>
+            </div>
+            <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+              {topMistakesPreview.map((m) => (
+                <div key={m.q.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, fontWeight: 850, opacity: 0.92 }}>
+                  <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.q.q}</div>
+                  <div style={{ fontWeight: 950, opacity: 0.85 }}>×{m.count}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 10, opacity: 0.75, fontWeight: 800, fontSize: 12 }}>
+              Suggerimento: usa “Ripasso errori” per fissare i concetti.
+            </div>
+          </div>
+        )}
 
         {runQuiz && (
           <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
@@ -473,7 +503,13 @@ function miniLearnBullets(q: QuizQuestion): string[] {
                   <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
                     <button
                       type="button"
-                      onClick={() => setOpenLearnId((cur) => (cur === w.q.id ? null : w.q.id))}
+                      onClick={() => {
+                        setOpenLearnId((cur) => {
+                          const next = cur === w.q.id ? null : w.q.id;
+                          if (next) recordLearn(w.q.id);
+                          return next;
+                        });
+                      }}
                       style={linkBtn()}
                     >
                       {openLearnId === w.q.id ? "Nascondi" : "Approfondisci (10 sec)"}

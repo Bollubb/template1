@@ -11,6 +11,7 @@ import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import { getAdaptiveCategorySummary, recordQuizAnswer } from "@/features/cards/quiz/quizAdaptive";
 import { getTopMistakes } from "@/features/cards/quiz/quizMistakes";
+import { clearLearned, getLearnedIds } from "@/features/cards/quiz/quizLearn";
 import { isPremium, setPremium as setPremiumFlag, xpMultiplier } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
 import {
@@ -444,6 +445,13 @@ export default function ProfileTab({
       .sort((a, b) => b.pct - a.pct);
     return arr.slice(0, 5);
   }, [history]);
+
+  const learnedPreview = useMemo(() => {
+    if (!isBrowser()) return [] as QuizQuestion[];
+    const ids = getLearnedIds(8);
+    const byId = new Map(QUIZ_BANK.map((q) => [q.id, q] as const));
+    return ids.map((id) => byId.get(id)).filter(Boolean) as QuizQuestion[];
+  }, [history.length]);
 
   // Daily login reward (WeWard style) + free pack
   const [loginInfo, setLoginInfo] = useState<{ dayKey: string; streak: number; claimed: boolean }>({
@@ -952,7 +960,7 @@ export default function ProfileTab({
               Streak: <b>{loginInfo.streak}</b> — 1 pack gratis al giorno (+1 extra ogni 7 giorni)
             </div>
           </div>
-          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Reset: {msToHMS(dailyLeft)}</div>
+          {/* countdown shown in Home to reduce UI noise */}
         </div>
 
         <button type="button" onClick={claimDailyLogin} disabled={loginInfo.claimed} style={primaryBtn(loginInfo.claimed)}>
@@ -1033,10 +1041,10 @@ export default function ProfileTab({
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button type="button" onClick={() => startQuiz("daily")} disabled={dailyState.status === "done" || !!run} style={pillBtn(dailyState.status === "done" || !!run)}>
-            Daily (reset {msToHMS(dailyLeft)})
+            Daily
           </button>
           <button type="button" onClick={() => startQuiz("weekly")} disabled={weeklyState.status === "done" || !!run} style={pillBtn(weeklyState.status === "done" || !!run)}>
-            Weekly (reset {msToHMS(weeklyLeft)})
+            Weekly
           </button>
         </div>
 
@@ -1144,6 +1152,36 @@ export default function ProfileTab({
               </div>
             </div>
           )}
+
+          {/* Mini-learn library (lightweight, local-only) */}
+          <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", padding: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+              <div style={{ fontWeight: 950 }}>Mini-learn salvati</div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearLearned();
+                  toast.success("Pulito");
+                }}
+                style={linkBtn()}
+              >
+                Pulisci
+              </button>
+            </div>
+            {learnedPreview.length === 0 ? (
+              <div style={{ marginTop: 6, opacity: 0.75, fontWeight: 800, fontSize: 12 }}>
+                Apri “Approfondisci (10 sec)” dopo un quiz per salvare qui le domande.
+              </div>
+            ) : (
+              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                {learnedPreview.slice(0, 6).map((q) => (
+                  <div key={q.id} style={{ padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", fontWeight: 850, opacity: 0.92 }}>
+                    {q.q}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
             {byCategory.length === 0 ? (

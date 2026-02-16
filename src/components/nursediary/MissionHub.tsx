@@ -161,12 +161,8 @@ export default function MissionHub({
           background: "rgba(255,255,255,0.04)",
         }}
       >
-        <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.90)" }}>
-          Daily ({dailyCount}) • reset {msToHMS(dailyLeft)}
-        </div>
-        <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.90)" }}>
-          Weekly ({weeklyCount}) • reset {msToHMS(weeklyLeft)}
-        </div>
+        <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.90)" }}>Daily ({dailyCount})</div>
+        <div style={{ fontWeight: 900, color: "rgba(255,255,255,0.90)" }}>Weekly ({weeklyCount})</div>
       </div>
 
       <div style={{ display: "grid", gap: 10 }}>
