@@ -342,7 +342,7 @@ function miniLearnBullets(q: QuizQuestion): string[] {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", overflow: "hidden" }}>
+              <div style={{ width: 34, height: 34, borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: quizFeedback?.startsWith("✅") ? "rgba(34,197,94,0.10)" : quizFeedback?.startsWith("❌") ? "rgba(239,68,68,0.10)" : "rgba(255,255,255,0.06)", display: "grid", placeItems: "center", overflow: "hidden" }}>
                 {avatar ? (
                   <img src={avatar} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
@@ -465,7 +465,25 @@ function miniLearnBullets(q: QuizQuestion): string[] {
 
             <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
               {runQuiz.questions[runQuiz.idx].options.map((op, i) => (
-                <button key={i} type="button" onClick={() => answerQuiz(i)} disabled={selected !== null} style={primaryBtn()}>
+                <button key={i} type="button" onClick={() => answerQuiz(i)} disabled={selected !== null} style={{
+                    ...primaryBtn(),
+                    background:
+                      selected === null
+                        ? primaryBtn().background
+                        : i === runQuiz.questions[runQuiz.idx].answer
+                        ? "rgba(34,197,94,0.22)"
+                        : i === selected
+                        ? "rgba(239,68,68,0.22)"
+                        : "rgba(255,255,255,0.04)",
+                    borderColor:
+                      selected === null
+                        ? primaryBtn().borderColor
+                        : i === runQuiz.questions[runQuiz.idx].answer
+                        ? "rgba(34,197,94,0.35)"
+                        : i === selected
+                        ? "rgba(239,68,68,0.35)"
+                        : "rgba(255,255,255,0.10)",
+                  }}>
                   {op}
                 </button>
               ))}
@@ -490,10 +508,10 @@ function miniLearnBullets(q: QuizQuestion): string[] {
                     <span style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>{String(w.q.category).toUpperCase()}</span>
                     <span style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>{String(w.q.difficulty).toUpperCase()}</span>
                   </div>
-                  <div style={{ marginTop: 6, fontWeight: 800, opacity: 0.85 }}>
+                  <div style={{ marginTop: 6, fontWeight: 900, color: w.chosen === w.q.answer ? "rgba(34,197,94,0.95)" : "rgba(239,68,68,0.95)" }}>
                     La tua: {w.q.options[w.chosen] ?? "—"}
                   </div>
-                  <div style={{ marginTop: 4, fontWeight: 900 }}>
+                  <div style={{ marginTop: 4, fontWeight: 950, color: "rgba(34,197,94,0.95)" }}>
                     Corretta: {w.q.options[w.q.answer]}
                   </div>
                   <div style={{ marginTop: 8, fontWeight: 850, opacity: 0.9 }}>

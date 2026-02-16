@@ -14,6 +14,8 @@ export type PlayerCard = {
   xp: number;
   /** Optional: total XP (used to display level in weekly mode). */
   totalXp?: number;
+  /** Optional: career tag for filtering (e.g., 'general', 'emergency'). */
+  career?: string | null;
 };
 
 function rowCard(): React.CSSProperties {
@@ -47,15 +49,20 @@ export default function Leaderboard({
   currentUserId,
   onSelect,
   mode,
+  filterCareer,
 }: {
   players: PlayerCard[];
   currentUserId: string;
   onSelect: (p: PlayerCard) => void;
   mode: "weekly" | "global";
+  /** Optional: filter to a specific career tag. */
+  filterCareer?: string | null;
 }) {
   const rows = useMemo(() => {
+    const basePlayers = filterCareer ? players.filter((p) => p.career === filterCareer) : players;
+
     if (mode === "weekly") {
-      const scored = players.map((p) => {
+      const scored = basePlayers.map((p) => {
         const base = typeof p.totalXp === "number" ? p.totalXp : p.xp;
         return { p, lvl: computeLevel(base).level };
       });
@@ -66,13 +73,13 @@ export default function Leaderboard({
       return scored.map((x, idx) => ({ ...x, rank: idx + 1 }));
     }
 
-    const scored = players.map((p) => ({ p, lvl: computeLevel(p.xp).level }));
+    const scored = basePlayers.map((p) => ({ p, lvl: computeLevel(p.xp).level }));
     scored.sort((a, b) => {
       if (b.lvl !== a.lvl) return b.lvl - a.lvl;
       return b.p.xp - a.p.xp;
     });
     return scored.map((x, idx) => ({ ...x, rank: idx + 1 }));
-  }, [players, mode]);
+  }, [players, mode, filterCareer]);
 
   const medal = (rank: number) => {
     if (rank === 1) return { emoji: "🥇", glow: "rgba(245,158,11,0.25)" };

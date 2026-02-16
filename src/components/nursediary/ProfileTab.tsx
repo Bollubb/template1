@@ -99,8 +99,10 @@ function seedLeaderboard(me: PlayerCard): PlayerCard[] {
   ];
 
   const base = Math.max(120, Math.min(1200, me.xp + 200));
+  const careers = ["general", "emergency", "critical", "pediatrics"];
   return presets.map((p, idx) => {
     const xp = Math.max(0, Math.round(base * (0.55 + idx * 0.12) + (idx % 2 ? 35 : 0)));
+    const career = careers[idx % careers.length];
     return {
       id: `demo_${idx}_${xp}`,
       name: p.name,
@@ -108,6 +110,7 @@ function seedLeaderboard(me: PlayerCard): PlayerCard[] {
       bio: p.bio,
       avatar: null,
       xp,
+      career,
     };
   });
 }
@@ -164,12 +167,13 @@ export default function ProfileTab({
   const [accountCreated, setAccountCreated] = useState(false);
   const [editUnlocked, setEditUnlocked] = useState(false);
   const canEditProfile = !accountCreated || editUnlocked;
-  const [lbMode, setLbMode] = useState<"weekly" | "all">("weekly");
+  const [lbMode, setLbMode] = useState<"weekly" | "career" | "global">("weekly");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
 
   const [userId, setUserId] = useState<string>("me");
+  const [career, setCareerState] = useState<string | null>(null);
   const [lbUsers, setLbUsers] = useState<PlayerCard[]>([]);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardPlayer, setCardPlayer] = useState<PlayerCard | null>(null);
@@ -266,6 +270,7 @@ export default function ProfileTab({
       bio: (prof.bio || "").slice(0, 140),
       avatar: av,
       xp: xpVal,
+      career: getCareer(),
     };
 
     const saved = safeJson<PlayerCard[]>(localStorage.getItem(LS.leaderboard), []);
@@ -273,6 +278,8 @@ export default function ProfileTab({
     setLbUsers([me, ...others.filter((p) => p.id !== me.id)]);
 
     setHistory(getHistory());
+
+    setCareerState(getCareer());
   }, []);
 
   // persist profile + xp + premium + free packs
@@ -684,7 +691,7 @@ export default function ProfileTab({
   }
 
   const players = useMemo(() => {
-    if (lbMode === "all") return lbUsers;
+    if (lbMode === "global") return lbUsers;
     const weeklyMap = getWeeklyXpMap();
     const myWeekly = weeklyMap[weekKey] || 0;
     // For demo users: deterministic pseudo-weekly score
@@ -977,22 +984,117 @@ export default function ProfileTab({
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <div style={title()}>Classifica (locale)</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <SegBtn active={lbMode === "weekly"} onClick={() => setLbMode("weekly")}>Settimana</SegBtn>
-              <SegBtn active={lbMode === "all"} onClick={() => setLbMode("all")}>Totale</SegBtn>
+              <SegBtn active={lbMode === "weekly"} onClick={() => setLbMode("weekly")}>Settimanale XP</SegBtn>
+              <SegBtn active={lbMode === "career"} onClick={() => setLbMode("career")}>Percorso</SegBtn>
+              <SegBtn active={lbMode === "global"} onClick={() => setLbMode("global")}>Globale</SegBtn>
             </div>
           </div>
-          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>Livello + XP</div>
+          <div style={{ color: "rgba(255,255,255,0.70)", fontWeight: 800, fontSize: 12 }}>
+            {lbMode === "global" ? "Livello + XP totali" : "XP settimana + ricompense"}
+          </div>
         </div>
+        {/* Weekly challenge (career-aware) */}
+        <div style={{ marginTop: 10, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", padding: 12 }}>
+          {(() => {
+            const ch = getWeeklyChallenge();
+            const weeklyMap = getWeeklyXpMap();
+            const earned = weeklyMap[ch.weekKey] || 0;
+            const claimed = isWeeklyChallengeClaimed(ch.weekKey);
+            const pct = Math.max(0, Math.min(100, Math.round((earned / ch.goalXp) * 100)));
+            const ready = earned >= ch.goalXp;
+
+            return (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                  <div style={{ fontWeight: 950 }}>{ch.title}</div>
+                  <div style={{ fontWeight: 950, opacity: 0.9 }}>{earned}/{ch.goalXp} XP</div>
+                </div>
+
+                <div style={{ marginTop: 8, height: 10, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: ready ? "rgba(34,197,94,0.75)" : "rgba(59,130,246,0.65)" }} />
+                </div>
+
+                <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontWeight: 850, opacity: 0.8 }}>Ricompensa: <b>+{ch.rewardPills} 💊</b></div>
+                  <button
+                    type="button"
+                    disabled={!ready || claimed}
+                    onClick={() => {
+                      if (!ready || claimed) return;
+                      setWeeklyChallengeClaimed(ch.weekKey);
+                      setPills((p) => p + ch.rewardPills);
+                      toast.push("Ricompensa riscattata", "success");
+                    }}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: 14,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: claimed ? "rgba(255,255,255,0.06)" : ready ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.06)",
+                      color: "rgba(255,255,255,0.92)",
+                      fontWeight: 950,
+                      cursor: !ready || claimed ? "not-allowed" : "pointer",
+                      opacity: !ready || claimed ? 0.7 : 1,
+                    }}
+                  >
+                    {claimed ? "Riscattato" : ready ? "Riscatta" : "Completa"}
+                  </button>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
         <div style={{ marginTop: 10 }}>
-          <Leaderboard
-            players={players}
-            currentUserId={userId}
-            mode="global"
-            onSelect={(p) => {
-              setCardPlayer(p);
-              setCardOpen(true);
+          {lbMode === "career" && !career ? (
+            <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(245,158,11,0.25)", background: "rgba(245,158,11,0.08)", fontWeight: 850 }}>
+              Seleziona un <b>percorso</b> per vedere la classifica dedicata.
+            </div>
+          ) : null}
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: lbMode === "global" ? "1fr" : "1fr 240px",
+              gap: 12,
+              alignItems: "start",
             }}
-          />
+          >
+            <div>
+              <Leaderboard
+                players={players}
+                currentUserId={userId}
+                mode={lbMode === "global" ? "global" : "weekly"}
+                filterCareer={lbMode === "career" ? career : undefined}
+                onSelect={(p) => {
+                  setCardPlayer(p);
+                  setCardOpen(true);
+                }}
+              />
+            </div>
+
+            {lbMode !== "global" ? (
+              <div style={{ borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", padding: 12 }}>
+                <div style={{ fontWeight: 950, marginBottom: 6 }}>Ricompense settimanali</div>
+                <div style={{ opacity: 0.75, fontWeight: 800, fontSize: 12, marginBottom: 10 }}>
+                  Valide solo nella classifica settimanale.
+                </div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontWeight: 950 }}>🥇 1° posto</div>
+                    <div style={{ fontWeight: 950 }}>+300 💊</div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontWeight: 950 }}>🥈 2° posto</div>
+                    <div style={{ fontWeight: 950 }}>+175 💊</div>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontWeight: 950 }}>🥉 3° posto</div>
+                    <div style={{ fontWeight: 950 }}>+100 💊</div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
       )}
