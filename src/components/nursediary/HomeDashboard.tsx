@@ -350,7 +350,7 @@ function miniLearnBullets(q: QuizQuestion): string[] {
 
 
     if (mode === "utility") {
-    return <UtilityHub onBack={() => { setMode("quiz"); try { loadRecentHistory(); } catch {} }} />;
+    return <UtilityHub onBack={() => { setMode("home"); onCloseSection?.(); try { loadRecentHistory(); } catch {} }} />;
   }
 
   
@@ -496,9 +496,7 @@ return (
           >
             {recommended.cta}
           </button>
-          <button type="button" onClick={() => setMode("utility")} style={ghostBtn()}>
-            🛠 Utility
-          </button>
+          {/* Utility moved to Menu rapido */}
         </div>
       </Card>
 

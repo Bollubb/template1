@@ -181,6 +181,15 @@ export default function ProfileTab({
   const toast = useToast();
   const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
   const [section, setSection] = useState<ProfileSection>("overview");
+
+  // External navigation from the header dropdown
+  useEffect(() => {
+    if (!openSection) return;
+    if (openSection === "missioni") setSection("missions");
+    else if (openSection === "classifica") setSection("leaderboard");
+    else if (openSection === "profile") setSection("overview");
+  }, [openSection]);
+
   const [accountCreated, setAccountCreated] = useState(false);
   const [editUnlocked, setEditUnlocked] = useState(false);
   const canEditProfile = !accountCreated || editUnlocked;
@@ -1072,12 +1081,8 @@ export default function ProfileTab({
         </div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => startQuiz("daily")} disabled={dailyState.status === "done" || !!run} style={pillBtn(dailyState.status === "done" || !!run)}>
-            Daily
-          </button>
-          <button type="button" onClick={() => startQuiz("weekly")} disabled={weeklyState.status === "done" || !!run} style={pillBtn(weeklyState.status === "done" || !!run)}>
-            Weekly
-          </button>
+          {/* Quiz moved to Menu rapido */}
+          {/* Quiz moved to Menu rapido */}
         </div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
