@@ -25,6 +25,8 @@ const LS = {
 
 export default function Home(): JSX.Element {
   const [activeTab, setActiveTab] = useState<NurseTab>("home");
+  const [homeSection, setHomeSection] = useState<"quiz" | "utility">("quiz");
+  const [profileSection, setProfileSection] = useState<"profile" | "missioni" | "classifica">("profile");
 
   // Didattica data
   const [items, setItems] = useState<ContentItem[]>([]);
@@ -108,7 +110,30 @@ export default function Home(): JSX.Element {
     }
   }, []);
 
-  // Persist favorites
+  
+  // Header dropdown navigation (logo menu)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onNav = (ev: Event) => {
+      const e = ev as CustomEvent<{ tab: "home" | "profilo"; section: "quiz" | "utility" | "missioni" | "classifica" }>;
+      const d = e.detail;
+      if (!d) return;
+
+      if (d.tab === "home") {
+        setActiveTab("home");
+        setHomeSection(d.section === "utility" ? "utility" : "quiz");
+      } else {
+        setActiveTab("profilo");
+        setProfileSection(d.section === "missioni" ? "missioni" : "classifica");
+      }
+    };
+
+    window.addEventListener("nd:navigate", onNav as any);
+    return () => window.removeEventListener("nd:navigate", onNav as any);
+  }, []);
+
+// Persist favorites
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
@@ -241,7 +266,7 @@ export default function Home(): JSX.Element {
       {/* HOME */}
       {activeTab === "home" && (
         <Section>
-          <HomeDashboard onGoToCards={() => setActiveTab("carte")} onGoToDidattica={() => setActiveTab("didattica")} onGoToProfile={() => setActiveTab("profilo")} />
+          <HomeDashboard openSection={homeSection} onGoToCards={() => setActiveTab("carte")} onGoToDidattica={() => setActiveTab("didattica")} onGoToProfile={() => setActiveTab("profilo")} />
         </Section>
       )}
 
@@ -384,7 +409,7 @@ export default function Home(): JSX.Element {
       {/* PROFILO */}
       {activeTab === "profilo" && (
         <Section>
-          <ProfileTab pills={pills} setPills={setPills} totalContent={items.length} />
+          <ProfileTab openSection={profileSection} pills={pills} setPills={setPills} totalContent={items.length} />
         </Section>
       )}
 
