@@ -28,6 +28,27 @@ export default function Home(): JSX.Element {
   const [homeSection, setHomeSection] = useState<"home" | "quiz" | "utility">("home");
   const [profileSection, setProfileSection] = useState<"profile" | "missioni" | "classifica">("profile");
 
+  const headerOverride = useMemo(() => {
+    if (activeTab === "home") {
+      if (homeSection === "quiz") {
+        return { title: "Quiz", subtitle: "Daily • Weekly • Simulazione", showBack: true, onBack: () => setHomeSection("home") };
+      }
+      if (homeSection === "utility") {
+        return { title: "Utility", subtitle: "Strumenti rapidi", showBack: true, onBack: () => setHomeSection("home") };
+      }
+    }
+    if (activeTab === "profilo") {
+      if (profileSection === "missioni") {
+        return { title: "Missioni", subtitle: "Obiettivi e ricompense", showBack: true, onBack: () => setProfileSection("profile") };
+      }
+      if (profileSection === "classifica") {
+        return { title: "Classifica", subtitle: "Settimanale • Percorso • Globale", showBack: true, onBack: () => setProfileSection("profile") };
+      }
+    }
+    return undefined;
+  }, [activeTab, homeSection, profileSection]);
+
+
   // Didattica data
   const [items, setItems] = useState<ContentItem[]>([]);
   const [categoria, setCategoria] = useState("Tutte");
