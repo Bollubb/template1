@@ -8,7 +8,7 @@ type MissionHubProps = {
   getClaimed?: (scope: string, id: string) => number;
   setClaimed?: (scope: string, id: string, tier: number) => void;
   onGrant?: (
-    reward: { coins?: number; xp?: number },
+    reward: { coins?: number; xp?: number; pills?: number },
     meta: { scope: string; id: string; tier: number }
   ) => void;
 };
