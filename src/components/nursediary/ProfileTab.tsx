@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { getCareer } from "@/features/career/career";
 
 import { useToast } from "./Toast";
 import MissionHub from "./MissionHub";
@@ -15,8 +16,6 @@ import { clearLearned, getLearnedIds } from "@/features/cards/quiz/quizLearn";
 import { isPremium, setPremium as setPremiumFlag, xpMultiplier } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
 import {
-
-
   calcDailyReward,
   calcWeeklyReward,
   getDailyState,
@@ -29,20 +28,6 @@ import {
   pushHistory,
   type QuizHistoryItem,
 } from "@/features/cards/quiz/quizLogic";
-
-
-function SlideIn({ children }: { children: React.ReactNode }) {
-  const [enter, setEnter] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setEnter(true), 0);
-    return () => clearTimeout(t);
-  }, []);
-  return (
-    <div style={{ transform: enter ? "translateY(0px)" : "translateY(10px)", opacity: enter ? 1 : 0, transition: "all 220ms ease" }}>
-      {children}
-    </div>
-  );
-}
 
 const LS = {
   profile: "nd_profile",
@@ -166,111 +151,18 @@ function computeLevel(xp: number) {
 
 export default function ProfileTab({
   openSection,
-  onCloseSection,
   pills,
   setPills,
   totalContent,
 }: {
   openSection?: "profile" | "missioni" | "classifica";
-  onCloseSection?: () => void;
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
 }) {
 
   const toast = useToast();
-
-
-// STANDALONE_MODULE_RETURNS: render modules as standalone screens when opened from header dropdown
-if (openSection === "missioni") {
-  return (
-    <SlideIn>
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
-          <button
-            type="button"
-            onClick={() => { onCloseSection?.(); }}
-            style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", padding: "8px 10px", fontWeight: 850, cursor: "pointer" }}
-          >
-            Chiudi
-          </button>
-        </div>
-        <MissionHub />
-      </div>
-    </SlideIn>
-  );
-}
-
-if (openSection === "classifica") {
-  return (
-    <SlideIn>
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
-          <button
-            type="button"
-            onClick={() => { onCloseSection?.(); }}
-            style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", padding: "8px 10px", fontWeight: 850, cursor: "pointer" }}
-          >
-            Chiudi
-          </button>
-        </div>
-        <Leaderboard
-          players={lbUsers}
-          currentUserId={userId}
-          onSelect={(p) => { setCardPlayer(p); setCardOpen(true); }}
-          mode="weekly"
-        />
-      </div>
-    </SlideIn>
-  );
-}
-
-
-  // STANDALONE_SECTION: when opened from the header dropdown, render modules as standalone pages (no Profile content).
-  if (openSection === "missioni") {
-    return (
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
-          <button
-            type="button"
-            onClick={() => { onCloseSection?.(); }}
-            style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", padding: "8px 10px", fontWeight: 850, cursor: "pointer" }}
-          >
-            Chiudi
-          </button>
-        </div>
-        <MissionHub />
-      </div>
-    );
-  }
-
-  if (openSection === "classifica") {
-    return (
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
-          <button
-            type="button"
-            onClick={() => { onCloseSection?.(); }}
-            style={{ borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.92)", padding: "8px 10px", fontWeight: 850, cursor: "pointer" }}
-          >
-            Chiudi
-          </button>
-        </div>
-        <Leaderboard
-          players={lbUsers}
-          currentUserId={userId}
-          onSelect={(p) => { setCardPlayer(p); setCardOpen(true); }}
-          mode="weekly"
-        />
-      </div>
-    );
-  }
   const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
-  const [lbUsers, setLbUsers] = useState<PlayerCard[]>([]);
   const [section, setSection] = useState<ProfileSection>("overview");
   const [accountCreated, setAccountCreated] = useState(false);
   const [editUnlocked, setEditUnlocked] = useState(false);
@@ -281,6 +173,7 @@ if (openSection === "classifica") {
   const [showPresets, setShowPresets] = useState(false);
 
   const [userId, setUserId] = useState<string>("me");
+  const [lbUsers, setLbUsers] = useState<PlayerCard[]>([]);
   const [cardOpen, setCardOpen] = useState(false);
   const [cardPlayer, setCardPlayer] = useState<PlayerCard | null>(null);
   const [premium, setPremium] = useState<boolean>(false);
@@ -446,7 +339,60 @@ if (openSection === "classifica") {
     };
     tick();
     const id = window.setInterval(tick, 1000);
-    return () => window.clearInterval(id);
+  
+  // Quick navigation sections (driven by header menu)
+  if (section === "missioni") {
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ fontWeight: 950, fontSize: 18 }}>Missioni</div>
+        <MissionHub
+          dayKey={dayKey}
+          weekKey={weekKey}
+          dailyLeft={dailyLeft}
+          weeklyLeft={weeklyLeft}
+          getClaimed={getClaimed}
+          setClaimed={setClaimed}
+          onGrant={onGrant}
+        />
+        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
+          ← Torna al profilo
+        </button>
+      </div>
+    );
+  }
+
+  if (section === "classifica") {
+    return (
+      <div style={{ display: "grid", gap: 12 }}>
+        <div style={{ fontWeight: 950, fontSize: 18 }}>Classifica</div>
+        <Leaderboard
+          mode="weekly"
+          players={players}
+          currentUserId={userId}
+          onSelect={(p) => {
+            setSelectedPlayer(p);
+            setProfileModalOpen(true);
+          }}
+        />
+        <div style={{ marginTop: 10 }}>
+          <Leaderboard
+            mode="global"
+            players={players}
+            currentUserId={userId}
+            onSelect={(p) => {
+              setSelectedPlayer(p);
+              setProfileModalOpen(true);
+            }}
+          />
+        </div>
+        <button type="button" onClick={() => setSection("profile")} style={ghostBtn()}>
+          ← Torna al profilo
+        </button>
+      </div>
+    );
+  }
+
+  return () => window.clearInterval(id);
   }, []);
 
   function buildAccountExport() {
@@ -1266,18 +1212,20 @@ if (openSection === "classifica") {
           {/* Mini-learn library (lightweight, local-only) */}
           <div style={{ marginTop: 12, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)", padding: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-              <div style={{ fontWeight: 950 }}>Mini-learn salvati</div>
+              <>
+<div style={{ fontWeight: 950 }}>Mini-learn salvati</div>
               <button
                 type="button"
                 onClick={() => {
                   clearLearned();
-                  toast.success("Pulito");
+                  toast.push("Pulito", "success");
                 }}
-                style={linkBtn()}
+                style={ghostBtn()}
               >
                 Pulisci
               </button>
-            </div>
+            </>
+</div>
             {learnedPreview.length === 0 ? (
               <div style={{ marginTop: 6, opacity: 0.75, fontWeight: 800, fontSize: 12 }}>
                 Apri “Approfondisci (10 sec)” dopo un quiz per salvare qui le domande.
