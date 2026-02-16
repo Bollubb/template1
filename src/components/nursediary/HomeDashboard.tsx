@@ -5,10 +5,9 @@ import { getDailyCounter, getDailyFlag } from "@/features/progress/dailyCounters
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import { calcDailyReward, calcWeeklyReward, getDailyState, getWeeklyState, setDailyState, setWeeklyState, getNextDailyResetMs, getNextWeeklyResetMs, pushHistory, type QuizHistoryItem } from "@/features/cards/quiz/quizLogic";
 import { recordQuizAnswer, pickSimulationQuestions } from "@/features/cards/quiz/quizAdaptive";
+import { getTopMistakes, pickMistakeReviewQuestions } from "@/features/cards/quiz/quizMistakes";
 import { isPremium, xpMultiplier } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
-import CareerPicker from "./CareerPicker";
-import DailyPlanCard from "./DailyPlanCard";
 
 const LS = {
   pills: "nd_pills",
@@ -38,7 +37,7 @@ type UtilityHistoryItem = {
 };
 
 type QuizRun = {
-  mode: "daily" | "weekly" | "sim";
+  mode: "daily" | "weekly" | "sim" | "review";
   idx: number;
   correct: number;
   questions: QuizQuestion[];
@@ -62,8 +61,6 @@ function msToHMS(ms: number) {
   const ss = String(s % 60).padStart(2, "0");
   return `${hh}:${mm}:${ss}`;
 }
-
-
 
 export default function HomeDashboard({
   onGoToCards,
@@ -91,6 +88,7 @@ export default function HomeDashboard({
   const [selected, setSelected] = useState<number | null>(null);
   const [quizFeedback, setQuizFeedback] = useState<string | null>(null);
   const [quizReview, setQuizReview] = useState<{ q: QuizQuestion; chosen: number }[] | null>(null);
+  const [openLearnId, setOpenLearnId] = useState<string | null>(null);
 
   const [favTools, setFavTools] = useState<ToolId[]>([]);
 
@@ -202,6 +200,24 @@ function startSimulation() {
   setQuizReview(null);
 }
 
+function startMistakeReview() {
+  const recentKey = "nd_quiz_recent_v1";
+  const recent = safeJson<string[]>(localStorage.getItem(recentKey), []);
+  const count = 8;
+  const questions = pickMistakeReviewQuestions(QUIZ_BANK, count, recent);
+
+  try {
+    const nextRecent = [...questions.map((q) => q.id), ...recent].slice(0, 50);
+    localStorage.setItem(recentKey, JSON.stringify(nextRecent));
+  } catch {}
+
+  setRunQuiz({ mode: "review", idx: 0, correct: 0, questions, answers: Array(questions.length).fill(-1) });
+  setSelected(null);
+  setQuizFeedback(null);
+  setQuizReview(null);
+  setOpenLearnId(null);
+}
+
 
 function answerQuiz(i: number) {
   if (!runQuiz) return;
@@ -254,11 +270,11 @@ function answerQuiz(i: number) {
       const weekly = getWeeklyState();
       setWeeklyState({ ...weekly, status: "done" });
     } else {
-      // simulazione: niente reset/streak, solo XP (no pill farming)
+      // simulazione / ripasso: niente reset/streak, solo XP (no pill farming)
       pillsGain = 0;
     }
-    const perCorrect = runQuiz.mode === "daily" ? 6 : runQuiz.mode === "weekly" ? 8 : 5;
-    const baseXpGain = 20 + nextCorrect * perCorrect + (perfect ? (runQuiz.mode === "sim" ? 25 : 20) : 0);
+    const perCorrect = runQuiz.mode === "daily" ? 6 : runQuiz.mode === "weekly" ? 8 : runQuiz.mode === "review" ? 5 : 5;
+    const baseXpGain = 20 + nextCorrect * perCorrect + (perfect ? (runQuiz.mode === "sim" ? 25 : runQuiz.mode === "review" ? 10 : 20) : 0);
     const xpGain = baseXpGain * xpMultiplier();
 
     // persist
@@ -277,10 +293,29 @@ function answerQuiz(i: number) {
     };
     pushHistory(item);
 
-    setQuizFeedback(`Quiz ${runQuiz.mode}: ${nextCorrect}/${total} • +${pillsGain} 💊 • +${xpGain} XP`);
+    const label = runQuiz.mode === "review" ? "Ripasso" : `Quiz ${runQuiz.mode}`;
+    setQuizFeedback(`${label}: ${nextCorrect}/${total} • +${pillsGain} 💊 • +${xpGain} XP`);
     setRunQuiz(null);
     setSelected(null);
+    setOpenLearnId(null);
   }, 450);
+}
+
+function miniLearnBullets(q: QuizQuestion): string[] {
+  const cat = (q.category || "altro") as string;
+  if (cat === "procedure") {
+    return ["Focus: asepsi e sicurezza del paziente.", "Errore comune: saltare un controllo o un passaggio chiave."];
+  }
+  if (cat === "emergenza") {
+    return ["In emergenza: ragiona per priorità (ABCDE).", "Prima stabilizza, poi approfondisci."];
+  }
+  if (cat === "antibiotici") {
+    return ["Pensa a sito, spettro e rischio resistenze.", "Valuta allergie e interazioni prima di somministrare."];
+  }
+  if (cat === "farmaci") {
+    return ["Ricorda le 5G e la via corretta.", "Controlla compatibilità e monitoraggio effetti."];
+  }
+  return ["Ragiona per sicurezza e priorità cliniche.", "Se hai dubbi: verifica prima di agire."];
 }
 
 
@@ -288,9 +323,8 @@ function answerQuiz(i: number) {
     return <UtilityHub onBack={() => { setMode("home"); try { loadRecentHistory(); } catch {} }} />;
   }
 
-  return (<div style={{ display: "grid", gap: 12 }}>
-      <CareerPicker />
-      <DailyPlanCard />
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
       {/* Daily Brief */}
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
@@ -378,6 +412,15 @@ function answerQuiz(i: number) {
                   <button type="button" onClick={() => startSimulation()} disabled={!!runQuiz} style={ghostBtn()}>
             {isPremium() ? "Simulazione (25)" : "Simulazione (Premium)"}
           </button>
+          <button
+            type="button"
+            onClick={() => startMistakeReview()}
+            disabled={!!runQuiz || getTopMistakes(QUIZ_BANK, 1).length === 0}
+            style={ghostBtn()}
+            title={getTopMistakes(QUIZ_BANK, 1).length === 0 ? "Prima sbaglia/rispondi a qualche domanda" : "Ripasso su domande sbagliate"}
+          >
+            Ripasso errori
+          </button>
 </div>
 
         {runQuiz && (
@@ -413,12 +456,40 @@ function answerQuiz(i: number) {
               {quizReview.slice(0, 8).map((w, idx) => (
                 <div key={idx} style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
                   <div style={{ fontWeight: 900 }}>{w.q.q}</div>
+                  <div style={{ marginTop: 6, display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 850, fontSize: 12, opacity: 0.85 }}>
+                    <span style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>{String(w.q.category).toUpperCase()}</span>
+                    <span style={{ padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>{String(w.q.difficulty).toUpperCase()}</span>
+                  </div>
                   <div style={{ marginTop: 6, fontWeight: 800, opacity: 0.85 }}>
                     La tua: {w.q.options[w.chosen] ?? "—"}
                   </div>
                   <div style={{ marginTop: 4, fontWeight: 900 }}>
                     Corretta: {w.q.options[w.q.answer]}
                   </div>
+                  <div style={{ marginTop: 8, fontWeight: 850, opacity: 0.9 }}>
+                    💡 {w.q.explain}
+                  </div>
+
+                  <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenLearnId((cur) => (cur === w.q.id ? null : w.q.id))}
+                      style={linkBtn()}
+                    >
+                      {openLearnId === w.q.id ? "Nascondi" : "Approfondisci (10 sec)"}
+                    </button>
+                  </div>
+
+                  {openLearnId === w.q.id && (
+                    <div style={{ marginTop: 8, display: "grid", gap: 6, fontWeight: 800, opacity: 0.86 }}>
+                      {miniLearnBullets(w.q).slice(0, 3).map((b, i) => (
+                        <div key={i} style={{ display: "flex", gap: 8 }}>
+                          <span style={{ opacity: 0.9 }}>•</span>
+                          <span>{b}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -486,7 +557,8 @@ function answerQuiz(i: number) {
 }
 
 function Card({ children }: { children: React.ReactNode }) {
-  return (<div
+  return (
+    <div
       style={{
         border: "1px solid rgba(255,255,255,0.08)",
         background: "#0b1220",
@@ -500,7 +572,8 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 function MiniStat({ label, value }: { label: string; value: string }) {
-  return (<div
+  return (
+    <div
       style={{
         border: "1px solid rgba(255,255,255,0.10)",
         borderRadius: 16,
@@ -515,7 +588,8 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 }
 
 function BriefRow({ ok, label, right }: { ok: boolean; label: string; right: string }) {
-  return (<div
+  return (
+    <div
       style={{
         border: "1px solid rgba(255,255,255,0.10)",
         borderRadius: 16,

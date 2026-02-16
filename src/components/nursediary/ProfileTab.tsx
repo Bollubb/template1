@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { useToast } from "./Toast";
 import MissionHub from "./MissionHub";
@@ -10,9 +10,9 @@ import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/
 
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import { getAdaptiveCategorySummary, recordQuizAnswer } from "@/features/cards/quiz/quizAdaptive";
+import { getTopMistakes } from "@/features/cards/quiz/quizMistakes";
 import { isPremium, setPremium as setPremiumFlag, xpMultiplier } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
-import CelebrationPop from "./CelebrationPop";
 import {
   calcDailyReward,
   calcWeeklyReward,
@@ -175,14 +175,6 @@ export default function ProfileTab({
   const [premium, setPremium] = useState<boolean>(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
-
-  // B5 extra: micro-animazioni (level up + badge)
-  const [levelUpOpen, setLevelUpOpen] = useState(false);
-  const [levelUpLevel, setLevelUpLevel] = useState<number>(1);
-  const prevLevelRef = useRef<number>(1);
-  const [badgeOpen, setBadgeOpen] = useState(false);
-  const [badgeTitle, setBadgeTitle] = useState<string>("");
-  const [badgeSubtitle, setBadgeSubtitle] = useState<string>("");
 
   const [exportText, setExportText] = useState<string>("");
   const [importText, setImportText] = useState<string>("");
@@ -427,16 +419,6 @@ export default function ProfileTab({
 
   const lvl = useMemo(() => computeLevel(xp), [xp]);
 
-  useEffect(() => {
-    const cur = lvl.level;
-    const prev = prevLevelRef.current;
-    if (cur > prev) {
-      setLevelUpLevel(cur);
-      setLevelUpOpen(true);
-    }
-    prevLevelRef.current = cur;
-  }, [lvl.level]);
-
   const dailyState = useMemo(() => getDailyState(), [dailyLeft]);
   const weeklyState = useMemo(() => getWeeklyState(), [weeklyLeft]);
 
@@ -534,17 +516,11 @@ export default function ProfileTab({
 
   function claimAchievement(id: string, pill: number, addXp: number) {
     if (claimedA[id]) return;
-    const a = achievements.find((x) => x.id === id);
     setClaimedA((p) => ({ ...p, [id]: true }));
     setPills((v) => v + pill);
     setXp((v) => v + addXp);
     addXpGlobal(addXp);
     setFeedback(`Obiettivo completato: +${pill} pillole, +${addXp} XP`);
-
-    // badge pop
-    setBadgeTitle(a?.title ? `Badge sbloccato: ${a.title}` : "Badge sbloccato");
-    setBadgeSubtitle(`+${pill} 💊  •  +${addXp} XP`);
-    setBadgeOpen(true);
   }
 
   function startQuiz(nextMode: QuizMode) {
@@ -716,23 +692,6 @@ export default function ProfileTab({
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <CelebrationPop
-        open={levelUpOpen}
-        icon="🧬"
-        title={`Level up! Livello ${levelUpLevel}`}
-        subtitle="Nuovo livello sbloccato. Continua la progressione."
-        accent="rgba(34,197,94,0.9)"
-        onClose={() => setLevelUpOpen(false)}
-      />
-      <CelebrationPop
-        open={badgeOpen}
-        icon="🏅"
-        title={badgeTitle}
-        subtitle={badgeSubtitle}
-        accent="rgba(251,191,36,0.95)"
-        onClose={() => setBadgeOpen(false)}
-      />
-
       <ProfileCardModal open={cardOpen} player={cardPlayer} onClose={() => setCardOpen(false)} />
 
       {/* Profile header */}
@@ -1151,6 +1110,37 @@ export default function ProfileTab({
                     Fai qualche quiz per sbloccare le analytics.
                   </div>
                 ) : null}
+              </div>
+
+              <div style={{ marginTop: 14, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
+                <div style={{ fontWeight: 950, marginBottom: 8 }}>Errori frequenti</div>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {getTopMistakes(QUIZ_BANK, 5).map((m) => (
+                    <div
+                      key={m.q.id}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 14,
+                        border: "1px solid rgba(255,255,255,0.10)",
+                        background: "rgba(255,255,255,0.04)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ fontWeight: 850, opacity: 0.92, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.q.q}</div>
+                      <div style={{ fontWeight: 950, opacity: 0.85 }}>×{m.count}</div>
+                    </div>
+                  ))}
+                  {getTopMistakes(QUIZ_BANK, 1).length === 0 ? (
+                    <div style={{ opacity: 0.75, fontWeight: 800 }}>
+                      Nessun errore registrato ancora.
+                    </div>
+                  ) : null}
+                  <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>
+                    Suggerimento: in Home trovi “Ripasso errori” per allenarti sulle domande sbagliate.
+                  </div>
+                </div>
               </div>
             </div>
           )}
