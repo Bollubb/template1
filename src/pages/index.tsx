@@ -1,5 +1,6 @@
 import Head from "next/head";
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 
 import Page from "../layouts/Page";
 import Section from "../layouts/Section";
@@ -24,29 +25,18 @@ const LS = {
 } as const;
 
 export default function Home(): JSX.Element {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<NurseTab>("home");
-  const [homeSection, setHomeSection] = useState<"home" | "quiz" | "utility">("home");
-  const [profileSection, setProfileSection] = useState<"profile" | "missioni" | "classifica">("profile");
+  const headerOverride = useMemo(() => undefined, []);
 
-  const headerOverride = useMemo(() => {
-    if (activeTab === "home") {
-      if (homeSection === "quiz") {
-        return { title: "Quiz", subtitle: "Daily • Weekly • Simulazione", showBack: true, onBack: () => setHomeSection("home") };
-      }
-      if (homeSection === "utility") {
-        return { title: "Utility", subtitle: "Strumenti rapidi", showBack: true, onBack: () => setHomeSection("home") };
-      }
+  // Optional deep-link: /?tab=home|didattica|carte|profilo
+  useEffect(() => {
+    if (!router.isReady) return;
+    const t = router.query.tab;
+    if (t === "home" || t === "didattica" || t === "carte" || t === "profilo") {
+      setActiveTab(t);
     }
-    if (activeTab === "profilo") {
-      if (profileSection === "missioni") {
-        return { title: "Missioni", subtitle: "Obiettivi e ricompense", showBack: true, onBack: () => setProfileSection("profile") };
-      }
-      if (profileSection === "classifica") {
-        return { title: "Classifica", subtitle: "Settimanale • Percorso • Globale", showBack: true, onBack: () => setProfileSection("profile") };
-      }
-    }
-    return undefined;
-  }, [activeTab, homeSection, profileSection]);
+  }, [router.isReady, router.query.tab]);
 
 
   // Didattica data
@@ -131,30 +121,8 @@ export default function Home(): JSX.Element {
     }
   }, []);
 
-  
-  // Header dropdown navigation (logo menu)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
 
-    const onNav = (ev: Event) => {
-      const e = ev as CustomEvent<{ tab: "home" | "profilo"; section: "quiz" | "utility" | "missioni" | "classifica" }>;
-      const d = e.detail;
-      if (!d) return;
-
-      if (d.tab === "home") {
-        setActiveTab("home");
-        setHomeSection(d.section === "utility" ? "utility" : "quiz");
-      } else {
-        setActiveTab("profilo");
-        setProfileSection(d.section === "missioni" ? "missioni" : "classifica");
-      }
-    };
-
-    window.addEventListener("nd:navigate", onNav as any);
-    return () => window.removeEventListener("nd:navigate", onNav as any);
-  }, []);
-
-// Persist favorites
+  // Persist favorites
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
@@ -279,7 +247,7 @@ export default function Home(): JSX.Element {
   }, [items, query, categoria, onlyFavorites, onlyUnread, favoriteIds, readIds, sortMode]);
 
   return (
-    <Page title="Home">
+    <Page title="Home" headerOverride={headerOverride}>
       <Head>
         <meta name="description" content="NurseDiary – didattica, quiz e carte formative" />
       </Head>
@@ -287,7 +255,7 @@ export default function Home(): JSX.Element {
       {/* HOME */}
       {activeTab === "home" && (
         <Section>
-          <HomeDashboard openSection={homeSection === "home" ? undefined : homeSection} onCloseSection={() => setHomeSection("home")} onGoToCards={() => setActiveTab("carte")} onGoToDidattica={() => setActiveTab("didattica")} onGoToProfile={() => setActiveTab("profilo")} />
+          <HomeDashboard onGoToCards={() => setActiveTab("carte")} onGoToDidattica={() => setActiveTab("didattica")} onGoToProfile={() => setActiveTab("profilo")} />
         </Section>
       )}
 
@@ -430,7 +398,7 @@ export default function Home(): JSX.Element {
       {/* PROFILO */}
       {activeTab === "profilo" && (
         <Section>
-          <ProfileTab openSection={profileSection} pills={pills} setPills={setPills} totalContent={items.length} />
+          <ProfileTab pills={pills} setPills={setPills} totalContent={items.length} />
         </Section>
       )}
 
