@@ -430,7 +430,7 @@ export default function Home(): JSX.Element {
       {/* PROFILO */}
       {activeTab === "profilo" && (
         <Section>
-          <ProfileTab openSection={profileSection} onCloseSection={() => setProfileSection("profile")} pills={pills} setPills={setPills} totalContent={items.length} />
+          <ProfileTab openSection={profileSection} pills={pills} setPills={setPills} totalContent={items.length} />
         </Section>
       )}
 
