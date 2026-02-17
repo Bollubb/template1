@@ -88,13 +88,13 @@ export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProf
   const lvl = lvlInfo.level;
   const need = lvlInfo.need;
   const remaining = lvlInfo.remaining;
-  const pct = lvlInfo.pct;
-const done = Math.max(0, Math.min(need, need - remaining));
+  const done = Math.max(0, Math.min(need, need - remaining));
     return Math.max(0, Math.min(100, Math.round((done / denom) * 100)));
   }, [need, remaining]);
 
-  });
-return (
+  }, [xp, need, 0]);
+
+  return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={card()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
