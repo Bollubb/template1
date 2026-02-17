@@ -173,9 +173,11 @@ export default function QuizPage(): JSX.Element {
       // pills reward
       let pillsGain = 0;
       if (runQuiz.mode === "daily") {
-        pillsGain = calcDailyReward(nextCorrect, total, perfect);
         const d = getDailyState();
-        setDailyState({ ...d, status: "done" });
+        // streak counts consecutive completed daily quizzes; reward uses the *new* streak for today
+        const nextStreak = d.status === "done" ? d.streak : (d.streak || 0) + 1;
+        pillsGain = calcDailyReward(nextCorrect, total, perfect, nextStreak);
+        setDailyState({ ...d, status: "done", streak: nextStreak });
       } else {
         pillsGain = calcWeeklyReward(nextCorrect, total, perfect);
         const w = getWeeklyState();
