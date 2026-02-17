@@ -150,12 +150,10 @@ function computeLevel(xp: number) {
 }
 
 export default function ProfileTab({
-  openSection,
   pills,
   setPills,
   totalContent,
 }: {
-  openSection?: "profile" | "missioni" | "classifica";
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
@@ -859,9 +857,6 @@ export default function ProfileTab({
       {/* Sezioni (per ridurre confusione) */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", overflowX: "hidden", paddingBottom: 2 }}>
         <SegBtn active={section === "overview"} onClick={() => setSection("overview")}>Panoramica</SegBtn>
-        <SegBtn active={section === "quiz"} onClick={() => setSection("quiz")}>Quiz</SegBtn>
-        <SegBtn active={section === "missions"} onClick={() => setSection("missions")}>Missioni</SegBtn>
-        <SegBtn active={section === "leaderboard"} onClick={() => setSection("leaderboard")}>Classifica</SegBtn>
         <SegBtn active={section === "account"} onClick={() => setSection("account")}>Account</SegBtn>
       </div>
   

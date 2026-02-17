@@ -62,43 +62,14 @@ type HomeDashboardProps = {
   onGoToCards: () => void;
   onGoToDidattica: () => void;
   onGoToProfile: () => void;
-
-  /** Open a quick section from the header dropdown */
-  openSection?: "quiz" | "utility";
-  /** Called when the quick-open request should be cleared */
-  onCloseSection?: () => void;
 };
 
 export default function HomeDashboard({
   onGoToCards,
   onGoToDidattica,
   onGoToProfile,
-  openSection,
-  onCloseSection,
 }: HomeDashboardProps) {
   const [mode, setMode] = useState<"home" | "utility">("home");
-  // quick-open from header dropdown
-  useEffect(() => {
-    if (!openSection) return;
-
-    if (openSection === "utility") {
-      setMode("utility");
-      return;
-    }
-
-    // quiz lives inside the home view; scroll it into view
-    if (openSection === "quiz") {
-      setMode("home");
-      if (typeof window !== "undefined") {
-        window.setTimeout(() => {
-          const el = document.getElementById("nd-quiz");
-          el?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 50);
-      }
-      // clear the request so it doesn't retrigger
-      onCloseSection?.();
-    }
-  }, [openSection, onCloseSection]);
 
   const [pills, setPills] = useState(0);
   const [freePacks, setFreePacks] = useState(0);
@@ -346,72 +317,6 @@ function answerQuiz(i: number) {
         </div>
       </Card>
 
-
-      {/* Quiz (Daily/Weekly) */}
-      <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
-          <div>
-            <div style={{ fontWeight: 950 }}>Quiz</div>
-            <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>
-              Daily e Weekly con timer (solo qui in Home)
-            </div>
-          </div>
-          <div style={{ opacity: 0.75, fontWeight: 900, fontSize: 12 }}>
-            Daily: {msToHMS(dailyLeft)} • Weekly: {msToHMS(weeklyLeft)}
-          </div>
-        </div>
-
-        <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => startQuiz("daily")} disabled={daily.status === "done" || !!runQuiz} style={primaryBtn()}>
-            {daily.status === "done" ? "Daily completato ✅" : "Avvia Daily"}
-          </button>
-          <button type="button" onClick={() => startQuiz("weekly")} disabled={weekly.status === "done" || !!runQuiz} style={ghostBtn()}>
-            {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
-          </button>
-        </div>
-
-        {runQuiz && (
-          <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
-            <div style={{ fontWeight: 950 }}>
-              {runQuiz.mode.toUpperCase()} • Domanda {runQuiz.idx + 1}/{runQuiz.questions.length}
-            </div>
-            <div style={{ marginTop: 6, opacity: 0.88, fontWeight: 800 }}>{runQuiz.questions[runQuiz.idx].q}</div>
-
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              {runQuiz.questions[runQuiz.idx].options.map((op, i) => (
-                <button key={i} type="button" onClick={() => answerQuiz(i)} disabled={selected !== null} style={primaryBtn()}>
-                  {op}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {quizFeedback && (
-          <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.06)", fontWeight: 800 }}>
-            {quizFeedback}
-          </div>
-        )}
-
-        {quizReview && quizReview.length > 0 && (
-          <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
-            <div style={{ fontWeight: 950 }}>Risposte da rivedere</div>
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              {quizReview.slice(0, 8).map((w, idx) => (
-                <div key={idx} style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
-                  <div style={{ fontWeight: 900 }}>{w.q.q}</div>
-                  <div style={{ marginTop: 6, fontWeight: 800, opacity: 0.85 }}>
-                    La tua: {w.q.options[w.chosen] ?? "—"}
-                  </div>
-                  <div style={{ marginTop: 4, fontWeight: 900 }}>
-                    Corretta: {w.q.options[w.q.answer]}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </Card>
 
       {/* Utility quick access */}
       <Card>
