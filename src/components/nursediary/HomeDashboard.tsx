@@ -84,13 +84,17 @@ export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProf
     } catch {}
   }, []);
 
-  const lvl = useMemo(() => computeLevel(xp).level, [xp]);
-  const next = useMemo(() => computeLevel(xp).nextAt, [xp]);
-  const prev = useMemo(() => computeLevel(xp).prevAt, [xp]);
+  const lvlInfo = useMemo(() => computeLevel(xp), [xp]);
+  const lvl = lvlInfo.level;
+  const need = lvlInfo.need;
+  const remaining = lvlInfo.remaining;
   const pct = useMemo(() => {
-    const span = Math.max(1, next - prev);
-    return Math.max(0, Math.min(100, Math.round(((xp - prev) / span) * 100)));
-  }, [xp, next, prev]);
+    const denom = Math.max(1, need);
+    const done = Math.max(0, Math.min(need, need - remaining));
+    return Math.max(0, Math.min(100, Math.round((done / denom) * 100)));
+  }, [need, remaining]);
+
+  }, [xp, need, 0]);
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
@@ -128,7 +132,7 @@ export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProf
               <div style={{ height: "100%", width: `${pct}%`, background: "rgba(56,189,248,0.55)" }} />
             </div>
             <div style={{ marginTop: 6, opacity: 0.7, fontSize: 12 }}>
-              XP: {xp} • Prossimo livello: {next}
+              XP: {xp} • Prossimo livello: {need}
             </div>
           </div>
         </div>
