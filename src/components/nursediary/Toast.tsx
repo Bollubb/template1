@@ -1,10 +1,18 @@
 
 import React, { createContext, useContext, useState } from "react";
 
-type Toast = { id: number; message: string };
+type ToastType = "info" | "success" | "error";
 
-const ToastContext = createContext({
-  show: (message: string) => {}
+type Toast = { id: number; message: string; type: ToastType };
+
+type ToastContextType = {
+  show: (message: string) => void;
+  push: (message: string, type?: ToastType) => void;
+};
+
+const ToastContext = createContext<ToastContextType>({
+  show: () => {},
+  push: () => {}
 });
 
 export const useToast = () => useContext(ToastContext);
@@ -12,16 +20,24 @@ export const useToast = () => useContext(ToastContext);
 export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const show = (message: string) => {
+  const push = (message: string, type: ToastType = "info") => {
     const id = Date.now();
-    setToasts((t) => [...t, { id, message }]);
+    setToasts((t) => [...t, { id, message, type }]);
     setTimeout(() => {
       setToasts((t) => t.filter((x) => x.id !== id));
     }, 3000);
   };
 
+  const show = (message: string) => push(message, "info");
+
+  const getColor = (type: ToastType) => {
+    if (type === "success") return "#16a34a";
+    if (type === "error") return "#dc2626";
+    return "#111";
+  };
+
   return (
-    <ToastContext.Provider value={{ show }}>
+    <ToastContext.Provider value={{ show, push }}>
       {children}
       <div style={{
         position: "fixed",
@@ -32,7 +48,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
       }}>
         {toasts.map((t) => (
           <div key={t.id} style={{
-            background: "#111",
+            background: getColor(t.type),
             color: "white",
             padding: "10px 16px",
             borderRadius: 10,
