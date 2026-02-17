@@ -1,18 +1,15 @@
 import Head from "next/head";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/router";
 import { ToastProvider } from "../components/nursediary/Toast";
 
 export type PageProps = { title?: string; children: React.ReactNode; headerOverride?: { title: string; subtitle?: string; showBack?: boolean; onBack?: () => void; }; };
 
-type NavTarget = { tab: "home" | "profilo"; section: "quiz" | "utility" | "missioni" | "classifica" };
-
-function dispatchNav(target: NavTarget) {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(new CustomEvent("nd:navigate", { detail: target }));
-}
+type QuickRoute = "/quiz" | "/utility" | "/missioni" | "/classifica";
 
 export default function Page({ title = "NurseDiary", children, headerOverride }: PageProps): JSX.Element {
   const pageTitle = title ? `NurseDiary | ${title}` : "NurseDiary";
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -30,10 +27,10 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
   const items = useMemo(
     () =>
       [
-        { label: "Quiz", sub: "Daily, Weekly, Simulazione", icon: "🧠", t: { tab: "home", section: "quiz" } as const },
-        { label: "Utility", sub: "Calcoli e strumenti", icon: "🛠️", t: { tab: "home", section: "utility" } as const },
-        { label: "Missioni", sub: "Obiettivi e ricompense", icon: "🎯", t: { tab: "profilo", section: "missioni" } as const },
-        { label: "Classifica", sub: "Settimanale / Globale", icon: "🏆", t: { tab: "profilo", section: "classifica" } as const },
+        { label: "Quiz", sub: "Daily, Weekly, Simulazione", icon: "🧠", href: "/quiz" as const },
+        { label: "Utility", sub: "Calcoli e strumenti", icon: "🛠️", href: "/utility" as const },
+        { label: "Missioni", sub: "Obiettivi e ricompense", icon: "🎯", href: "/missioni" as const },
+        { label: "Classifica", sub: "Settimanale / Globale", icon: "🏆", href: "/classifica" as const },
       ] as const,
     []
   );
@@ -88,7 +85,13 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
               <div ref={menuRef} style={{ position: "relative" }}>
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((v) => !v)}
+                  onClick={() => {
+                    if (headerOverride?.showBack && headerOverride.onBack) {
+                      headerOverride.onBack();
+                      return;
+                    }
+                    setMenuOpen((v) => !v);
+                  }}
                   aria-label="Apri menu"
                   style={{
                     display: "flex",
@@ -141,7 +144,7 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                           key={it.label}
                           type="button"
                           onClick={() => {
-                            dispatchNav(it.t);
+                            router.push(it.href as QuickRoute);
                             setMenuOpen(false);
                           }}
                           style={{
