@@ -86,12 +86,8 @@ export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProf
 
   const lvlInfo = useMemo(() => computeLevel(xp), [xp]);
   const lvl = lvlInfo.level;
-  const pct = lvlInfo.pct;
-  const need = lvlInfo.need;
-  const remaining = lvlInfo.remaining;
-  }, [need, remaining]);
-
-
+  const done = Math.max(0, Math.min(need, need - remaining));
+    return Math.max(0, Math.min(100, Math.round((done / denom) * 100)));
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={card()}>
