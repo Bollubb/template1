@@ -81,7 +81,7 @@ export default function MissionHub({ dailyLeft = 0, weeklyLeft = 0 }: MissionHub
   useEffect(() => {
     if (!isBrowser()) return;
 
-    setClaimedProp(safeJson(localStorage.getItem(LS.achievements), {}));
+    setClaimed(safeJson(localStorage.getItem(LS.achievements), {}));
     setPills(Number(localStorage.getItem(LS.pills) || "0") || 0);
     setPremium(localStorage.getItem(LS.premium) === "1");
 
@@ -141,7 +141,7 @@ export default function MissionHub({ dailyLeft = 0, weeklyLeft = 0 }: MissionHub
     const done = a.value >= a.target;
     if (!done) return;
 
-    setClaimedProp((p) => ({ ...p, [a.id]: true }));
+    setClaimed((p) => ({ ...p, [a.id]: true }));
 
     const cur = Number(localStorage.getItem(LS.pills) || "0") || 0;
     const next = cur + a.pill;
