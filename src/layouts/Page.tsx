@@ -47,9 +47,9 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
             overflowX: "hidden",
             color: "rgba(255,255,255,0.92)",
             backgroundColor: "rgb(2,6,23)",
-            // Subtle premium background: clean + sanitary, no noisy circles.
+                        // Premium background image (public/background-main.png) + subtle gradients
             backgroundImage:
-              "linear-gradient(180deg, rgba(11,18,32,0.70), rgba(2,6,23,0) 60%), linear-gradient(135deg, rgba(56,189,248,0.06), rgba(34,197,94,0.04) 35%, rgba(2,6,23,0) 75%)",
+              "linear-gradient(180deg, rgba(2,6,23,0.82), rgba(2,6,23,0.30) 55%, rgba(2,6,23,0.92)), linear-gradient(135deg, rgba(56,189,248,0.06), rgba(34,197,94,0.04) 35%, rgba(2,6,23,0) 75%), url('/background-main.png')",
             backgroundRepeat: "no-repeat",
             backgroundSize: "cover",
           }}
