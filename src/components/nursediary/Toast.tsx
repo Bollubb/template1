@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState } from "react";
 
-type ToastType = "info" | "success" | "error";
+type ToastType = "info" | "success" | "warning" | "error";
 
 type Toast = { id: number; message: string; type: ToastType };
 
@@ -32,6 +32,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
 
   const getColor = (type: ToastType) => {
     if (type === "success") return "#16a34a";
+    if (type === "warning") return "#f59e0b";
     if (type === "error") return "#dc2626";
     return "#111";
   };
