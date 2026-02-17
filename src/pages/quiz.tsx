@@ -21,7 +21,7 @@ import {
 import { addXp } from "@/features/progress/xp";
 
 type QuizRun = {
-  mode: "daily" | "weekly";
+  mode: "daily" | "weekly" | "sim";
   idx: number;
   correct: number;
   questions: QuizQuestion[];
@@ -90,6 +90,7 @@ export default function QuizPage(): JSX.Element {
 
   const [dailyLeft, setDailyLeft] = useState(0);
   const [weeklyLeft, setWeeklyLeft] = useState(0);
+  const [premium, setPremium] = useState(false);
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [quizFeedback, setQuizFeedback] = useState<string | null>(null);
@@ -102,6 +103,7 @@ export default function QuizPage(): JSX.Element {
       setWeeklyLeft(getNextWeeklyResetMs());
     };
     tick();
+    try { setPremium(localStorage.getItem('nd_premium') === '1'); } catch {}
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, []);
@@ -109,10 +111,19 @@ export default function QuizPage(): JSX.Element {
   const daily = useMemo(() => getDailyState(), [dailyLeft]);
   const weekly = useMemo(() => getWeeklyState(), [weeklyLeft]);
 
-  function startQuiz(mode: "daily" | "weekly") {
-    const state = mode === "daily" ? getDailyState() : getWeeklyState();
-    if (state.status === "done") return;
-    const n = mode === "daily" ? 5 : 12;
+  function startQuiz(mode: "daily" | "weekly" | "sim") {
+    if (mode === "daily") {
+      const d = getDailyState();
+      if (d.status === "done") return;
+    }
+    if (mode === "weekly") {
+      const w = getWeeklyState();
+      if (w.status === "done") return;
+    }
+
+    const n = mode === "daily" ? 5 : mode === "weekly" ? 12 : 25;
+    if (mode === "sim" && !(localStorage.getItem('nd_premium') === '1')) return;
+
 
     // anti-ripetizione "soft"
     const recentKey = "nd_quiz_recent_v1";
@@ -178,13 +189,19 @@ export default function QuizPage(): JSX.Element {
         const nextStreak = d.status === "done" ? d.streak : (d.streak || 0) + 1;
         pillsGain = calcDailyReward(nextCorrect, total, perfect, nextStreak);
         setDailyState({ ...d, status: "done", streak: nextStreak });
-      } else {
+      } else if (runQuiz.mode === "weekly") {
         pillsGain = calcWeeklyReward(nextCorrect, total, perfect);
         const w = getWeeklyState();
         setWeeklyState({ ...w, status: "done" });
+      } else {
+        // Simulazione Premium: niente reset, niente ricompense in pillole (serve per allenamento + review)
+        pillsGain = 0;
       }
 
-      const xpGain = 20 + nextCorrect * (runQuiz.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
+      const xpGain =
+        runQuiz.mode === "sim"
+          ? 30 + nextCorrect * 2 + (perfect ? 15 : 0)
+          : 20 + nextCorrect * (runQuiz.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
 
       try {
         const cur = Number(localStorage.getItem(LS.pills) || "0") || 0;
@@ -238,7 +255,23 @@ export default function QuizPage(): JSX.Element {
               <button type="button" onClick={() => startQuiz("weekly")} disabled={weekly.status === "done" || !!runQuiz} style={ghostBtn(weekly.status === "done" || !!runQuiz)}>
                 {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
               </button>
+            </div>            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => startQuiz("sim")}
+                disabled={!premium || !!runQuiz}
+                style={ghostBtn(!premium || !!runQuiz)}
+              >
+                {premium ? "Simulazione 25 domande (Premium)" : "Simulazione 25 domande 🔒 Premium"}
+              </button>
+              {!premium && (
+                <div style={{ opacity: 0.72, fontSize: 12, fontWeight: 700 }}>
+                  Attiva Premium dal profilo per sbloccare la simulazione completa + correzione errori.
+                </div>
+              )}
             </div>
+
+
 
             {runQuiz && (
               <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
@@ -249,7 +282,29 @@ export default function QuizPage(): JSX.Element {
 
                 <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                   {runQuiz.questions[runQuiz.idx].options.map((op, i) => (
-                    <button key={i} type="button" onClick={() => answerQuiz(i)} disabled={selected !== null} style={primaryBtn(selected !== null)}>
+                    <button key={i} type="button" onClick={() => answerQuiz(i)} disabled={selected !== null} style={(() => {
+                        const q = runQuiz.questions[runQuiz.idx];
+                        const locked = selected !== null;
+                        const base = primaryBtn(locked);
+                        if (!locked) return base;
+
+                        const isCorrect = i === q.answer;
+                        const isChosen = i === selected;
+
+                        // When locked: show correct in green, chosen wrong in red.
+                        const bg = isCorrect
+                          ? "rgba(34,197,94,0.18)"
+                          : isChosen && !isCorrect
+                          ? "rgba(239,68,68,0.16)"
+                          : "rgba(255,255,255,0.04)";
+                        const br = isCorrect
+                          ? "1px solid rgba(34,197,94,0.35)"
+                          : isChosen && !isCorrect
+                          ? "1px solid rgba(239,68,68,0.35)"
+                          : base.border;
+
+                        return { ...base, background: bg, border: br };
+                      })()}>
                       {op}
                     </button>
                   ))}
