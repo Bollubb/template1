@@ -2,9 +2,20 @@ import React, { useEffect, useMemo, useState } from "react";
 import { addXp } from "@/features/progress/xp";
 import { getDailyState, getHistory, type QuizHistoryItem } from "@/features/cards/quiz/quizLogic";
 
-type MissionHubProps = {
+
+export type MissionHubProps = {
+  // Legacy props (used by ProfileTab)
+  dayKey?: string;
+  weekKey?: string;
   dailyLeft?: number;
   weeklyLeft?: number;
+  getClaimed?: (scope: string, id: string) => number;
+  setClaimed?: (scope: string, id: string, tier: number) => void;
+  onGrant?: (reward: any, meta: any) => void;
+
+  // Page usage (optional)
+  pills?: number;
+  setPills?: React.Dispatch<React.SetStateAction<number>>;
 };
 
 const LS = {
@@ -68,7 +79,6 @@ type Achievement = {
 };
 
 export default function MissionHub(props: MissionHubProps) {
-
   const {
     dayKey,
     weekKey,
@@ -80,6 +90,7 @@ export default function MissionHub(props: MissionHubProps) {
     pills,
     setPills,
   } = props;
+
   const [claimed, setClaimed] = useState<Record<string, boolean>>({});
   const [pills, setPills] = useState(0);
 
