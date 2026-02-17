@@ -2,20 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { addXp } from "@/features/progress/xp";
 import { getDailyState, getHistory, type QuizHistoryItem } from "@/features/cards/quiz/quizLogic";
 
-
-export type MissionHubProps = {
-  // Legacy props (used by ProfileTab)
-  dayKey?: string;
-  weekKey?: string;
+type MissionHubProps = {
   dailyLeft?: number;
   weeklyLeft?: number;
-  getClaimed?: (scope: string, id: string) => number;
-  setClaimed?: (scope: string, id: string, tier: number) => void;
-  onGrant?: (reward: any, meta: any) => void;
-
-  // Page usage (optional)
-  pills?: number;
-  setPills?: React.Dispatch<React.SetStateAction<number>>;
 };
 
 const LS = {
@@ -78,19 +67,7 @@ type Achievement = {
   xp: number;
 };
 
-export default function MissionHub(props: MissionHubProps) {
-  const {
-    dayKey,
-    weekKey,
-    dailyLeft,
-    weeklyLeft,
-    getClaimed,
-    setClaimed,
-    onGrant,
-    pills,
-    setPills,
-  } = props;
-
+export default function MissionHub({ dailyLeft = 0, weeklyLeft = 0 }: MissionHubProps) {
   const [claimed, setClaimed] = useState<Record<string, boolean>>({});
   const [pills, setPills] = useState(0);
 
@@ -104,7 +81,7 @@ export default function MissionHub(props: MissionHubProps) {
   useEffect(() => {
     if (!isBrowser()) return;
 
-    setClaimed(safeJson(localStorage.getItem(LS.achievements), {}));
+    setClaimedProp(safeJson(localStorage.getItem(LS.achievements), {}));
     setPills(Number(localStorage.getItem(LS.pills) || "0") || 0);
     setPremium(localStorage.getItem(LS.premium) === "1");
 
@@ -164,7 +141,7 @@ export default function MissionHub(props: MissionHubProps) {
     const done = a.value >= a.target;
     if (!done) return;
 
-    setClaimed((p) => ({ ...p, [a.id]: true }));
+    setClaimedProp((p) => ({ ...p, [a.id]: true }));
 
     const cur = Number(localStorage.getItem(LS.pills) || "0") || 0;
     const next = cur + a.pill;
