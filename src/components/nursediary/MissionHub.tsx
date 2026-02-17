@@ -67,7 +67,19 @@ type Achievement = {
   xp: number;
 };
 
-export default function MissionHub({ dailyLeft = 0, weeklyLeft = 0 }: MissionHubProps) {
+export default function MissionHub(props: MissionHubProps) {
+
+  const {
+    dayKey,
+    weekKey,
+    dailyLeft,
+    weeklyLeft,
+    getClaimed,
+    setClaimed,
+    onGrant,
+    pills,
+    setPills,
+  } = props;
   const [claimed, setClaimed] = useState<Record<string, boolean>>({});
   const [pills, setPills] = useState(0);
 
