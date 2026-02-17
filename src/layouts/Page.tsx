@@ -1,7 +1,6 @@
 import Head from "next/head";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
-import { ToastProvider } from "../components/nursediary/Toast";
 
 export type PageProps = { title?: string; children: React.ReactNode; headerOverride?: { title: string; subtitle?: string; showBack?: boolean; onBack?: () => void; }; };
 
@@ -42,7 +41,6 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
         <meta name="theme-color" content="#020617" />
       </Head>
 
-      <ToastProvider>
         <div
           style={{
             minHeight: "100vh",
@@ -193,7 +191,6 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
             <small>© {new Date().getFullYear()} NurseDiary</small>
           </footer>
         </div>
-      </ToastProvider>
     </>
   );
 }
