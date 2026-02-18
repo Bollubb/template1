@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 // ✅ Bottom bar: Home / Didattica / Carte / Profilo
 export type NurseTab = "home" | "didattica" | "carte" | "profilo";
@@ -10,12 +10,25 @@ export default function NurseBottomNav({
   active: NurseTab;
   onChange: (tab: NurseTab) => void;
 }) {
-  const items: { key: NurseTab; label: string; icon: React.ReactNode }[] = [
-    { key: "home", label: "Home", icon: <IconHome /> },
-    { key: "didattica", label: "Didattica", icon: <IconBook /> },
-    { key: "carte", label: "Carte", icon: <IconCards /> },
-    { key: "profilo", label: "Profilo", icon: <IconUser /> },
-  ];
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onResize = () => setCompact(window.innerWidth < 360);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const items: { key: NurseTab; label: string; icon: React.ReactNode }[] = useMemo(
+    () => [
+      { key: "home", label: "Home", icon: <IconHome /> },
+      { key: "didattica", label: compact ? "Did." : "Didattica", icon: <IconBook /> },
+      { key: "carte", label: "Carte", icon: <IconCards /> },
+      { key: "profilo", label: compact ? "Io" : "Profilo", icon: <IconUser /> },
+    ],
+    [compact]
+  );
 
   return (
     <nav
@@ -25,8 +38,8 @@ export default function NurseBottomNav({
         right: 0,
         bottom: 0,
         zIndex: 60,
-        padding: "10px 12px",
-        paddingBottom: "calc(10px + env(safe-area-inset-bottom))",
+        padding: "8px 10px",
+        paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
         background: "transparent",
         // ❗️No backdrop-filter
       }}
@@ -40,10 +53,10 @@ export default function NurseBottomNav({
           border: "1px solid rgba(255,255,255,0.10)",
           borderRadius: 18,
           boxShadow: "0 10px 25px rgba(0,0,0,0.30)",
-          padding: 8,
+          padding: compact ? 6 : 8,
         }}
       >
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: compact ? 6 : 8 }}>
         {items.map((it) => {
           const isActive = it.key === active;
           return (
@@ -55,8 +68,8 @@ export default function NurseBottomNav({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: 8,
-                padding: "10px 10px",
+                gap: compact ? 6 : 8,
+                padding: compact ? "9px 6px" : "10px 10px",
                 borderRadius: 14,
                 border: "none",
                 cursor: "pointer",
@@ -64,11 +77,11 @@ export default function NurseBottomNav({
                 // ✅ readable on dark bottom bar
                 color: isActive ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.72)",
                 fontWeight: isActive ? 700 : 600,
-                fontSize: 13,
+                fontSize: compact ? 12 : 13,
               }}
             >
               <span style={{ display: "inline-flex", width: 18, height: 18 }}>{it.icon}</span>
-              <span style={{ whiteSpace: "nowrap" }}>{it.label}</span>
+              <span style={{ whiteSpace: "nowrap", minWidth: 0 }}>{it.label}</span>
             </button>
           );
         })}
