@@ -81,15 +81,34 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                 margin: "0 auto",
               }}
             >
+              {headerOverride?.showBack && headerOverride.onBack && (
+              <button
+                type="button"
+                onClick={() => headerOverride.onBack && headerOverride.onBack()}
+                aria-label="Indietro"
+                style={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 14,
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "rgba(0,0,0,0.18)",
+                  color: "rgba(255,255,255,0.92)",
+                  display: "grid",
+                  placeItems: "center",
+                  fontWeight: 950,
+                  cursor: "pointer",
+                  marginRight: 10,
+                }}
+              >
+                ←
+              </button>
+            )}
               {/* Logo + dropdown trigger */}
               <div ref={menuRef} style={{ position: "relative" }}>
                 <button
                   type="button"
                   onClick={() => {
-                    if (headerOverride?.showBack && headerOverride.onBack) {
-                      headerOverride.onBack();
-                      return;
-                    }
+                    // Always toggle quick menu. Back navigation (if any) is handled by a dedicated button.
                     setMenuOpen((v) => !v);
                   }}
                   aria-label="Apri menu"
