@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/router";
 import { computeLevel, getXp } from "@/features/progress/xp";
 import ShiftPlanner from "./ShiftPlanner";
 
@@ -34,37 +33,7 @@ function card(): React.CSSProperties {
   };
 }
 
-function btnPrimary(disabled?: boolean): React.CSSProperties {
-  return {
-    width: "100%",
-    padding: "12px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: disabled ? "rgba(255,255,255,0.06)" : "rgba(56,189,248,0.14)",
-    color: "rgba(255,255,255,0.94)",
-    fontWeight: 900,
-    cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.7 : 1,
-  };
-}
-
-function btnGhost(disabled?: boolean): React.CSSProperties {
-  return {
-    width: "100%",
-    padding: "12px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(255,255,255,0.04)",
-    color: "rgba(255,255,255,0.92)",
-    fontWeight: 900,
-    cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.65 : 1,
-  };
-}
-
-export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProfile }: HomeDashboardProps) {
-  const router = useRouter();
-
+export default function HomeDashboard(_props: HomeDashboardProps) {
   const [name, setName] = useState("Nurse");
   const [role, setRole] = useState("Study Hub");
   const [pills, setPills] = useState(0);
@@ -88,7 +57,6 @@ export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProf
   const lvlInfo = useMemo(() => computeLevel(xp), [xp]);
   const lvl = lvlInfo.level;
   const need = lvlInfo.need;
-  const remaining = lvlInfo.remaining;
   const pct = lvlInfo.pct;
 
 
@@ -131,47 +99,6 @@ export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProf
               XP: {xp} • Prossimo livello: {need}
             </div>
           </div>
-        </div>
-      </div>
-
-      <div style={card()}>
-        <div style={{ fontWeight: 950, fontSize: 16 }}>Azioni rapide</div>
-        <div style={{ opacity: 0.72, fontSize: 13, marginTop: 4 }}>
-          Vai subito ai moduli principali (senza duplicare pagine dentro la Home).
-        </div>
-
-        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <button type="button" onClick={() => router.push("/quiz")} style={btnPrimary()}>
-            🧠 Quiz
-          </button>
-          <button type="button" onClick={() => router.push("/missioni")} style={btnGhost()}>
-            🎯 Missioni
-          </button>
-          <button type="button" onClick={() => router.push("/utility")} style={btnGhost()}>
-            🛠️ Utility
-          </button>
-          <button type="button" onClick={() => router.push("/classifica")} style={btnGhost()}>
-            🏆 Classifica
-          </button>
-        </div>
-      </div>
-
-      <div style={card()}>
-        <div style={{ fontWeight: 950, fontSize: 16 }}>Esplora</div>
-        <div style={{ opacity: 0.72, fontSize: 13, marginTop: 4 }}>
-          Didattica, Carte e Profilo restano nei rispettivi menu: qui solo accesso rapido.
-        </div>
-
-        <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-          <button type="button" onClick={onGoToDidattica} style={btnGhost()}>
-            📚 Didattica
-          </button>
-          <button type="button" onClick={onGoToCards} style={btnGhost()}>
-            🃏 Carte
-          </button>
-          <button type="button" onClick={onGoToProfile} style={btnGhost()}>
-            👤 Profilo
-          </button>
         </div>
       </div>
 
