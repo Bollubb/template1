@@ -243,7 +243,7 @@ export default function ShiftPlanner(): JSX.Element {
               aria-label={key ? `Imposta turno ${key}` : "Vuoto"}
             >
               <div style={{ fontWeight: 950, fontSize: 12, opacity: 0.95 }}>{day || ""}</div>
-              {code ? <div style={pillStyle(code)}>{codeLabel(code)}</div> : <div style={{ fontSize: 11, opacity: 0.35 }}>+</div>}
+              {code ? <div style={pillStyle(code)}>{code}</div> : <div style={{ fontSize: 11, opacity: 0.35 }}>+</div>}
             </button>
           );
         })}
