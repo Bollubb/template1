@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app';
 import Head from "next/head";
 import '@styles/globals.css';
+import { ToastProvider } from '@/components/nursediary/Toast';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
@@ -11,7 +12,9 @@ export default function App({ Component, pageProps }: AppProps) {
       <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     </Head>
 
-    <Component {...pageProps} />
+    <ToastProvider>
+      <Component {...pageProps} />
+    </ToastProvider>
   </>
 );
 }
