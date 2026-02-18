@@ -19,11 +19,31 @@ import {
   type QuizHistoryItem,
 } from "@/features/cards/quiz/quizLogic";
 import { addXp } from "@/features/progress/xp";
+import { recordMistake, pickMistakeReviewQuestions } from "@/features/cards/quiz/quizMistakes";
 
 type QuizRun = {
-  mode: "daily" | "weekly" | "sim";
+  mode: "daily" | "weekly" | "sim" | "review";
   idx: number;
   correct: number;
+  questions: QuizQuestion[];
+  answers: number[];
+  startTs: number;
+  timerEnabled?: boolean;
+  timeLimitMs?: number;
+};
+
+type QuizResult = {
+  mode: QuizRun["mode"];
+  correct: number;
+  total: number;
+  pct: number;
+  badge: { label: string; emoji: string };
+  pillsGain: number;
+  xpGain: number;
+  elapsedMs: number;
+  bestText?: string;
+  improvedBest?: boolean;
+  wrong: { q: QuizQuestion; chosen: number }[];
   questions: QuizQuestion[];
   answers: number[];
 };
@@ -47,7 +67,72 @@ function pickRandom<T>(arr: T[], n: number) {
 
 const LS = {
   pills: "nd_pills",
+  premium: "nd_premium",
+  favs: "nd_quiz_favs_v1",
+  bestDaily: "nd_quiz_best_daily_v1",
+  bestWeekly: "nd_quiz_best_weekly_v1",
+  bestSim: "nd_quiz_best_sim_v1",
 } as const;
+
+const isBrowser = () => typeof window !== "undefined" && typeof localStorage !== "undefined";
+
+function safeJson<T>(raw: string | null, fallback: T): T {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function badgeForPct(pct: number): { label: string; emoji: string } {
+  if (pct >= 90) return { label: "Eccellente", emoji: "🏅" };
+  if (pct >= 75) return { label: "Ottimo", emoji: "⭐" };
+  if (pct >= 60) return { label: "Buono", emoji: "✅" };
+  if (pct >= 40) return { label: "Da migliorare", emoji: "📚" };
+  return { label: "Riprova", emoji: "🔁" };
+}
+
+function fmtMSS(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const mm = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${mm}:${String(ss).padStart(2, "0")}`;
+}
+
+function bestKeyFor(mode: QuizRun["mode"]) {
+  if (mode === "daily") return LS.bestDaily;
+  if (mode === "weekly") return LS.bestWeekly;
+  return LS.bestSim;
+}
+
+type BestState = { v: 1; bestPct: number; bestTimeMs: number; bestCorrect: number; ts: number };
+
+function getBest(mode: QuizRun["mode"]): BestState | null {
+  if (!isBrowser()) return null;
+  const key = bestKeyFor(mode);
+  const s = safeJson<BestState | null>(localStorage.getItem(key), null);
+  return s && s.v === 1 ? s : null;
+}
+
+function setBest(mode: QuizRun["mode"], s: BestState) {
+  if (!isBrowser()) return;
+  try {
+    localStorage.setItem(bestKeyFor(mode), JSON.stringify(s));
+  } catch {}
+}
+
+function getFavs(): string[] {
+  if (!isBrowser()) return [];
+  return safeJson<string[]>(localStorage.getItem(LS.favs), []);
+}
+
+function setFavs(ids: string[]) {
+  if (!isBrowser()) return;
+  try {
+    localStorage.setItem(LS.favs, JSON.stringify(ids));
+  } catch {}
+}
 
 function card(): React.CSSProperties {
   return {
@@ -93,8 +178,10 @@ export default function QuizPage(): JSX.Element {
   const [premium, setPremium] = useState(false);
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
-  const [quizFeedback, setQuizFeedback] = useState<string | null>(null);
-  const [quizReview, setQuizReview] = useState<{ q: QuizQuestion; chosen: number }[] | null>(null);
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const [simTimer, setSimTimer] = useState(false);
+  const [nowTs, setNowTs] = useState<number>(Date.now());
+  const [favs, setFavsState] = useState<string[]>([]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -103,15 +190,24 @@ export default function QuizPage(): JSX.Element {
       setWeeklyLeft(getNextWeeklyResetMs());
     };
     tick();
-    try { setPremium(localStorage.getItem('nd_premium') === '1'); } catch {}
+    try {
+      setPremium(localStorage.getItem(LS.premium) === "1");
+      setFavsState(getFavs());
+    } catch {}
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (!runQuiz) return;
+    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [runQuiz]);
+
   const daily = useMemo(() => getDailyState(), [dailyLeft]);
   const weekly = useMemo(() => getWeeklyState(), [weeklyLeft]);
 
-  function startQuiz(mode: "daily" | "weekly" | "sim") {
+  function startQuiz(mode: "daily" | "weekly" | "sim" | "review", opts?: { questions?: QuizQuestion[] }) {
     if (mode === "daily") {
       const d = getDailyState();
       if (d.status === "done") return;
@@ -121,8 +217,8 @@ export default function QuizPage(): JSX.Element {
       if (w.status === "done") return;
     }
 
-    const n = mode === "daily" ? 5 : mode === "weekly" ? 12 : 25;
-    if (mode === "sim" && !(localStorage.getItem('nd_premium') === '1')) return;
+    const n = mode === "daily" ? 5 : mode === "weekly" ? 12 : 20;
+    if (mode === "sim" && !(localStorage.getItem(LS.premium) === "1")) return;
 
 
     // anti-ripetizione "soft"
@@ -138,16 +234,109 @@ export default function QuizPage(): JSX.Element {
     const candidates = QUIZ_BANK.filter((q) => !recent.includes(q.id));
     const pool = candidates.length >= n ? candidates : QUIZ_BANK;
 
-    const questions = pickRandom(pool, n);
+    const questions = opts?.questions?.length ? opts.questions : pickRandom(pool, n);
     try {
       const nextRecent = [...questions.map((q) => q.id), ...recent].slice(0, 50);
       localStorage.setItem(recentKey, JSON.stringify(nextRecent));
     } catch {}
 
-    setRunQuiz({ mode, idx: 0, correct: 0, questions, answers: [] });
+    const timeLimitMs = mode === "sim" && simTimer ? 25 * 60 * 1000 : undefined;
+    setRunQuiz({ mode, idx: 0, correct: 0, questions, answers: [], startTs: Date.now(), timerEnabled: mode === "sim" ? simTimer : false, timeLimitMs });
     setSelected(null);
-    setQuizFeedback(null);
-    setQuizReview(null);
+    setQuizResult(null);
+  }
+
+  function finishRun(run: QuizRun, answers: number[], finalCorrect: number) {
+    const total = run.questions.length;
+    const perfect = finalCorrect === total;
+    const elapsedMs = Date.now() - run.startTs;
+
+    const wrong: { q: QuizQuestion; chosen: number }[] = [];
+    for (let k = 0; k < total; k++) {
+      const qq = run.questions[k];
+      const chosen = answers[k];
+      if (chosen !== qq.answer) wrong.push({ q: qq, chosen });
+    }
+
+    // rewards
+    let pillsGain = 0;
+    if (run.mode === "daily") {
+      const d = getDailyState();
+      const nextStreak = d.status === "done" ? d.streak : (d.streak || 0) + 1;
+      pillsGain = calcDailyReward(finalCorrect, total, perfect, nextStreak);
+      setDailyState({ ...d, status: "done", streak: nextStreak });
+    } else if (run.mode === "weekly") {
+      pillsGain = calcWeeklyReward(finalCorrect, total, perfect);
+      const w = getWeeklyState();
+      setWeeklyState({ ...w, status: "done" });
+    } else {
+      pillsGain = 0;
+    }
+
+    const xpGain =
+      run.mode === "sim"
+        ? 30 + finalCorrect * 2 + (perfect ? 15 : 0)
+        : run.mode === "review"
+        ? 15 + finalCorrect
+        : 20 + finalCorrect * (run.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
+
+    if (run.mode !== "review") {
+      try {
+        const cur = Number(localStorage.getItem(LS.pills) || "0") || 0;
+        localStorage.setItem(LS.pills, String(cur + pillsGain));
+      } catch {}
+    }
+
+    addXp(xpGain);
+
+    // history only for main modes
+    if (run.mode !== "review") {
+      const item: QuizHistoryItem = {
+        ts: Date.now(),
+        mode: run.mode === "sim" ? "sim" : run.mode,
+        correct: finalCorrect,
+        total,
+        byCategory: {},
+      };
+      pushHistory(item);
+    }
+
+    // best record (only for sim)
+    const pct = Math.round((finalCorrect / total) * 100);
+    const badge = badgeForPct(pct);
+    let bestText: string | undefined;
+    let improvedBest = false;
+    if (run.mode === "sim") {
+      const prev = getBest("sim");
+      const better = !prev || pct > prev.bestPct || (pct === prev.bestPct && elapsedMs < prev.bestTimeMs);
+      if (better) {
+        improvedBest = true;
+        setBest("sim", { v: 1, bestPct: pct, bestTimeMs: elapsedMs, bestCorrect: finalCorrect, ts: Date.now() });
+      }
+      const curBest = getBest("sim");
+      if (curBest) bestText = `Record: ${curBest.bestPct}% • ${fmtMSS(curBest.bestTimeMs)}`;
+    }
+
+    // record mistakes for wrong answers (all modes)
+    for (const w of wrong) recordMistake(w.q.id);
+
+    setQuizResult({
+      mode: run.mode,
+      correct: finalCorrect,
+      total,
+      pct,
+      badge,
+      pillsGain,
+      xpGain,
+      elapsedMs,
+      bestText,
+      improvedBest,
+      wrong,
+      questions: run.questions,
+      answers,
+    });
+    setRunQuiz(null);
+    setSelected(null);
   }
 
   function answerQuiz(i: number) {
@@ -168,61 +357,58 @@ export default function QuizPage(): JSX.Element {
         return;
       }
 
-      // finish
-      const total = runQuiz.questions.length;
-      const perfect = nextCorrect === total;
-
-      // review wrong answers
-      const wrong: { q: QuizQuestion; chosen: number }[] = [];
-      for (let k = 0; k < total; k++) {
-        const qq = runQuiz.questions[k];
-        const chosen = answers[k];
-        if (chosen !== qq.answer) wrong.push({ q: qq, chosen });
-      }
-      setQuizReview(wrong);
-
-      // pills reward
-      let pillsGain = 0;
-      if (runQuiz.mode === "daily") {
-        const d = getDailyState();
-        // streak counts consecutive completed daily quizzes; reward uses the *new* streak for today
-        const nextStreak = d.status === "done" ? d.streak : (d.streak || 0) + 1;
-        pillsGain = calcDailyReward(nextCorrect, total, perfect, nextStreak);
-        setDailyState({ ...d, status: "done", streak: nextStreak });
-      } else if (runQuiz.mode === "weekly") {
-        pillsGain = calcWeeklyReward(nextCorrect, total, perfect);
-        const w = getWeeklyState();
-        setWeeklyState({ ...w, status: "done" });
-      } else {
-        // Simulazione Premium: niente reset, niente ricompense in pillole (serve per allenamento + review)
-        pillsGain = 0;
-      }
-
-      const xpGain =
-        runQuiz.mode === "sim"
-          ? 30 + nextCorrect * 2 + (perfect ? 15 : 0)
-          : 20 + nextCorrect * (runQuiz.mode === "daily" ? 6 : 8) + (perfect ? 20 : 0);
-
-      try {
-        const cur = Number(localStorage.getItem(LS.pills) || "0") || 0;
-        localStorage.setItem(LS.pills, String(cur + pillsGain));
-      } catch {}
-
-      addXp(xpGain);
-
-      const item: QuizHistoryItem = {
-        ts: Date.now(),
-        mode: runQuiz.mode,
-        correct: nextCorrect,
-        total,
-        byCategory: {},
-      };
-      pushHistory(item);
-
-      setQuizFeedback(`Quiz ${runQuiz.mode}: ${nextCorrect}/${total} • +${pillsGain} 💊 • +${xpGain} XP`);
-      setRunQuiz(null);
-      setSelected(null);
+      finishRun(runQuiz, answers, nextCorrect);
     }, 450);
+  }
+
+  // timer auto-finish (sim)
+  useEffect(() => {
+    if (!runQuiz) return;
+    if (!runQuiz.timerEnabled || !runQuiz.timeLimitMs) return;
+    const elapsed = nowTs - runQuiz.startTs;
+    if (elapsed < runQuiz.timeLimitMs) return;
+
+    // fill unanswered with -1 and finish
+    const answers = [...runQuiz.answers];
+    for (let k = 0; k < runQuiz.questions.length; k++) {
+      if (typeof answers[k] !== "number") answers[k] = -1;
+    }
+    let c = 0;
+    for (let k = 0; k < runQuiz.questions.length; k++) {
+      if (answers[k] === runQuiz.questions[k].answer) c++;
+    }
+    finishRun(runQuiz, answers, c);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nowTs, runQuiz]);
+
+  function toggleFav(id: string) {
+    const cur = new Set(favs);
+    if (cur.has(id)) cur.delete(id);
+    else cur.add(id);
+    const next = Array.from(cur);
+    setFavsState(next);
+    setFavs(next);
+  }
+
+  function startRetryMistakes() {
+    if (!quizResult) return;
+    const wrongIds = quizResult.wrong.map((w) => w.q.id);
+    if (!wrongIds.length) return;
+    const picked = pickMistakeReviewQuestions(QUIZ_BANK, Math.min(20, wrongIds.length), []);
+    // Ensure we prioritize the just-missed questions first
+    const byId = new Map(QUIZ_BANK.map((q) => [q.id, q] as const));
+    const ordered: QuizQuestion[] = [];
+    for (const id of wrongIds) {
+      const q = byId.get(id);
+      if (q) ordered.push(q);
+    }
+    // fill with picked (avoid duplicates)
+    const seen = new Set(ordered.map((q) => q.id));
+    for (const q of picked) {
+      if (ordered.length >= 20) break;
+      if (!seen.has(q.id)) ordered.push(q);
+    }
+    startQuiz("review", { questions: ordered });
   }
 
   return (
@@ -255,15 +441,23 @@ export default function QuizPage(): JSX.Element {
               <button type="button" onClick={() => startQuiz("weekly")} disabled={weekly.status === "done" || !!runQuiz} style={ghostBtn(weekly.status === "done" || !!runQuiz)}>
                 {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
               </button>
-            </div>            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+            </div>
+
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
               <button
                 type="button"
                 onClick={() => startQuiz("sim")}
                 disabled={!premium || !!runQuiz}
                 style={ghostBtn(!premium || !!runQuiz)}
               >
-                {premium ? "Simulazione 25 domande (Premium)" : "Simulazione 25 domande 🔒 Premium"}
+                {premium ? "Simulazione esame (20 domande)" : "Simulazione esame (20 domande) 🔒 Premium"}
               </button>
+              {premium && (
+                <label style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.92, fontWeight: 850, fontSize: 13 }}>
+                  <input type="checkbox" checked={simTimer} onChange={(e) => setSimTimer(e.target.checked)} />
+                  Timer (25 min) opzionale
+                </label>
+              )}
               {!premium && (
                 <div style={{ opacity: 0.72, fontSize: 12, fontWeight: 700 }}>
                   Attiva Premium dal profilo per sbloccare la simulazione completa + correzione errori.
@@ -276,7 +470,11 @@ export default function QuizPage(): JSX.Element {
             {runQuiz && (
               <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
                 <div style={{ fontWeight: 950 }}>
-                  {runQuiz.mode.toUpperCase()} • Domanda {runQuiz.idx + 1}/{runQuiz.questions.length}
+                  {runQuiz.mode === "review" ? "REVISIONE" : runQuiz.mode.toUpperCase()} • Domanda {runQuiz.idx + 1}/{runQuiz.questions.length}
+                  <span style={{ marginLeft: 8, opacity: 0.75, fontWeight: 900 }}>
+                    • Tempo: {fmtMSS(nowTs - runQuiz.startTs)}
+                    {runQuiz.timerEnabled && runQuiz.timeLimitMs ? ` • Rimasto: ${fmtMSS(Math.max(0, runQuiz.timeLimitMs - (nowTs - runQuiz.startTs)))}` : ""}
+                  </span>
                 </div>
                 <div style={{ marginTop: 6, opacity: 0.9, fontWeight: 850 }}>{runQuiz.questions[runQuiz.idx].q}</div>
 
@@ -312,26 +510,83 @@ export default function QuizPage(): JSX.Element {
               </div>
             )}
 
-            {quizFeedback && (
-              <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.06)", fontWeight: 850 }}>
-                {quizFeedback}
-              </div>
-            )}
-
-            {quizReview && quizReview.length > 0 && (
+            {quizResult && (
               <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
-                <div style={{ fontWeight: 950 }}>Risposte da rivedere</div>
-                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                  {quizReview.slice(0, 10).map((w, idx) => (
-                    <div key={idx} style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
-                      <div style={{ fontWeight: 900 }}>{w.q.q}</div>
-                      <div style={{ marginTop: 6, fontWeight: 800, opacity: 0.85 }}>
-                        La tua: {w.q.options[w.chosen] ?? "—"}
-                      </div>
-                      <div style={{ marginTop: 4, fontWeight: 900 }}>Corretta: {w.q.options[w.q.answer]}</div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 950, fontSize: 18 }}>Risultati</div>
+                    <div style={{ opacity: 0.8, fontWeight: 850, fontSize: 12 }}>
+                      {quizResult.mode === "review" ? "Revisione errori" : quizResult.mode.toUpperCase()} • {fmtMSS(quizResult.elapsedMs)}
                     </div>
-                  ))}
+                  </div>
+                  <div style={{ padding: "8px 12px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", fontWeight: 950 }}>
+                    {quizResult.badge.emoji} {quizResult.badge.label}
+                  </div>
                 </div>
+
+                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                    <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>Percentuale</div>
+                    <div style={{ fontSize: 28, fontWeight: 980 }}>{quizResult.pct}%</div>
+                    <div style={{ opacity: 0.8, fontWeight: 850 }}>{quizResult.correct}/{quizResult.total} corrette</div>
+                  </div>
+                  <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                    <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>Ricompense</div>
+                    <div style={{ fontWeight: 950, fontSize: 16 }}>+{quizResult.xpGain} XP</div>
+                    <div style={{ opacity: 0.9, fontWeight: 900 }}>
+                      {quizResult.mode === "sim" ? "+0 💊" : `+${quizResult.pillsGain} 💊`}
+                    </div>
+                    {quizResult.bestText && (
+                      <div style={{ marginTop: 6, fontWeight: 850, opacity: 0.8 }}>
+                        {quizResult.bestText} {quizResult.improvedBest ? "• Nuovo record!" : ""}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <button
+                    type="button"
+                    style={primaryBtn()}
+                    onClick={() => startQuiz(quizResult.mode === "review" ? "sim" : quizResult.mode)}
+                  >
+                    Riprova
+                  </button>
+                  <button type="button" style={ghostBtn(!quizResult.wrong.length)} disabled={!quizResult.wrong.length} onClick={startRetryMistakes}>
+                    Riprova solo errori
+                  </button>
+                </div>
+
+                {quizResult.wrong.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontWeight: 950 }}>Errori da rivedere</div>
+                    <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                      {quizResult.wrong.slice(0, 12).map((w, idx) => {
+                        const isFav = favs.includes(w.q.id);
+                        return (
+                          <div key={idx} style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                              <div style={{ fontWeight: 900 }}>{w.q.q}</div>
+                              <button
+                                type="button"
+                                onClick={() => toggleFav(w.q.id)}
+                                style={{ border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: "6px 10px", fontWeight: 950, cursor: "pointer" }}
+                                aria-label={isFav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+                              >
+                                {isFav ? "★" : "☆"}
+                              </button>
+                            </div>
+                            <div style={{ marginTop: 6, fontWeight: 800, opacity: 0.85 }}>
+                              La tua: {w.q.options[w.chosen] ?? "(non risposta)"}
+                            </div>
+                            <div style={{ marginTop: 4, fontWeight: 900 }}>Corretta: {w.q.options[w.q.answer]}</div>
+                            <div style={{ marginTop: 6, opacity: 0.82, fontWeight: 800, fontSize: 13 }}>💡 {w.q.explain}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
