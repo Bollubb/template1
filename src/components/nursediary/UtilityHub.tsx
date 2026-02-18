@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { incDailyCounter } from "@/features/progress/dailyCounters";
 import { useToast } from "./Toast";
+import { isPremium } from "@/features/profile/premium";
+import PremiumUpsellModal from "./PremiumUpsellModal";
 
 const LS = {
   favs: "nd_utility_favs",
@@ -47,6 +49,8 @@ function safeJson<T>(raw: string | null, fallback: T): T {
 export default function UtilityHub({ onBack }: { onBack: () => void }) {
   const toast = useToast();
   const [active, setActive] = useState<ToolId | null>(null);
+  const [upsellOpen, setUpsellOpen] = useState(false);
+  const [pendingTool, setPendingTool] = useState<ToolId | null>(null);
   const [favs, setFavs] = useState<ToolId[]>(() => {
     if (typeof window === "undefined") return [];
     return safeJson<ToolId[]>(localStorage.getItem(LS.favs), []);
@@ -141,7 +145,15 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
               <button
                 key={t.id}
                 type="button"
-                onClick={() => setActive(t.id)}
+                onClick={() => {
+                  // Premium-style upsell (no duplicate menus): Interactions has a much bigger DB in Boost.
+                  if (t.id === "interactions" && !isPremium()) {
+                    setPendingTool("interactions");
+                    setUpsellOpen(true);
+                    return;
+                  }
+                  setActive(t.id);
+                }}
                 style={{
                   textAlign: "left",
                   borderRadius: 18,
@@ -209,6 +221,28 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
           )}
         </div>
       )}
+
+      <PremiumUpsellModal
+        open={upsellOpen}
+        title="Interazioni farmacologiche — versione completa"
+        subtitle="Questa utility è offline e didattica. Con Boost sblocchi più farmaci, spiegazioni migliori e riferimenti rapidi."
+        bullets={["Database ampliato", "Motivo dell'interazione (chiaro e pratico)", "Salvataggi/cronologia più utile"]}
+        cta="Attiva Boost (demo)"
+        secondaryCta="Continua anteprima"
+        onSecondary={() => {
+          // open a limited preview
+          if (pendingTool) setActive(pendingTool);
+          setPendingTool(null);
+          setUpsellOpen(false);
+        }}
+        onClose={() => {
+          // If user activated Boost via CTA, open the pending tool automatically.
+          const canOpen = pendingTool && isPremium();
+          setUpsellOpen(false);
+          if (canOpen) setActive(pendingTool);
+          setPendingTool(null);
+        }}
+      />
     </div>
   );
 }
@@ -216,7 +250,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
 function ToolRenderer({ id, last, onSave, onUsed }: { id: ToolId; last: UtilityHistoryItem | null; onSave: (item: UtilityHistoryItem) => void; onUsed: () => void }) {
   switch (id) {
     case "interactions":
-      return <ToolInteractions onUsed={onUsed} />;
+      return <ToolInteractions onUsed={onUsed} premium={isPremium()} />;
     case "mlh":
       return <ToolMlH last={last} onSave={onSave} onUsed={onUsed} />;
     case "gtt":
@@ -238,7 +272,7 @@ function ToolRenderer({ id, last, onSave, onUsed }: { id: ToolId; last: UtilityH
  * Educational-only mini interaction checker (offline).
  * It does NOT replace a drug database / SmPC.
  */
-function ToolInteractions({ onUsed }: { onUsed: () => void }) {
+function ToolInteractions({ onUsed, premium }: { onUsed: () => void; premium: boolean }) {
   type Severity = "ok" | "caution" | "avoid";
   type Entry = {
     id: string;
@@ -387,12 +421,15 @@ function ToolInteractions({ onUsed }: { onUsed: () => void }) {
     { id: "qt", name: "Farmaci che allungano QT", group: "Sicurezza", rules: [{ key: "amiodarone", sev: "avoid", why: "somma effetti sul QT." }, { key: "macrolidi", sev: "avoid", why: "somma effetti sul QT." }] },
   ];
 
+  // Keep the free version as an educational preview.
+  const effectiveDB = premium ? DB : DB.slice(0, 8);
+
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Entry | null>(null);
 
   const options = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = DB.filter((e) => {
+    const list = effectiveDB.filter((e) => {
       if (!q) return true;
       const hay = `${e.name} ${e.group} ${(e.also || []).join(" ")}`.toLowerCase();
       return hay.includes(q) || e.id.includes(q);
@@ -403,7 +440,7 @@ function ToolInteractions({ onUsed }: { onUsed: () => void }) {
 
   const result = useMemo(() => {
     if (!selected) return null;
-    const rel = DB
+    const rel = effectiveDB
       .filter((x) => x.id !== selected.id)
       .map((other) => {
         // find rule by exact id or by group keyword

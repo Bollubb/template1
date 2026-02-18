@@ -7,6 +7,8 @@ export default function PremiumUpsellModal({
   subtitle = "Più progressi, più valore didattico. Nessun paywall aggressivo.",
   bullets = ["2× XP su quiz", "Simulazione concorso estesa", "Analytics avanzate (categorie deboli)"],
   cta = "Attiva Boost (demo)",
+  secondaryCta,
+  onSecondary,
   onClose,
 }: {
   open: boolean;
@@ -14,6 +16,8 @@ export default function PremiumUpsellModal({
   subtitle?: string;
   bullets?: string[];
   cta?: string;
+  secondaryCta?: string;
+  onSecondary?: (() => void) | null;
   onClose: () => void;
 }) {
   if (!open) return null;
@@ -113,7 +117,10 @@ export default function PremiumUpsellModal({
           </button>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              if (onSecondary) onSecondary();
+              else onClose();
+            }}
             style={{
               flex: "1 1 160px",
               borderRadius: 18,
@@ -125,7 +132,7 @@ export default function PremiumUpsellModal({
               cursor: "pointer",
             }}
           >
-            Non ora
+            {secondaryCta || "Non ora"}
           </button>
         </div>
 
