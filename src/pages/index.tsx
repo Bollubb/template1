@@ -21,7 +21,6 @@ const LS = {
   favorites: "nd_favorites",
   read: "nd_read",
   pills: "nd_pills",
-  packCost: "nd_pack_cost",
 } as const;
 
 export default function Home(): JSX.Element {
@@ -57,8 +56,7 @@ export default function Home(): JSX.Element {
 
   // Cards economy (base)
   const [pills, setPills] = useState<number>(0);
-  // Pack price must be consistent across devices.
-  const [packCost, setPackCost] = useState<number>(40);
+  // Pack price is centralized (see features/cards/economy.ts)
 
   const onToggleFavorite = (id: string) => {
     setFavoriteIds((prev) => {
@@ -114,10 +112,6 @@ export default function Home(): JSX.Element {
       const rawPillsInit = localStorage.getItem(LS.pills);
       if (rawPillsInit != null) setPills(Number(rawPillsInit) || 0);
 
-      // pack cost (force a consistent default; ignore old buggy values)
-      const rawCostInit = localStorage.getItem(LS.packCost);
-      const parsed = rawCostInit != null ? Number(rawCostInit) : NaN;
-      setPackCost(Number.isFinite(parsed) && parsed > 0 ? parsed : 40);
     } catch (e) {
       console.error("Errore caricamento storage", e);
     }
@@ -149,11 +143,10 @@ export default function Home(): JSX.Element {
     try {
       if (typeof window === "undefined") return;
       localStorage.setItem(LS.pills, String(pills));
-      localStorage.setItem(LS.packCost, String(packCost));
     } catch (e) {
       console.error("Errore salvataggio economia carte", e);
     }
-  }, [pills, packCost]);
+  }, [pills]);
 
   // Categories list (from items)
   const categorie = useMemo(() => {
@@ -393,7 +386,7 @@ export default function Home(): JSX.Element {
       {/* CARTE */}
       {activeTab === "carte" && (
         <Section>
-          <CarteTab pills={pills} setPills={setPills} packCost={packCost} />
+          <CarteTab pills={pills} setPills={setPills} />
         </Section>
       )}
 

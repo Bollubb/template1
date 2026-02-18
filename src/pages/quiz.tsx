@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import Page from "../layouts/Page";
 import Section from "../layouts/Section";
 import NurseBottomNav from "../components/nursediary/NurseBottomNav";
+import PremiumUpsellModal from "@/components/nursediary/PremiumUpsellModal";
 
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
 import {
@@ -176,6 +177,7 @@ export default function QuizPage(): JSX.Element {
   const [dailyLeft, setDailyLeft] = useState(0);
   const [weeklyLeft, setWeeklyLeft] = useState(0);
   const [premium, setPremium] = useState(false);
+  const [premiumModalOpen, setPremiumModalOpen] = useState(false);
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
@@ -446,9 +448,15 @@ export default function QuizPage(): JSX.Element {
             <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
               <button
                 type="button"
-                onClick={() => startQuiz("sim")}
-                disabled={!premium || !!runQuiz}
-                style={ghostBtn(!premium || !!runQuiz)}
+                onClick={() => {
+                  if (!premium) {
+                    setPremiumModalOpen(true);
+                    return;
+                  }
+                  startQuiz("sim");
+                }}
+                disabled={!!runQuiz}
+                style={ghostBtn(!!runQuiz)}
               >
                 {premium ? "Simulazione esame (20 domande)" : "Simulazione esame (20 domande) 🔒 Premium"}
               </button>
@@ -594,6 +602,8 @@ export default function QuizPage(): JSX.Element {
       </Section>
 
       <NurseBottomNav active="didattica" onChange={(t) => { void goTab(t); }} />
+
+      <PremiumUpsellModal open={premiumModalOpen} onClose={() => setPremiumModalOpen(false)} context="quiz" />
     </Page>
   );
 }
