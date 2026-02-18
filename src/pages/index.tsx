@@ -10,10 +10,9 @@ import { ContentCard } from "../components/nursediary/ContentCard";
 import HomeDashboard from "../components/nursediary/HomeDashboard";
 import { CarteTab } from "../components/nursediary/CarteTab";
 import ProfileTab from "../components/nursediary/ProfileTab";
+import { getAccountCreated } from "@/features/profile/profileStore";
 import NurseBottomNav, { type NurseTab } from "../components/nursediary/NurseBottomNav";
 import ProfileOnboardingModal from "../components/nursediary/ProfileOnboardingModal";
-
-import { getAccountCreated } from "@/features/profile/profileStore";
 
 import type { ContentItem } from "../types/nursediary/types";
 import { fetchContentItems } from "../utils/nursediary/contentCsv";
@@ -30,11 +29,8 @@ const LS = {
 export default function Home(): JSX.Element {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<NurseTab>("home");
+  const [needsProfile, setNeedsProfile] = useState<boolean>(false);
   const headerOverride = useMemo(() => undefined, []);
-
-  // First-run: require creation of a local profile (no backend).
-  // We show a blocking modal and then continue to Home.
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   // Optional deep-link: /?tab=home|didattica|carte|profilo
   useEffect(() => {
@@ -45,17 +41,30 @@ export default function Home(): JSX.Element {
     }
   }, [router.isReady, router.query.tab]);
 
+
+  
+  // First-run: require creating a local profile (inside Profilo tab)
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      setNeedsOnboarding(!getAccountCreated());
+      setNeedsProfile(!getAccountCreated());
     } catch {
-      setNeedsOnboarding(false);
+      setNeedsProfile(false);
     }
   }, []);
 
+  // If profile is required, keep the user in the Profilo tab
+  useEffect(() => {
+    if (!needsProfile) return;
+    setActiveTab("profilo");
+  }, [needsProfile]);
 
-  // Didattica data
+  const completeOnboarding = () => {
+    setNeedsProfile(false);
+    setActiveTab("home");
+  };
+
+// Didattica data
   const [items, setItems] = useState<ContentItem[]>([]);
   const [categoria, setCategoria] = useState("Tutte");
 
@@ -264,6 +273,7 @@ export default function Home(): JSX.Element {
 
   return (
     <Page title="Home" headerOverride={headerOverride}>
+      <ProfileOnboardingModal open={needsProfile} onDone={completeOnboarding} />
       <Head>
         <meta name="description" content="NurseDiary – didattica, quiz e carte formative" />
       </Head>
@@ -414,24 +424,23 @@ export default function Home(): JSX.Element {
       {/* PROFILO */}
       {activeTab === "profilo" && (
         <Section>
-          <ProfileTab pills={pills} setPills={setPills} totalContent={items.length} />
+          <ProfileTab
+            pills={pills}
+            setPills={setPills}
+            totalContent={items.length}
+            onAccountCreated={completeOnboarding}
+          />
         </Section>
-      )}
-
-      {/* ✅ First-run modal (local profile). Blocks navigation until created. */}
-      {needsOnboarding && (
-        <ProfileOnboardingModal
-          onCreated={() => {
-            setNeedsOnboarding(false);
-            setActiveTab("home");
-          }}
-        />
       )}
 
       <NurseBottomNav
         active={activeTab}
+        locked={needsProfile}
         onChange={(t) => {
-          if (needsOnboarding) return;
+          if (needsProfile && t !== "profilo") {
+            setActiveTab("profilo");
+            return;
+          }
           setActiveTab(t);
         }}
       />
