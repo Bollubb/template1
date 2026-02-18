@@ -4,6 +4,8 @@ import { NURSE_CARDS, type CardRarity, type NurseCard } from "../../features/car
 import { PACK_DROP, getDuplicates } from "../../features/cards/cards.logic";
 import { incDailyCounter } from "@/features/progress/dailyCounters";
 import { useToast } from "./Toast";
+import { isPremium } from "@/features/profile/premium";
+import { PACK_COST_BASE, PACK_COST_PREMIUM, PREMIUM_EXTRA_ROLLS } from "@/features/cards/economy";
 
 import { CardCollection, type CardCollectionItem } from "./CardCollection";
 import { CardModal, type CardModalItem } from "./CardModal";
@@ -104,13 +106,13 @@ function openPackWithPity(cards: NurseCard[], pity: PityState, rng: () => number
 export function CarteTab({
   pills,
   setPills,
-  packCost,
 }: {
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
-  packCost: number;
 }) {
   const toast = useToast();
+
+  const [premium, setPremium] = useState(false);
 
   const [owned, setOwned] = useState<Record<string, number>>({});
   const [opening, setOpening] = useState(false);
@@ -130,6 +132,8 @@ export function CarteTab({
   // bootstrap
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    setPremium(isPremium());
 
     const col = safeJson<Record<string, number>>(localStorage.getItem(LS.collection), {});
     setOwned(col);
@@ -211,7 +215,8 @@ export function CarteTab({
   }
 
   function startOpenPaid() {
-    if (opening || pills < packCost) return;
+    const cost = PACK_COST_BASE;
+    if (opening || pills < cost) return;
     setOpening(true);
 
     window.setTimeout(() => {
@@ -220,9 +225,42 @@ export function CarteTab({
       setLastPull(res.pulls);
       setPity(res.next);
 
-      setPills((p) => p - packCost);
+      setPills((p) => p - cost);
       incDailyCounter("nd_daily_packs_opened", 1);
-      toast.push(`Bustina aperta (-${packCost} 💊)`, "info");
+      toast.push(`Bustina aperta (-${cost} 💊)`, "info");
+
+      setOpening(false);
+    }, 850);
+  }
+
+  function startOpenPremium() {
+    const cost = PACK_COST_PREMIUM;
+    if (!premium) return;
+    if (opening || pills < cost) return;
+    setOpening(true);
+
+    window.setTimeout(() => {
+      // Premium pack = standard opening + a small extra roll (conservative)
+      let allPulls: NurseCard[] = [];
+      let nextPity = pity;
+
+      const first = openPackWithPity(NURSE_CARDS, nextPity);
+      allPulls = allPulls.concat(first.pulls);
+      nextPity = first.next;
+
+      for (let i = 0; i < PREMIUM_EXTRA_ROLLS; i += 1) {
+        const extra = openPackWithPity(NURSE_CARDS, nextPity);
+        allPulls = allPulls.concat(extra.pulls);
+        nextPity = extra.next;
+      }
+
+      addToCollection(allPulls);
+      setLastPull(allPulls);
+      setPity(nextPity);
+
+      setPills((p) => p - cost);
+      incDailyCounter("nd_daily_packs_opened", 1);
+      toast.push(`Bustina Premium aperta (-${cost} 💊)`, "info");
 
       setOpening(false);
     }, 850);
@@ -296,9 +334,15 @@ export function CarteTab({
 
         {/* Pack actions */}
         <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" disabled={opening || pills < packCost} onClick={startOpenPaid} style={btnPrimary(opening || pills < packCost, "#0ea5e9", "#020617")}>
-            Apri bustina ({packCost} 💊)
+          <button type="button" disabled={opening || pills < PACK_COST_BASE} onClick={startOpenPaid} style={btnPrimary(opening || pills < PACK_COST_BASE, "#0ea5e9", "#020617")}>
+            Apri bustina ({PACK_COST_BASE} 💊)
           </button>
+
+          {premium && (
+            <button type="button" disabled={opening || pills < PACK_COST_PREMIUM} onClick={startOpenPremium} style={btnPrimary(opening || pills < PACK_COST_PREMIUM, "#f59e0b", "#020617")}>
+              Apri Premium ({PACK_COST_PREMIUM} 💊)
+            </button>
+          )}
 
           <button type="button" disabled={opening || freePacks <= 0} onClick={startOpenFree} style={btnPrimary(opening || freePacks <= 0, "#22c55e", "#052e16")}>
             Apri GRATIS ({freePacks})

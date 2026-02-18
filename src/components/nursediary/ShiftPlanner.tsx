@@ -143,6 +143,9 @@ export default function ShiftPlanner(): JSX.Element {
   const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(new Date()));
   const [map, setMap] = useState<Record<string, ShiftItem>>({});
   const [editing, setEditing] = useState<{ key: string; open: boolean }>({ key: "", open: false });
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [patternOpen, setPatternOpen] = useState(false);
+  const [pattern, setPattern] = useState<ShiftCode[]>(["M", "M", "P", "P", "N", "R", "R"]);
 
   // load
   useEffect(() => {
@@ -203,6 +206,54 @@ export default function ShiftPlanner(): JSX.Element {
   const openEdit = (key: string) => setEditing({ key, open: true });
   const closeEdit = () => setEditing({ key: "", open: false });
 
+  const weekStartMonday = (d: Date) => {
+    const js = d.getDay(); // 0 Sun
+    const delta = (js + 6) % 7; // Mon=0
+    const x = new Date(d);
+    x.setDate(d.getDate() - delta);
+    x.setHours(0, 0, 0, 0);
+    return x;
+  };
+
+  const applyPatternToVisibleMonth = () => {
+    // Apply a 7-day pattern across the visible month, starting from the first day of month.
+    const first = new Date(monthStart);
+    for (let day = 1; day <= monthEnd.getDate(); day += 1) {
+      const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
+      const wd = (d.getDay() + 6) % 7; // Mon=0
+      const code = pattern[wd] || "";
+      if (code) setShift(ymd(d), code);
+    }
+  };
+
+  const copyPreviousWeekToCurrent = () => {
+    const today = new Date();
+    const thisWeek = weekStartMonday(today);
+    const prevWeek = new Date(thisWeek);
+    prevWeek.setDate(prevWeek.getDate() - 7);
+
+    const updates: Array<[string, ShiftCode]> = [];
+    for (let i = 0; i < 7; i += 1) {
+      const src = new Date(prevWeek);
+      src.setDate(prevWeek.getDate() + i);
+      const dst = new Date(thisWeek);
+      dst.setDate(thisWeek.getDate() + i);
+      const srcKey = ymd(src);
+      const dstKey = ymd(dst);
+      const code = map[srcKey]?.code || "";
+      updates.push([dstKey, code]);
+    }
+
+    setMap((m) => {
+      const next = { ...m };
+      updates.forEach(([k, c]) => {
+        if (!c) delete next[k];
+        else next[k] = { ...(next[k] || {}), code: c };
+      });
+      return next;
+    });
+  };
+
   return (
     <div style={card()}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -219,6 +270,9 @@ export default function ShiftPlanner(): JSX.Element {
           </button>
           <button type="button" onClick={() => setViewMonth(addMonths(viewMonth, 1))} style={smallBtn()}>
             ›
+          </button>
+          <button type="button" onClick={() => setToolsOpen(true)} style={smallBtn()} aria-label="Opzioni turni">
+            ⋯
           </button>
         </div>
       </div>
@@ -359,6 +413,105 @@ export default function ShiftPlanner(): JSX.Element {
 
             <div style={{ marginTop: 10, opacity: 0.6, fontSize: 11, fontWeight: 700 }}>
               Suggerimento: usa <b>M</b>/<b>P</b>/<b>N</b> per i turni, <b>R</b> riposo, <b>F</b> ferie.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toolsOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setToolsOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.72)", display: "grid", placeItems: "center", padding: 18, zIndex: 60 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "min(520px, 100%)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(15,23,42,0.96)", boxShadow: "0 20px 60px rgba(0,0,0,0.55)", padding: 16 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+              <div>
+                <div style={{ fontWeight: 950, fontSize: 16 }}>Opzioni turni</div>
+                <div style={{ marginTop: 4, opacity: 0.75, fontWeight: 800, fontSize: 12 }}>Azioni rapide senza aggiungere menu.</div>
+              </div>
+              <button type="button" onClick={() => setToolsOpen(false)} style={smallBtn()} aria-label="Chiudi">✕</button>
+            </div>
+
+            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+              <button type="button" onClick={() => { copyPreviousWeekToCurrent(); setToolsOpen(false); }} style={smallBtn()}>
+                Copia settimana precedente → questa
+              </button>
+              <button type="button" onClick={() => { setToolsOpen(false); setPatternOpen(true); }} style={smallBtn()}>
+                Applica schema settimanale al mese
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {patternOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPatternOpen(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(2,6,23,0.72)", display: "grid", placeItems: "center", padding: 18, zIndex: 60 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: "min(560px, 100%)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(15,23,42,0.96)", boxShadow: "0 20px 60px rgba(0,0,0,0.55)", padding: 16 }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+              <div>
+                <div style={{ fontWeight: 950, fontSize: 16 }}>Schema settimanale</div>
+                <div style={{ marginTop: 4, opacity: 0.75, fontWeight: 800, fontSize: 12 }}>Si applica a tutto il mese visibile (lun→dom).</div>
+              </div>
+              <button type="button" onClick={() => setPatternOpen(false)} style={smallBtn()} aria-label="Chiudi">✕</button>
+            </div>
+
+            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
+                {(["L", "M", "M", "G", "V", "S", "D"] as const).map((d, i) => (
+                  <div key={d + i} style={{ opacity: 0.75, fontWeight: 900, fontSize: 12, textAlign: "center" }}>{d}</div>
+                ))}
+                {pattern.map((c, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      const order: ShiftCode[] = ["", "M", "P", "N", "R", "F"]; // cycle
+                      const idx = Math.max(0, order.indexOf(c));
+                      const next = order[(idx + 1) % order.length];
+                      setPattern((p) => {
+                        const n = [...p] as ShiftCode[];
+                        n[i] = next;
+                        return n;
+                      });
+                    }}
+                    style={{
+                      ...smallBtn(),
+                      padding: "10px 0",
+                      textAlign: "center",
+                      fontWeight: 950,
+                      background: c ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)",
+                      color: c ? shiftTextColor(c) : "rgba(255,255,255,0.8)",
+                    }}
+                  >
+                    {c || "–"}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <button type="button" onClick={() => { setPattern(["M", "M", "P", "P", "N", "R", "R"]); }} style={smallBtn()}>
+                  Preset: MM-PP-N-RR
+                </button>
+                <button type="button" onClick={() => { setPattern(["M", "P", "N", "R", "R", "", ""]); }} style={smallBtn()}>
+                  Preset: M-P-N-RR
+                </button>
+                <button type="button" onClick={() => { applyPatternToVisibleMonth(); setPatternOpen(false); }} style={{ ...smallBtn(), background: "rgba(34,197,94,0.18)", border: "1px solid rgba(34,197,94,0.30)" }}>
+                  Applica al mese
+                </button>
+              </div>
             </div>
           </div>
         </div>

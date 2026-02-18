@@ -3,6 +3,7 @@ import { setPremium } from "@/features/profile/premium";
 
 export default function PremiumUpsellModal({
   open,
+  context,
   title = "Attiva Boost",
   subtitle = "Più progressi, più valore didattico. Nessun paywall aggressivo.",
   bullets = ["2× XP su quiz", "Simulazione concorso estesa", "Analytics avanzate (categorie deboli)"],
@@ -12,6 +13,7 @@ export default function PremiumUpsellModal({
   onClose,
 }: {
   open: boolean;
+  context?: "quiz" | "utility" | "cards" | "generic";
   title?: string;
   subtitle?: string;
   bullets?: string[];
@@ -21,6 +23,35 @@ export default function PremiumUpsellModal({
   onClose: () => void;
 }) {
   if (!open) return null;
+
+  const resolved = (() => {
+    const isDefaultTitle = title === "Attiva Boost";
+    const isDefaultSubtitle = subtitle === "Più progressi, più valore didattico. Nessun paywall aggressivo.";
+    const isDefaultBullets = Array.isArray(bullets) && bullets.join("|") === ["2× XP su quiz", "Simulazione concorso estesa", "Analytics avanzate (categorie deboli)"].join("|");
+
+    if (context === "quiz") {
+      return {
+        title: isDefaultTitle ? "Sblocca la Simulazione" : title,
+        subtitle: isDefaultSubtitle ? "Allenati in modo serio: simulazione completa + riprova errori." : subtitle,
+        bullets: isDefaultBullets ? ["Simulazione esame (20 domande)", "Riprova solo errori", "2× XP sui quiz"] : bullets,
+      };
+    }
+    if (context === "utility") {
+      return {
+        title: isDefaultTitle ? "Sblocca strumenti avanzati" : title,
+        subtitle: isDefaultSubtitle ? "Anteprima gratuita, poi accesso completo con Boost." : subtitle,
+        bullets: isDefaultBullets ? ["Interazioni farmacologiche estese", "Ricerca più rapida", "2× XP"] : bullets,
+      };
+    }
+    if (context === "cards") {
+      return {
+        title: isDefaultTitle ? "Boost carte" : title,
+        subtitle: isDefaultSubtitle ? "Più progressi e qualche extra nello shop." : subtitle,
+        bullets: isDefaultBullets ? ["Bustina Premium", "2× XP", "Reward milestone migliorati"] : bullets,
+      };
+    }
+    return { title, subtitle, bullets };
+  })();
 
   return (
     <div
@@ -51,8 +82,8 @@ export default function PremiumUpsellModal({
       >
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontWeight: 950, fontSize: 18, color: "rgba(255,255,255,0.95)" }}>{title}</div>
-            <div style={{ marginTop: 6, fontWeight: 750, fontSize: 13, color: "rgba(255,255,255,0.72)" }}>{subtitle}</div>
+            <div style={{ fontWeight: 950, fontSize: 18, color: "rgba(255,255,255,0.95)" }}>{resolved.title}</div>
+            <div style={{ marginTop: 6, fontWeight: 750, fontSize: 13, color: "rgba(255,255,255,0.72)" }}>{resolved.subtitle}</div>
           </div>
           <button
             type="button"
@@ -73,7 +104,7 @@ export default function PremiumUpsellModal({
         </div>
 
         <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-          {bullets.map((b, i) => (
+          {resolved.bullets.map((b, i) => (
             <div
               key={i}
               style={{
