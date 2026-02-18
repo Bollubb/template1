@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import { computeLevel, getXp } from "@/features/progress/xp";
+import ShiftPlanner from "./ShiftPlanner";
 
 type HomeDashboardProps = {
   onGoToCards: () => void;
@@ -173,6 +174,8 @@ export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProf
           </button>
         </div>
       </div>
+
+      <ShiftPlanner />
     </div>
   );
 }
