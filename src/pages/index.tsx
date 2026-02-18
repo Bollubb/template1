@@ -10,9 +10,7 @@ import { ContentCard } from "../components/nursediary/ContentCard";
 import HomeDashboard from "../components/nursediary/HomeDashboard";
 import { CarteTab } from "../components/nursediary/CarteTab";
 import ProfileTab from "../components/nursediary/ProfileTab";
-import { getAccountCreated } from "@/features/profile/profileStore";
 import NurseBottomNav, { type NurseTab } from "../components/nursediary/NurseBottomNav";
-import ProfileOnboardingModal from "../components/nursediary/ProfileOnboardingModal";
 
 import type { ContentItem } from "../types/nursediary/types";
 import { fetchContentItems } from "../utils/nursediary/contentCsv";
@@ -29,7 +27,6 @@ const LS = {
 export default function Home(): JSX.Element {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<NurseTab>("home");
-  const [needsProfile, setNeedsProfile] = useState<boolean>(false);
   const headerOverride = useMemo(() => undefined, []);
 
   // Optional deep-link: /?tab=home|didattica|carte|profilo
@@ -42,29 +39,7 @@ export default function Home(): JSX.Element {
   }, [router.isReady, router.query.tab]);
 
 
-  
-  // First-run: require creating a local profile (inside Profilo tab)
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      setNeedsProfile(!getAccountCreated());
-    } catch {
-      setNeedsProfile(false);
-    }
-  }, []);
-
-  // If profile is required, keep the user in the Profilo tab
-  useEffect(() => {
-    if (!needsProfile) return;
-    setActiveTab("profilo");
-  }, [needsProfile]);
-
-  const completeOnboarding = () => {
-    setNeedsProfile(false);
-    setActiveTab("home");
-  };
-
-// Didattica data
+  // Didattica data
   const [items, setItems] = useState<ContentItem[]>([]);
   const [categoria, setCategoria] = useState("Tutte");
 
@@ -82,6 +57,7 @@ export default function Home(): JSX.Element {
 
   // Cards economy (base)
   const [pills, setPills] = useState<number>(0);
+  // Pack price must be consistent across devices.
   const [packCost, setPackCost] = useState<number>(40);
 
   const onToggleFavorite = (id: string) => {
@@ -138,9 +114,10 @@ export default function Home(): JSX.Element {
       const rawPillsInit = localStorage.getItem(LS.pills);
       if (rawPillsInit != null) setPills(Number(rawPillsInit) || 0);
 
-      // pack cost
+      // pack cost (force a consistent default; ignore old buggy values)
       const rawCostInit = localStorage.getItem(LS.packCost);
-      if (rawCostInit != null) setPackCost(Number(rawCostInit) || 30);
+      const parsed = rawCostInit != null ? Number(rawCostInit) : NaN;
+      setPackCost(Number.isFinite(parsed) && parsed > 0 ? parsed : 40);
     } catch (e) {
       console.error("Errore caricamento storage", e);
     }
@@ -273,7 +250,6 @@ export default function Home(): JSX.Element {
 
   return (
     <Page title="Home" headerOverride={headerOverride}>
-      <ProfileOnboardingModal open={needsProfile} onDone={completeOnboarding} />
       <Head>
         <meta name="description" content="NurseDiary – didattica, quiz e carte formative" />
       </Head>
@@ -424,26 +400,11 @@ export default function Home(): JSX.Element {
       {/* PROFILO */}
       {activeTab === "profilo" && (
         <Section>
-          <ProfileTab
-            pills={pills}
-            setPills={setPills}
-            totalContent={items.length}
-            onAccountCreated={completeOnboarding}
-          />
+          <ProfileTab pills={pills} setPills={setPills} totalContent={items.length} />
         </Section>
       )}
 
-      <NurseBottomNav
-        active={activeTab}
-        locked={needsProfile}
-        onChange={(t) => {
-          if (needsProfile && t !== "profilo") {
-            setActiveTab("profilo");
-            return;
-          }
-          setActiveTab(t);
-        }}
-      />
+      <NurseBottomNav active={activeTab} onChange={setActiveTab} />
     </Page>
   );
 }
