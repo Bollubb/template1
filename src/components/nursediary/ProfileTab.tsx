@@ -1009,25 +1009,7 @@ export default function ProfileTab({
           Completa uno step, riscotta la reward, poi si sblocca lo step successivo (più difficile).
         </div>
 
-        <MissionHub
-          dayKey={dayKey}
-          weekKey={weekKey}
-          dailyLeft={dailyLeft}
-          weeklyLeft={weeklyLeft}
-          getClaimed={getClaimed}
-          setClaimed={setClaimed}
-          onGrant={(reward, meta) => {
-            const pills = reward.pills ?? 0;
-            if (pills) setPills((p) => p + pills);
-            if (reward.xp) {
-              setXp((x) => x + reward.xp!);
-              addXpGlobal(reward.xp!);
-              toast.push(`+${reward.xp} XP`, "success");
-            }
-            if (reward.pack) setFreePacks((v) => v + reward.pack!);
-            toast.push(`Reward riscattata: +${pills} 💊`, "success");
-          }}
-        />
+        <MissionHub dailyLeft={dailyLeft} weeklyLeft={weeklyLeft} />
       </div>
       )}
 
