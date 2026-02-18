@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useToast } from "./Toast";
 
 type ShiftCode = "M" | "P" | "N" | "R" | "F" | ""; // Mattina, Pomeriggio, Notte, Riposo, Ferie, empty
 
@@ -112,7 +111,6 @@ function smallBtn(): React.CSSProperties {
 }
 
 export default function ShiftPlanner(): JSX.Element {
-  const toast = useToast();
   const [todayKey, setTodayKey] = useState<string>("");
   const [viewMonth, setViewMonth] = useState<Date>(() => startOfMonth(new Date()));
   const [map, setMap] = useState<Record<string, ShiftItem>>({});
@@ -174,7 +172,6 @@ export default function ShiftPlanner(): JSX.Element {
       }
       return next;
     });
-    toast.push(`Turno ${code ? codeLong(code) : "rimosso"} per ${key}`, "success", { duration: 2600 });
   };
 
   const openEdit = (key: string) => setEditing({ key, open: true });
@@ -205,7 +202,8 @@ export default function ShiftPlanner(): JSX.Element {
 
       <div style={{ marginTop: 10, fontWeight: 950, textTransform: "capitalize", opacity: 0.92 }}>{monthLabel(viewMonth)}</div>
 
-      <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
+      <div style={{ marginTop: 10, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 6 }}>
         {["L", "M", "M", "G", "V", "S", "D"].map((d) => (
           <div key={d} style={{ fontSize: 11, fontWeight: 950, opacity: 0.75, textAlign: "center" }}>
             {d}
@@ -227,28 +225,29 @@ export default function ShiftPlanner(): JSX.Element {
               disabled={!key}
               style={{
                 height: 46,
+                width: "100%",
+                minWidth: 0,
                 borderRadius: 14,
                 border: isToday ? "1px solid rgba(56,189,248,0.60)" : "1px solid rgba(255,255,255,0.10)",
                 background: key ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.02)",
                 color: "rgba(255,255,255,0.92)",
                 padding: 8,
                 cursor: key ? "pointer" : "default",
-                display: "grid",
-                alignContent: "space-between",
-                justifyItems: "start",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
                 boxShadow: isToday ? "0 0 0 3px rgba(56,189,248,0.10)" : "none",
                 opacity: key ? 1 : 0.35,
+                boxSizing: "border-box",
               }}
               aria-label={key ? `Imposta turno ${key}` : "Vuoto"}
             >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
-                <div style={{ fontWeight: 950, fontSize: 12, opacity: 0.95 }}>{day || ""}</div>
-                {code ? <div style={pillStyle(code)}>{codeLabel(code)}</div> : <div style={{ fontSize: 11, opacity: 0.35 }}>+</div>}
-              </div>
-              <div style={{ fontSize: 10, opacity: 0.60 }}>{code ? codeLong(code) : ""}</div>
+              <div style={{ fontWeight: 950, fontSize: 12, opacity: 0.95 }}>{day || ""}</div>
+              {code ? <div style={pillStyle(code)}>{codeLabel(code)}</div> : <div style={{ fontSize: 11, opacity: 0.35 }}>+</div>}
             </button>
           );
         })}
+        </div>
       </div>
 
       {/* Edit modal */}
