@@ -58,18 +58,21 @@ function card(): React.CSSProperties {
 
 function pillStyle(code: ShiftCode): React.CSSProperties {
   const base: React.CSSProperties = {
-    display: "inline-flex",
+    display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 22,
-    padding: "2px 6px",
+    width: 22,
+    height: 22,
     borderRadius: 999,
     fontSize: 11,
     fontWeight: 950,
     border: "1px solid rgba(255,255,255,0.14)",
     background: "rgba(255,255,255,0.06)",
     color: "rgba(255,255,255,0.9)",
-    lineHeight: 1.1,
+    lineHeight: 1,
+    padding: 0,
+    letterSpacing: 0.2,
+    boxSizing: "border-box",
   };
 
   if (code === "M") return { ...base, background: "rgba(56,189,248,0.18)" }; // morning

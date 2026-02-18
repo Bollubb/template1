@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { getCareer } from "@/features/career/career";
 
 import { useToast } from "./Toast";
 import MissionHub from "./MissionHub";
 import Leaderboard, { type PlayerCard } from "./Leaderboard";
 import ProfileCardModal from "./ProfileCardModal";
+import EditProfileSheet from "./EditProfileSheet";
 import { addXp as addXpGlobal, getWeeklyXpMap } from "@/features/progress/xp";
 import { getLocalProfile, saveLocalProfile, getAvatar as getAvatarLS, setAvatar as setAvatarLS, getAccountCreated as getAccountCreatedLS, setAccountCreated as setAccountCreatedLS } from "@/features/profile/profileStore";
 import { getDailyCounter, incDailyCounter, setDailyFlag, getDailyFlag } from "@/features/progress/dailyCounters";
@@ -68,25 +69,6 @@ function safeJson<T>(raw: string | null, fallback: T): T {
     return fallback;
   }
 }
-
-function svgAvatar(bg: string, emoji: string) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256">
-  <rect width="256" height="256" rx="64" fill="${bg}"/>
-  <text x="50%" y="56%" text-anchor="middle" font-size="120" font-family="Apple Color Emoji,Segoe UI Emoji,Noto Color Emoji" dominant-baseline="middle">${emoji}</text>
-</svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
-const AVATAR_PRESETS: { label: string; data: string }[] = [
-  { label: "🩺", data: svgAvatar("#0ea5e9", "🩺") },
-  { label: "💉", data: svgAvatar("#22c55e", "💉") },
-  { label: "🫀", data: svgAvatar("#ef4444", "🫀") },
-  { label: "🧠", data: svgAvatar("#a855f7", "🧠") },
-  { label: "📚", data: svgAvatar("#f59e0b", "📚") },
-  { label: "🧪", data: svgAvatar("#06b6d4", "🧪") },
-  { label: "🛡️", data: svgAvatar("#64748b", "🛡️") },
-  { label: "⭐", data: svgAvatar("#facc15", "⭐") },
-];
 
 function seedLeaderboard(me: PlayerCard): PlayerCard[] {
   // demo "community locale" - deterministic-ish
@@ -153,22 +135,21 @@ export default function ProfileTab({
   pills,
   setPills,
   totalContent,
+  onAccountCreated,
 }: {
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
+  onAccountCreated?: () => void;
 }) {
 
   const toast = useToast();
   const [profile, setProfile] = useState<ProfileData>({ name: "Utente", role: "Infermiere" });
   const [section, setSection] = useState<ProfileSection>("overview");
   const [accountCreated, setAccountCreated] = useState(false);
-  const [editUnlocked, setEditUnlocked] = useState(false);
-  const canEditProfile = !accountCreated || editUnlocked;
   const [lbMode, setLbMode] = useState<"weekly" | "all">("weekly");
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
-  const [showPresets, setShowPresets] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const [userId, setUserId] = useState<string>("me");
   const [lbUsers, setLbUsers] = useState<PlayerCard[]>([]);
@@ -178,8 +159,95 @@ export default function ProfileTab({
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
+  // First run onboarding is handled by a dedicated modal (Home). Keep this tab simple.
+
   const [exportText, setExportText] = useState<string>("");
   const [importText, setImportText] = useState<string>("");
+
+  const importFileRef = useRef<HTMLInputElement | null>(null);
+
+  function exportBackup() {
+    if (!isBrowser()) return;
+    const data: Record<string, string> = {};
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k) continue;
+        if (!k.startsWith("nd_")) continue;
+        const v = localStorage.getItem(k);
+        if (typeof v === "string") data[k] = v;
+      }
+    } catch {}
+
+    const payload = {
+      schema: "nursediary_backup_v1",
+      exportedAt: Date.now(),
+      data,
+    };
+
+    const pretty = JSON.stringify(payload, null, 2);
+    setExportText(pretty);
+
+    try {
+      const blob = new Blob([pretty], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const d = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const name = `nursediary-backup-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
+      a.href = url;
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 800);
+      toast.push("Backup esportato", "success");
+    } catch {
+      // at least show the JSON in the textarea
+      toast.push("Backup generato (copia il testo)", "info");
+    }
+  }
+
+  function importBackupFromText(raw: string) {
+    if (!isBrowser()) return;
+    const trimmed = String(raw || "").trim();
+    if (!trimmed) {
+      toast.push("Incolla un backup JSON", "warning");
+      return;
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(trimmed);
+    } catch {
+      toast.push("JSON non valido", "error");
+      return;
+    }
+
+    const data = parsed?.data;
+    if (!data || typeof data !== "object") {
+      toast.push("Backup non riconosciuto", "error");
+      return;
+    }
+
+    const ok = window.confirm("Importare il backup? Sovrascriverà i dati su questo dispositivo.");
+    if (!ok) return;
+
+    try {
+      Object.keys(data).forEach((k) => {
+        if (!k.startsWith("nd_")) return;
+        const v = data[k];
+        if (typeof v !== "string") return;
+        localStorage.setItem(k, v);
+      });
+    } catch {}
+
+    // Ensure account flag if profile exists
+    try {
+      if (localStorage.getItem("nd_profile")) localStorage.setItem("nd_account_created", "1");
+    } catch {}
+
+    toast.push("Backup importato. Ricarico…", "success");
+    setTimeout(() => window.location.reload(), 350);
+  }
 
   const PROFILE_LIMITS = { name: 18, profession: 26, bio: 160 } as const;
 
@@ -242,6 +310,7 @@ export default function ProfileTab({
     setProfile(prof);
     setAvatar(av);
     setPremium(localStorage.getItem(LS.premium) === "1");
+    setAccountCreated(getAccountCreatedLS());
 
     setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
     setReadIds(new Set(safeJson<string[]>(localStorage.getItem(LS.read), [])));
@@ -406,6 +475,7 @@ export default function ProfileTab({
     setProfile(safeJson(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
     setAvatar(localStorage.getItem(LS.avatar));
     setPremium(localStorage.getItem(LS.premium) === "1");
+    setAccountCreated(getAccountCreatedLS());
     setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
     setReadIds(new Set(safeJson<string[]>(localStorage.getItem(LS.read), [])));
     setCardsOwned(safeJson<Record<string, number>>(localStorage.getItem(LS.cards), {}));
@@ -663,18 +733,6 @@ export default function ProfileTab({
     }, 450);
   }
 
-  async function onPickAvatar(file: File) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const data = String(reader.result || "");
-      setAvatar(data);
-      try {
-        localStorage.setItem(LS.avatar, data);
-      } catch {}
-    };
-    reader.readAsDataURL(file);
-  }
-
   function openSelfCard() {
     const me: PlayerCard = {
       id: userId,
@@ -706,6 +764,25 @@ export default function ProfileTab({
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <ProfileCardModal open={cardOpen} player={cardPlayer} onClose={() => setCardOpen(false)} />
+      <EditProfileSheet
+        open={editOpen}
+        initial={{ name: profile.name || "Utente", role: profile.role || "Infermiere", bio: profile.bio || "", avatar }}
+        onClose={() => setEditOpen(false)}
+        onSave={(next) => {
+          const wasCreated = accountCreated;
+          setProfile({ name: next.name, role: next.role, bio: next.bio });
+          setAvatar(next.avatar);
+          try {
+            saveLocalProfile({ name: next.name, profession: next.role, bio: next.bio, createdAt: Date.now() });
+            setAvatarLS(next.avatar);
+            setAccountCreatedLS(true);
+          } catch {}
+          setAccountCreated(true);
+          setEditOpen(false);
+          toast.push("Profilo salvato", "success");
+          if (!wasCreated) onAccountCreated?.();
+        }}
+      />
 
       {/* Profile header */}
       <div style={card()}>
@@ -719,121 +796,45 @@ export default function ProfileTab({
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setAvatarPickerOpen((v) => !v)}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.92)",
-                fontWeight: 900,
-                cursor: "pointer",
-              }}
-              title="Cambia immagine profilo"
-            >
-              ✏️ Cambia immagine
+            <button type="button" onClick={() => setEditOpen(true)} style={{ ...chipBtn(), padding: "6px 10px" }}>
+              ✏️ Modifica
             </button>
 
             <button type="button" onClick={() => openSelfCard()} style={{ ...chipBtn(), padding: "6px 10px" }}>
-              📇 Scheda profilo
+              📇 Scheda
             </button>
           </div>
 
-          <div style={{ flex: 1 }}>
-            <input
-              disabled={!canEditProfile}
-              value={profile.name}
-              onChange={(e) => setProfile((p) => ({ ...p, name: clampText(e.target.value, PROFILE_LIMITS.name) }))}
-              style={inp(true)}
-              placeholder="Nome utente"
-            />
-            <div style={{ marginTop: 4, opacity: 0.65, fontWeight: 800, fontSize: 12 }}>
-              {String(profile.name || "").length}/{PROFILE_LIMITS.name}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 980, fontSize: 18, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {profile.name || "Utente"}
+            </div>
+            <div style={{ opacity: 0.82, fontWeight: 850, marginTop: 4, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {profile.role || "Infermiere"}
             </div>
 
-            <input
-              disabled={!canEditProfile}
-              value={profile.role}
-              onChange={(e) => setProfile((p) => ({ ...p, role: clampText(e.target.value, PROFILE_LIMITS.profession) }))}
-              style={{ ...inp(false), marginTop: 8 }}
-              placeholder="Professione (es. Infermiere, Medico…)"
-            />
-            <div style={{ marginTop: 4, opacity: 0.65, fontWeight: 800, fontSize: 12 }}>
-              {String(profile.role || "").length}/{PROFILE_LIMITS.profession}
-            </div>
-            <textarea
-              disabled={!canEditProfile}
-              value={profile.bio ?? ""}
-              onChange={(e) => setProfile((p) => ({ ...p, bio: clampText(e.target.value, PROFILE_LIMITS.bio) }))}
-              placeholder="Breve descrizione (max 160 caratteri)"
-              style={{
-                ...inp(false),
-                marginTop: 8,
-                minHeight: 70,
-                resize: "vertical",
-                fontWeight: 800,
-              }}
-            />
-            <div style={{ marginTop: 4, opacity: 0.65, fontWeight: 800, fontSize: 12 }}>
-              {String(profile.bio || "").length}/{PROFILE_LIMITS.bio}
-            </div>
-          </div>
-        </div>
-
-        {avatarPickerOpen && (
-          <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <label style={chipBtn()}>
-                📷 Da telefono
-                <input
-                  type="file"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={(e) => e.target.files?.[0] && onPickAvatar(e.target.files[0])}
-                />
-              </label>
-
-              <button type="button" onClick={() => setShowPresets((v) => !v)} style={chipBtn()}>
-                {showPresets ? "Nascondi preset" : "🧩 Scegli preset"}
-              </button>
-            </div>
-
-            {showPresets && (
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                {AVATAR_PRESETS.map((a) => (
-                  <button
-                    key={a.label}
-                    type="button"
-                    onClick={() => {
-                      setAvatar(a.data);
-                      try {
-                        localStorage.setItem(LS.avatar, a.data);
-                      } catch {}
-                      setAvatarPickerOpen(false);
-                      setShowPresets(false);
-                    }}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 14,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.06)",
-                      cursor: "pointer",
-                      overflow: "hidden",
-                      display: "grid",
-                      placeItems: "center",
-                    }}
-                    title={`Preset ${a.label}`}
-                  >
-                    <img src={a.data} alt={a.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  </button>
-                ))}
+            {profile.bio?.trim() ? (
+              <div
+                style={{
+                  marginTop: 10,
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  background: "rgba(255,255,255,0.04)",
+                  borderRadius: 14,
+                  padding: 10,
+                  color: "rgba(255,255,255,0.86)",
+                  fontWeight: 800,
+                  lineHeight: 1.35,
+                }}
+              >
+                {clampText(profile.bio || "", PROFILE_LIMITS.bio)}
+              </div>
+            ) : (
+              <div style={{ marginTop: 10, opacity: 0.65, fontWeight: 750, fontSize: 13 }}>
+                Aggiungi una breve bio dal pulsante <b>Modifica</b>.
               </div>
             )}
           </div>
-        )}
+        </div>
 
         <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <button
@@ -856,8 +857,14 @@ export default function ProfileTab({
 
       {/* Sezioni (per ridurre confusione) */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", overflowX: "hidden", paddingBottom: 2 }}>
-        <SegBtn active={section === "overview"} onClick={() => setSection("overview")}>Panoramica</SegBtn>
-        <SegBtn active={section === "account"} onClick={() => setSection("account")}>Account</SegBtn>
+        {!accountCreated ? (
+          <SegBtn active onClick={() => setSection("account")}>Account</SegBtn>
+        ) : (
+          <>
+            <SegBtn active={section === "overview"} onClick={() => setSection("overview")}>Panoramica</SegBtn>
+            <SegBtn active={section === "account"} onClick={() => setSection("account")}>Account</SegBtn>
+          </>
+        )}
       </div>
   
 {section === "account" && (
@@ -868,56 +875,11 @@ export default function ProfileTab({
     </div>
 
     <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
-      {!accountCreated ? (
-        <button
-          type="button"
-          onClick={() => {
-            const nameOk = String(profile.name || "").trim().length >= 2;
-            if (!nameOk) {
-              toast.push("Inserisci un nome (min 2 caratteri)", "warning");
-              return;
-            }
-            saveLocalProfile({ name: profile.name, profession: profile.role, bio: profile.bio ?? "", createdAt: Date.now() });
-            setAccountCreatedLS(true);
-            setAccountCreated(true);
-            setEditUnlocked(false);
-            toast.push("Account creato", "success");
-          }}
-          style={primaryBtn(false)}
-        >
-          Crea account
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button type="button" onClick={() => setEditOpen(true)} style={primaryBtn(false)}>
+          Modifica profilo
         </button>
-      ) : (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {!editUnlocked ? (
-            <button type="button" onClick={() => setEditUnlocked(true)} style={primaryBtn(false)}>
-              Modifica profilo
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                saveLocalProfile({ name: profile.name, profession: profile.role, bio: profile.bio ?? "" });
-                setEditUnlocked(false);
-                toast.push("Profilo salvato", "success");
-              }}
-              style={primaryBtn(false)}
-            >
-              Salva modifiche
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setEditUnlocked(false);
-              toast.push("Modifica bloccata", "info");
-            }}
-            style={ghostBtn()}
-          >
-            Blocca
-          </button>
-        </div>
-      )}
+      </div>
 
       <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
         <div style={{ fontWeight: 950 }}>Suggerimento</div>
@@ -925,6 +887,93 @@ export default function ProfileTab({
           Per cambiare immagine profilo usa la <b>matita sotto l’avatar</b> nella sezione Panoramica.
         </div>
       </div>
+
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" }}>
+      <div style={{ fontWeight: 900, fontSize: 14 }}>Backup dati</div>
+      <div style={{ marginTop: 6, color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13, lineHeight: 1.35 }}>
+        Esporta/Importa tutti i dati locali (turni, progressi, carte, quiz). Utile se cambi telefono.
+      </div>
+
+      <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button type="button" onClick={exportBackup} style={primaryBtn(false)}>Esporta backup</button>
+        <button
+          type="button"
+          onClick={() => importFileRef.current?.click()}
+          style={ghostBtn()}
+        >
+          Importa da file
+        </button>
+        <input
+          ref={importFileRef}
+          type="file"
+          accept="application/json"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              const raw = typeof reader.result === "string" ? reader.result : "";
+              setImportText(raw);
+              importBackupFromText(raw);
+            };
+            reader.readAsText(f);
+            // allow re-upload same file
+            e.currentTarget.value = "";
+          }}
+        />
+      </div>
+
+      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 12, color: "rgba(255,255,255,0.78)" }}>Backup (JSON)</div>
+          <textarea
+            value={exportText}
+            readOnly
+            placeholder="Clicca “Esporta backup” per generare il JSON…"
+            style={{
+              marginTop: 6,
+              width: "100%",
+              minHeight: 90,
+              resize: "vertical",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(2,6,23,0.35)",
+              color: "rgba(255,255,255,0.92)",
+              padding: 10,
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+              fontSize: 12,
+            }}
+          />
+        </div>
+
+        <div>
+          <div style={{ fontWeight: 800, fontSize: 12, color: "rgba(255,255,255,0.78)" }}>Importa incollando JSON</div>
+          <textarea
+            value={importText}
+            onChange={(e) => setImportText(e.target.value)}
+            placeholder="Incolla qui il JSON del backup…"
+            style={{
+              marginTop: 6,
+              width: "100%",
+              minHeight: 90,
+              resize: "vertical",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.10)",
+              background: "rgba(2,6,23,0.35)",
+              color: "rgba(255,255,255,0.92)",
+              padding: 10,
+              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
+              fontSize: 12,
+            }}
+          />
+          <div style={{ marginTop: 8 }}>
+            <button type="button" onClick={() => importBackupFromText(importText)} style={primaryBtn(false)}>Importa backup</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     </div>
   </div>
 )}
@@ -1273,9 +1322,6 @@ function title(): React.CSSProperties {
 }
 function avatarBox(): React.CSSProperties {
   return { width: 64, height: 64, borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" };
-}
-function inp(bold: boolean): React.CSSProperties {
-  return { width: "100%", padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.92)", fontWeight: bold ? 950 : 800, outline: "none" };
 }
 function chip(): React.CSSProperties {
   return { padding: "10px 12px", borderRadius: 14, border: "1px solid rgba(255,255,255,0.12)", background: "#0f172a", color: "rgba(255,255,255,0.88)", fontWeight: 900 };
