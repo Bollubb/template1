@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { getCareer } from "@/features/career/career";
 
 import { useToast } from "./Toast";
@@ -153,12 +153,10 @@ export default function ProfileTab({
   pills,
   setPills,
   totalContent,
-  onAccountCreated,
 }: {
   pills: number;
   setPills: React.Dispatch<React.SetStateAction<number>>;
   totalContent: number;
-  onAccountCreated?: () => void;
 }) {
 
   const toast = useToast();
@@ -180,98 +178,8 @@ export default function ProfileTab({
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
-  // First run: keep user on Account section until local profile is created.
-  useEffect(() => {
-    if (!accountCreated) setSection("account");
-  }, [accountCreated]);
-
   const [exportText, setExportText] = useState<string>("");
   const [importText, setImportText] = useState<string>("");
-
-  const importFileRef = useRef<HTMLInputElement | null>(null);
-
-  function exportBackup() {
-    if (!isBrowser()) return;
-    const data: Record<string, string> = {};
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (!k) continue;
-        if (!k.startsWith("nd_")) continue;
-        const v = localStorage.getItem(k);
-        if (typeof v === "string") data[k] = v;
-      }
-    } catch {}
-
-    const payload = {
-      schema: "nursediary_backup_v1",
-      exportedAt: Date.now(),
-      data,
-    };
-
-    const pretty = JSON.stringify(payload, null, 2);
-    setExportText(pretty);
-
-    try {
-      const blob = new Blob([pretty], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      const d = new Date();
-      const pad = (n: number) => String(n).padStart(2, "0");
-      const name = `nursediary-backup-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`;
-      a.href = url;
-      a.download = name;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 800);
-      toast.push("Backup esportato", "success");
-    } catch {
-      // at least show the JSON in the textarea
-      toast.push("Backup generato (copia il testo)", "info");
-    }
-  }
-
-  function importBackupFromText(raw: string) {
-    if (!isBrowser()) return;
-    const trimmed = String(raw || "").trim();
-    if (!trimmed) {
-      toast.push("Incolla un backup JSON", "warning");
-      return;
-    }
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(trimmed);
-    } catch {
-      toast.push("JSON non valido", "error");
-      return;
-    }
-
-    const data = parsed?.data;
-    if (!data || typeof data !== "object") {
-      toast.push("Backup non riconosciuto", "error");
-      return;
-    }
-
-    const ok = window.confirm("Importare il backup? Sovrascriverà i dati su questo dispositivo.");
-    if (!ok) return;
-
-    try {
-      Object.keys(data).forEach((k) => {
-        if (!k.startsWith("nd_")) return;
-        const v = data[k];
-        if (typeof v !== "string") return;
-        localStorage.setItem(k, v);
-      });
-    } catch {}
-
-    // Ensure account flag if profile exists
-    try {
-      if (localStorage.getItem("nd_profile")) localStorage.setItem("nd_account_created", "1");
-    } catch {}
-
-    toast.push("Backup importato. Ricarico…", "success");
-    setTimeout(() => window.location.reload(), 350);
-  }
 
   const PROFILE_LIMITS = { name: 18, profession: 26, bio: 160 } as const;
 
@@ -334,7 +242,6 @@ export default function ProfileTab({
     setProfile(prof);
     setAvatar(av);
     setPremium(localStorage.getItem(LS.premium) === "1");
-    setAccountCreated(getAccountCreatedLS());
 
     setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
     setReadIds(new Set(safeJson<string[]>(localStorage.getItem(LS.read), [])));
@@ -499,7 +406,6 @@ export default function ProfileTab({
     setProfile(safeJson(localStorage.getItem(LS.profile), { name: "Utente", role: "Infermiere" }));
     setAvatar(localStorage.getItem(LS.avatar));
     setPremium(localStorage.getItem(LS.premium) === "1");
-    setAccountCreated(getAccountCreatedLS());
     setFavIds(new Set(safeJson<string[]>(localStorage.getItem(LS.favorites), [])));
     setReadIds(new Set(safeJson<string[]>(localStorage.getItem(LS.read), [])));
     setCardsOwned(safeJson<Record<string, number>>(localStorage.getItem(LS.cards), {}));
@@ -950,14 +856,8 @@ export default function ProfileTab({
 
       {/* Sezioni (per ridurre confusione) */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", overflowX: "hidden", paddingBottom: 2 }}>
-        {!accountCreated ? (
-          <SegBtn active onClick={() => setSection("account")}>Account</SegBtn>
-        ) : (
-          <>
-            <SegBtn active={section === "overview"} onClick={() => setSection("overview")}>Panoramica</SegBtn>
-            <SegBtn active={section === "account"} onClick={() => setSection("account")}>Account</SegBtn>
-          </>
-        )}
+        <SegBtn active={section === "overview"} onClick={() => setSection("overview")}>Panoramica</SegBtn>
+        <SegBtn active={section === "account"} onClick={() => setSection("account")}>Account</SegBtn>
       </div>
   
 {section === "account" && (
@@ -982,7 +882,6 @@ export default function ProfileTab({
             setAccountCreated(true);
             setEditUnlocked(false);
             toast.push("Account creato", "success");
-            onAccountCreated?.();
           }}
           style={primaryBtn(false)}
         >
@@ -1026,93 +925,6 @@ export default function ProfileTab({
           Per cambiare immagine profilo usa la <b>matita sotto l’avatar</b> nella sezione Panoramica.
         </div>
       </div>
-
-    <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)" }}>
-      <div style={{ fontWeight: 900, fontSize: 14 }}>Backup dati</div>
-      <div style={{ marginTop: 6, color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13, lineHeight: 1.35 }}>
-        Esporta/Importa tutti i dati locali (turni, progressi, carte, quiz). Utile se cambi telefono.
-      </div>
-
-      <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <button type="button" onClick={exportBackup} style={primaryBtn(false)}>Esporta backup</button>
-        <button
-          type="button"
-          onClick={() => importFileRef.current?.click()}
-          style={ghostBtn()}
-        >
-          Importa da file
-        </button>
-        <input
-          ref={importFileRef}
-          type="file"
-          accept="application/json"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (!f) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-              const raw = typeof reader.result === "string" ? reader.result : "";
-              setImportText(raw);
-              importBackupFromText(raw);
-            };
-            reader.readAsText(f);
-            // allow re-upload same file
-            e.currentTarget.value = "";
-          }}
-        />
-      </div>
-
-      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 12, color: "rgba(255,255,255,0.78)" }}>Backup (JSON)</div>
-          <textarea
-            value={exportText}
-            readOnly
-            placeholder="Clicca “Esporta backup” per generare il JSON…"
-            style={{
-              marginTop: 6,
-              width: "100%",
-              minHeight: 90,
-              resize: "vertical",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(2,6,23,0.35)",
-              color: "rgba(255,255,255,0.92)",
-              padding: 10,
-              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
-              fontSize: 12,
-            }}
-          />
-        </div>
-
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 12, color: "rgba(255,255,255,0.78)" }}>Importa incollando JSON</div>
-          <textarea
-            value={importText}
-            onChange={(e) => setImportText(e.target.value)}
-            placeholder="Incolla qui il JSON del backup…"
-            style={{
-              marginTop: 6,
-              width: "100%",
-              minHeight: 90,
-              resize: "vertical",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(2,6,23,0.35)",
-              color: "rgba(255,255,255,0.92)",
-              padding: 10,
-              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace",
-              fontSize: 12,
-            }}
-          />
-          <div style={{ marginTop: 8 }}>
-            <button type="button" onClick={() => importBackupFromText(importText)} style={primaryBtn(false)}>Importa backup</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     </div>
   </div>
 )}
