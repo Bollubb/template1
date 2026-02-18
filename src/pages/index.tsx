@@ -10,6 +10,7 @@ import { ContentCard } from "../components/nursediary/ContentCard";
 import HomeDashboard from "../components/nursediary/HomeDashboard";
 import { CarteTab } from "../components/nursediary/CarteTab";
 import ProfileTab from "../components/nursediary/ProfileTab";
+import { getAccountCreated } from "@/features/profile/profileStore";
 import NurseBottomNav, { type NurseTab } from "../components/nursediary/NurseBottomNav";
 
 import type { ContentItem } from "../types/nursediary/types";
@@ -27,6 +28,7 @@ const LS = {
 export default function Home(): JSX.Element {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<NurseTab>("home");
+  const [needsProfile, setNeedsProfile] = useState<boolean>(false);
   const headerOverride = useMemo(() => undefined, []);
 
   // Optional deep-link: /?tab=home|didattica|carte|profilo
@@ -39,7 +41,24 @@ export default function Home(): JSX.Element {
   }, [router.isReady, router.query.tab]);
 
 
-  // Didattica data
+  
+  // First-run: require creating a local profile (inside Profilo tab)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setNeedsProfile(!getAccountCreated());
+    } catch {
+      setNeedsProfile(false);
+    }
+  }, []);
+
+  // If profile is required, keep the user in the Profilo tab
+  useEffect(() => {
+    if (!needsProfile) return;
+    setActiveTab("profilo");
+  }, [needsProfile]);
+
+// Didattica data
   const [items, setItems] = useState<ContentItem[]>([]);
   const [categoria, setCategoria] = useState("Tutte");
 
@@ -398,11 +417,26 @@ export default function Home(): JSX.Element {
       {/* PROFILO */}
       {activeTab === "profilo" && (
         <Section>
-          <ProfileTab pills={pills} setPills={setPills} totalContent={items.length} />
+          <ProfileTab
+            pills={pills}
+            setPills={setPills}
+            totalContent={items.length}
+            onAccountCreated={() => setNeedsProfile(false)}
+          />
         </Section>
       )}
 
-      <NurseBottomNav active={activeTab} onChange={setActiveTab} />
+      <NurseBottomNav
+        active={activeTab}
+        locked={needsProfile}
+        onChange={(t) => {
+          if (needsProfile && t !== "profilo") {
+            setActiveTab("profilo");
+            return;
+          }
+          setActiveTab(t);
+        }}
+      />
     </Page>
   );
 }
