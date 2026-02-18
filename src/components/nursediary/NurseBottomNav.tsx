@@ -6,9 +6,12 @@ export type NurseTab = "home" | "didattica" | "carte" | "profilo";
 export default function NurseBottomNav({
   active,
   onChange,
+  locked,
 }: {
   active: NurseTab;
   onChange: (tab: NurseTab) => void;
+  /** When true, only the 'Profilo' tab is enabled (used during first-run profile creation). */
+  locked?: boolean;
 }) {
   const [compact, setCompact] = useState(false);
 
@@ -59,11 +62,16 @@ export default function NurseBottomNav({
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: compact ? 6 : 8 }}>
         {items.map((it) => {
           const isActive = it.key === active;
+          const isDisabled = !!locked && it.key !== "profilo";
           return (
             <button
               key={it.key}
               type="button"
-              onClick={() => onChange(it.key)}
+              onClick={() => {
+                if (isDisabled) return;
+                onChange(it.key);
+              }}
+              disabled={isDisabled}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -72,7 +80,8 @@ export default function NurseBottomNav({
                 padding: compact ? "9px 6px" : "10px 10px",
                 borderRadius: 14,
                 border: "none",
-                cursor: "pointer",
+                cursor: isDisabled ? "not-allowed" : "pointer",
+                opacity: isDisabled ? 0.45 : 1,
                 background: isActive ? "rgba(14,165,233,0.18)" : "transparent",
                 // ✅ readable on dark bottom bar
                 color: isActive ? "rgba(255,255,255,0.98)" : "rgba(255,255,255,0.72)",
