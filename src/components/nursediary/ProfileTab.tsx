@@ -39,6 +39,7 @@ const LS = {
   xp: "nd_xp",
   premium: "nd_premium",
   login: "nd_login_daily",
+  loginCalendar: "nd_login_calendar_v1",
   freePacks: "nd_free_packs",
   userId: "nd_user_id",
   leaderboard: "nd_leaderboard_users",
@@ -458,54 +459,268 @@ export default function ProfileTab({
     return ids.map((id) => byId.get(id)).filter(Boolean) as QuizQuestion[];
   }, [history.length]);
 
-  // Daily login reward (WeWard style) + free pack
+  // Daily login reward (WeWard style) + free pack — now with monthly calendar
   const [loginInfo, setLoginInfo] = useState<{ dayKey: string; streak: number; claimed: boolean }>({
     dayKey: "",
     streak: 0,
     claimed: false,
   });
 
+  const [loginCalendar, setLoginCalendar] = useState<{ monthKey: string; claimedDays: Record<string, boolean> }>({
+    monthKey: "",
+    claimedDays: {},
+  });
+
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+
+  function monthKeyOf(d = new Date()) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  }
+
+  function daysInMonth(d = new Date()) {
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  }
+
+  function dayKeyISO(d = new Date()) {
+    return d.toISOString().slice(0, 10);
+  }
+
+  function rewardForDay(day: number, streak: number) {
+    // Simple, predictable, "Duolingo-like": base + streak bonus, with weekly milestones every 7 days.
+    const milestone = day % 7 === 0;
+    const bonusStreakPills = Math.min(22, streak * 2);
+    const bonusStreakXp = Math.min(26, streak * 2);
+
+    const pills = 18 + bonusStreakPills + (milestone ? 32 : 0);
+    const xp = 14 + bonusStreakXp + (milestone ? 24 : 0);
+    const packs = 1 + (milestone ? 1 : 0);
+
+    return { pills, xp, packs, milestone };
+  }
+
   useEffect(() => {
     if (!isBrowser()) return;
-    const today = new Date().toISOString().slice(0, 10);
+
+    const today = dayKeyISO();
     const stored = safeJson(localStorage.getItem(LS.login), { dayKey: "", streak: 0, claimed: false });
+
+    // Calendar state (per-month claimed days)
+    const mk = monthKeyOf();
+    const calStored = safeJson(localStorage.getItem(LS.loginCalendar), { monthKey: "", claimedDays: {} as Record<string, boolean> });
+    const cal = calStored.monthKey === mk ? calStored : { monthKey: mk, claimedDays: {} as Record<string, boolean> };
+
+    // if today's already claimed in calendar, force claimed=true
+    const todayDay = String(new Date().getDate());
+    const alreadyClaimedToday = !!cal.claimedDays[todayDay];
+
     if (stored.dayKey !== today) {
       // new day
-      const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+      const yesterday = dayKeyISO(new Date(Date.now() - 86400000));
       const streak = stored.dayKey === yesterday ? (stored.streak || 0) + 1 : 1;
-      const next = { dayKey: today, streak, claimed: false };
+      const next = { dayKey: today, streak, claimed: alreadyClaimedToday ? true : false };
       localStorage.setItem(LS.login, JSON.stringify(next));
       setLoginInfo(next);
     } else {
-      setLoginInfo(stored);
+      setLoginInfo({ ...stored, claimed: stored.claimed || alreadyClaimedToday });
     }
+
+    localStorage.setItem(LS.loginCalendar, JSON.stringify(cal));
+    setLoginCalendar(cal);
   }, []);
 
-  function claimDailyLogin() {
+  function claimDailyLogin(dayOverride?: number) {
+    const today = new Date();
+    const day = dayOverride ?? today.getDate();
+    const mk = monthKeyOf(today);
+
+    // Only today's cell is claimable (no back-claiming).
+    if (day !== today.getDate()) return;
+
     if (loginInfo.claimed) return;
-    const bonusPills = 20 + Math.min(20, loginInfo.streak * 2);
-    const bonusXp = 15 + Math.min(25, loginInfo.streak * 2);
-    setPills((p) => p + bonusPills);
-    setXp((x) => x + bonusXp);
-    addXpGlobal(bonusXp);
+    if (loginCalendar.monthKey !== mk) return;
 
-    // 1 free pack per day
-    setFreePacks((v) => v + 1);
+    if (loginCalendar.claimedDays[String(day)]) return;
 
-    // extra pack each 7-day streak
-    if (loginInfo.streak % 7 === 0) setFreePacks((v) => v + 1);
+    const r = rewardForDay(day, loginInfo.streak);
 
-    const next = { ...loginInfo, claimed: true };
-    setLoginInfo(next);
-    if (isBrowser()) localStorage.setItem(LS.login, JSON.stringify(next));
-    setFeedback(`Login reward: +${bonusPills} pillole, +${bonusXp} XP, +pack GRATIS`);
+    setPills((p) => p + r.pills);
+    setXp((x) => x + r.xp);
+    addXpGlobal(r.xp);
+
+    // free packs
+    if (r.packs > 0) setFreePacks((v) => v + r.packs);
+
+    const nextInfo = { ...loginInfo, claimed: true };
+    setLoginInfo(nextInfo);
+    if (isBrowser()) localStorage.setItem(LS.login, JSON.stringify(nextInfo));
+
+    const nextCal = {
+      ...loginCalendar,
+      monthKey: mk,
+      claimedDays: { ...loginCalendar.claimedDays, [String(day)]: true },
+    };
+    setLoginCalendar(nextCal);
+    if (isBrowser()) localStorage.setItem(LS.loginCalendar, JSON.stringify(nextCal));
+
+    setFeedback(`Login reward: +${r.pills} pillole, +${r.xp} XP, +${r.packs} pack`);
     setDailyFlag("nd_daily_login_claimed", true);
-    toast.push(`+${bonusPills} 💊`, "success");
-    toast.push(`+${bonusXp} XP`, "success");
+    toast.push(`Daily login: +${r.pills} 💊`, "success");
+    toast.push(`+${r.xp} XP`, "success");
+    if (r.packs > 0) toast.push(`+${r.packs} pack 🎁`, "success");
     incDailyCounter("nd_daily_login_claimed_count", 1);
   }
 
-  // Achievements (obiettivi)
+  function renderLoginCalendarModal() {
+    if (!loginModalOpen) return null;
+
+    const now = new Date();
+    const mk = monthKeyOf(now);
+    const dim = daysInMonth(now);
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Monday-first index: 0..6
+    const monIdx = (first.getDay() + 6) % 7;
+    const today = now.getDate();
+
+    const weekDays = ["L", "M", "M", "G", "V", "S", "D"];
+
+    const cells: Array<{ type: "empty" } | { type: "day"; day: number }> = [];
+    for (let i = 0; i < monIdx; i++) cells.push({ type: "empty" });
+    for (let d = 1; d <= dim; d++) cells.push({ type: "day", day: d });
+
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 90,
+          background: "rgba(0,0,0,0.58)",
+          display: "grid",
+          placeItems: "center",
+          padding: 14,
+        }}
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget) setLoginModalOpen(false);
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 520,
+            borderRadius: 18,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: "#0b1020",
+            boxShadow: "0 22px 60px rgba(0,0,0,0.55)",
+            overflow: "hidden",
+          }}
+        >
+          <div style={{ padding: 14, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+            <div>
+              <div style={{ fontWeight: 980, fontSize: 16 }}>Daily login • Calendario</div>
+              <div style={{ opacity: 0.74, fontWeight: 800, fontSize: 12 }}>
+                {mk} — Streak: <b>{loginInfo.streak}</b> • Premi extra ogni 7 giorni
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLoginModalOpen(false)}
+              style={{
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.05)",
+                borderRadius: 12,
+                padding: "8px 10px",
+                fontWeight: 950,
+                color: "rgba(255,255,255,0.90)",
+                cursor: "pointer",
+              }}
+            >
+              Chiudi ✕
+            </button>
+          </div>
+
+          <div style={{ padding: 14, paddingTop: 6 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginBottom: 8 }}>
+              {weekDays.map((w) => (
+                <div key={w} style={{ textAlign: "center", fontSize: 12, fontWeight: 950, opacity: 0.75 }}>
+                  {w}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+              {cells.map((c, idx) => {
+                if (c.type === "empty") return <div key={`e_${idx}`} style={{ height: 58 }} />;
+
+                const d = c.day;
+                const claimed = loginCalendar.monthKey === mk ? !!loginCalendar.claimedDays[String(d)] : false;
+                const isToday = d === today;
+                const past = d < today;
+                const future = d > today;
+
+                const r = rewardForDay(d, loginInfo.streak);
+                const canClaim = isToday && !claimed && !loginInfo.claimed;
+
+                const bg = claimed
+                  ? "rgba(34,197,94,0.14)"
+                  : canClaim
+                  ? "rgba(56,189,248,0.18)"
+                  : past && !claimed
+                  ? "rgba(255,255,255,0.03)"
+                  : "rgba(255,255,255,0.05)";
+
+                const br = claimed
+                  ? "1px solid rgba(34,197,94,0.35)"
+                  : canClaim
+                  ? "1px solid rgba(56,189,248,0.40)"
+                  : "1px solid rgba(255,255,255,0.10)";
+
+                const opacity = future ? 0.55 : 1;
+
+                return (
+                  <button
+                    key={`d_${d}`}
+                    type="button"
+                    onClick={() => canClaim && claimDailyLogin(d)}
+                    disabled={!canClaim}
+                    style={{
+                      height: 58,
+                      borderRadius: 14,
+                      border: br,
+                      background: bg,
+                      color: "rgba(255,255,255,0.92)",
+                      cursor: canClaim ? "pointer" : "not-allowed",
+                      padding: 8,
+                      display: "grid",
+                      alignContent: "space-between",
+                      textAlign: "left",
+                      opacity,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 6, alignItems: "center" }}>
+                      <div style={{ fontWeight: 980 }}>{d}</div>
+                      <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.9 }}>
+                        {claimed ? "✓" : r.milestone ? "★" : isToday ? "OGGI" : ""}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 900, opacity: 0.88 }}>
+                      +{r.pills}💊 • +{r.xp}XP
+                      {r.packs > 0 ? ` • +${r.packs}🎁` : ""}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ marginTop: 12, opacity: 0.72, fontSize: 12, fontWeight: 750 }}>
+              • Puoi riscattare solo la casella di oggi. • Le stelle (★) sono i giorni “milestone” (ogni 7).
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+// Achievements (obiettivi)
   const achievements = useMemo(() => {
     const arr = [
       { id: "a_read_10", title: "Lettore", desc: "Leggi 10 contenuti", done: readIds.size >= 10, pill: 40, xp: 40 },
@@ -965,9 +1180,15 @@ export default function ProfileTab({
           {/* countdown shown in Home to reduce UI noise */}
         </div>
 
-        <button type="button" onClick={claimDailyLogin} disabled={loginInfo.claimed} style={primaryBtn(loginInfo.claimed)}>
-          {loginInfo.claimed ? "Già riscattato" : "Riscatta reward"}
+        <div style={{ display: "grid", gap: 10 }}>
+        <button type="button" onClick={() => setLoginModalOpen(true)} style={primaryBtn(false)}>
+          Apri calendario (riscatta oggi)
         </button>
+        <button type="button" onClick={() => claimDailyLogin()} disabled={loginInfo.claimed} style={ghostBtn(loginInfo.claimed)}>
+          {loginInfo.claimed ? "Oggi già riscattato ✅" : "Riscatta subito (oggi)"}
+        </button>
+        </div>
+        {renderLoginCalendarModal()}
       </div>
 
       </>
