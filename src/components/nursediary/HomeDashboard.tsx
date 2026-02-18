@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { computeLevel, getWeeklyXpMap, getXp } from "@/features/progress/xp";
 import ShiftPlanner from "./ShiftPlanner";
+import { useToast } from "./Toast";
 
 type HomeDashboardProps = {
   onGoToCards: () => void;
@@ -15,6 +16,8 @@ const LS = {
   login: "nd_login_daily",
   xpSeen: "nd_xp_seen_home_v1",
   dailyXp: "nd_daily_xp_v1", // Record<YYYY-MM-DD, xpGained>
+  freePacks: "nd_free_packs",
+  milestoneClaimed: "nd_level_milestones_claimed_v1", // Record<number, true>
 } as const;
 
 function safeJson<T>(raw: string | null, fallback: T): T {
@@ -67,6 +70,7 @@ function bigPill(bg: string): React.CSSProperties {
 }
 
 export default function HomeDashboard(_props: HomeDashboardProps) {
+  const toast = useToast();
   const [name, setName] = useState("Nurse");
   const [role, setRole] = useState("Study Hub");
   const [pills, setPills] = useState(0);
@@ -112,6 +116,42 @@ export default function HomeDashboard(_props: HomeDashboardProps) {
     } catch {}
   }, []);
 
+  // Auto milestone reward on reaching Lv 5/10/15...
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const lvlNow = computeLevel(getXp()).level;
+      if (lvlNow < 5) return;
+
+      const claimed = safeJson<Record<string, true>>(localStorage.getItem(LS.milestoneClaimed), {});
+      const top = Math.floor(lvlNow / 5) * 5;
+      const newly: number[] = [];
+      for (let m = 5; m <= top; m += 5) {
+        if (!claimed[String(m)]) newly.push(m);
+      }
+      if (!newly.length) return;
+
+      let addPills = 0;
+      let addFree = 0;
+      for (const m of newly) {
+        claimed[String(m)] = true;
+        addPills += 10 + m * 2; // 20@5, 30@10, 40@15...
+        addFree += m % 10 === 0 ? 2 : 1;
+      }
+
+      const curPills = Number(localStorage.getItem(LS.pills) || "0") || 0;
+      const curFree = Number(localStorage.getItem(LS.freePacks) || "0") || 0;
+      localStorage.setItem(LS.pills, String(curPills + addPills));
+      localStorage.setItem(LS.freePacks, String(curFree + addFree));
+      localStorage.setItem(LS.milestoneClaimed, JSON.stringify(claimed));
+
+      setPills(curPills + addPills);
+      const last = newly[newly.length - 1];
+      toast.push(`Milestone Lv ${last} 🎁 +${addPills}💊 • +${addFree} bustine`, "success", { duration: 4200 });
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [xp]);
+
   const lvlInfo = useMemo(() => computeLevel(xp), [xp]);
   const lvl = lvlInfo.level;
   const need = lvlInfo.need;
@@ -124,6 +164,16 @@ export default function HomeDashboard(_props: HomeDashboardProps) {
   const dailyPct = Math.min(100, Math.round((dailyXp / dailyGoal) * 100));
   const weeklyPct = Math.min(100, Math.round((weeklyXp / weeklyGoal) * 100));
   const nextMilestone = lvl % 5 === 0 ? lvl + 5 : lvl + (5 - (lvl % 5));
+
+  const pathItems = useMemo(() => {
+    const start = Math.max(1, Math.floor((lvl - 1) / 5) * 5 + 1);
+    const items: { level: number; kind: "node" | "chest"; active: boolean }[] = [];
+    for (let i = 0; i < 10; i++) {
+      const lv = start + i;
+      items.push({ level: lv, kind: lv % 5 === 0 ? "chest" : "node", active: lv === lvl });
+    }
+    return items;
+  }, [lvl]);
 
 
   return (
@@ -200,6 +250,70 @@ export default function HomeDashboard(_props: HomeDashboardProps) {
                 <div style={{ marginTop: 6, height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${weeklyPct}%`, background: "rgba(167,139,250,0.55)" }} />
                 </div>
+              </div>
+            </div>
+
+            {/* Mini path strip (Duolingo-ish) */}
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Percorso</div>
+                <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>
+                  Lv {pathItems[0]?.level} → {pathItems[pathItems.length - 1]?.level}
+                </div>
+              </div>
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  overflowX: "auto",
+                  paddingBottom: 4,
+                  WebkitOverflowScrolling: "touch",
+                }}
+              >
+                {pathItems.map((it, idx) => {
+                  const done = it.level < lvl;
+                  const tone = it.active
+                    ? { bg: "rgba(56,189,248,0.70)", br: "rgba(56,189,248,0.90)", fg: "#001018" }
+                    : done
+                    ? { bg: "rgba(34,197,94,0.30)", br: "rgba(34,197,94,0.55)", fg: "rgba(255,255,255,0.92)" }
+                    : { bg: "rgba(255,255,255,0.06)", br: "rgba(255,255,255,0.14)", fg: "rgba(255,255,255,0.78)" };
+
+                  const isLast = idx === pathItems.length - 1;
+                  return (
+                    <div key={it.level} style={{ display: "flex", alignItems: "center", gap: 10, flex: "0 0 auto" }}>
+                      <div
+                        style={{
+                          width: it.kind === "chest" ? 38 : 30,
+                          height: 30,
+                          borderRadius: 999,
+                          border: `1px solid ${tone.br}`,
+                          background: tone.bg,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 950,
+                          color: tone.fg,
+                          boxShadow: it.active ? "0 10px 22px rgba(56,189,248,0.22)" : "none",
+                        }}
+                        title={it.kind === "chest" ? `Forziere Lv ${it.level}` : `Lv ${it.level}`}
+                      >
+                        {it.kind === "chest" ? "🎁" : it.active ? "⭐" : it.level}
+                      </div>
+                      {!isLast && (
+                        <div
+                          style={{
+                            width: 22,
+                            height: 3,
+                            borderRadius: 999,
+                            background: done ? "rgba(34,197,94,0.45)" : "rgba(255,255,255,0.12)",
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

@@ -13,7 +13,8 @@ type ToolId =
   | "mgkgmin"
   | "map"
   | "bmi"
-  | "diuresi";
+  | "diuresi"
+  | "interactions";
 
 type ToolDef = { id: ToolId; title: string; subtitle: string };
 
@@ -25,6 +26,7 @@ type UtilityHistoryItem = {
 };
 
 const TOOLS: ToolDef[] = [
+  { id: "interactions", title: "Interazioni farmacologiche", subtitle: "seleziona un farmaco e controlla compatibilità"},
   { id: "mlh", title: "Velocità infusione", subtitle: "ml/h da volume e tempo"},
   { id: "gtt", title: "Gocce/min", subtitle: "con deflussore 20 o 60 gtt"},
   { id: "mgkgmin", title: "Dose → ml/h", subtitle: "mg/kg/min → ml/h (con concentrazione)"},
@@ -213,6 +215,8 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
 
 function ToolRenderer({ id, last, onSave, onUsed }: { id: ToolId; last: UtilityHistoryItem | null; onSave: (item: UtilityHistoryItem) => void; onUsed: () => void }) {
   switch (id) {
+    case "interactions":
+      return <ToolInteractions onUsed={onUsed} />;
     case "mlh":
       return <ToolMlH last={last} onSave={onSave} onUsed={onUsed} />;
     case "gtt":
@@ -228,6 +232,376 @@ function ToolRenderer({ id, last, onSave, onUsed }: { id: ToolId; last: UtilityH
     default:
       return null;
   }
+}
+
+/**
+ * Educational-only mini interaction checker (offline).
+ * It does NOT replace a drug database / SmPC.
+ */
+function ToolInteractions({ onUsed }: { onUsed: () => void }) {
+  type Severity = "ok" | "caution" | "avoid";
+  type Entry = {
+    id: string;
+    name: string;
+    group: string;
+    also?: string[];
+    // map of other IDs or groups -> severity + reason
+    rules: { key: string; sev: Severity; why: string }[];
+    tips?: string[];
+  };
+
+  const DB: Entry[] = [
+    {
+      id: "warfarin",
+      name: "Warfarin",
+      group: "Anticoagulanti",
+      also: ["Coumadin"],
+      rules: [
+        { key: "fans", sev: "avoid", why: "aumenta rischio emorragico (doppio effetto su coagulazione + mucosa gastrica)." },
+        { key: "macrolidi", sev: "avoid", why: "possono aumentare INR (inibizione metabolismo)." },
+        { key: "fluorochinoloni", sev: "caution", why: "possibile aumento INR (variabile)." },
+        { key: "amiodarone", sev: "avoid", why: "aumenta INR: spesso serve riduzione dose e monitoraggio stretto." },
+        { key: "doac", sev: "avoid", why: "non associare anticoagulanti: rischio sanguinamento." },
+        { key: "ssri", sev: "caution", why: "aumenta rischio sanguinamento (piastrine)." },
+      ],
+      tips: ["Se combinazioni inevitabili: monitor INR e segni di sanguinamento."],
+    },
+    {
+      id: "doac",
+      name: "DOAC (Apixaban/Rivaroxaban ecc.)",
+      group: "Anticoagulanti",
+      rules: [
+        { key: "warfarin", sev: "avoid", why: "doppia anticoagulazione." },
+        { key: "fans", sev: "caution", why: "rischio sanguinamento ↑." },
+        { key: "amiodarone", sev: "caution", why: "possibili interazioni PK (P-gp/CYP) in base al DOAC." },
+        { key: "antipiastrinici", sev: "caution", why: "rischio emorragico ↑ (valutare indicazione)." },
+      ],
+    },
+    {
+      id: "amiodarone",
+      name: "Amiodarone",
+      group: "Anti-aritmici",
+      rules: [
+        { key: "warfarin", sev: "avoid", why: "aumenta INR." },
+        { key: "digossina", sev: "avoid", why: "aumenta livelli di digossina → tossicità." },
+        { key: "qt", sev: "avoid", why: "prolunga QT: sommare con altri farmaci QT aumenta rischio torsioni." },
+        { key: "statine", sev: "caution", why: "alcune statine ↑ rischio miopatia (dipende dalla molecola)." },
+      ],
+      tips: ["Attenzione QT e bradicardia: monitor ECG quando associ."],
+    },
+    {
+      id: "macrolidi",
+      name: "Macrolidi (es. claritromicina)",
+      group: "Antibiotici",
+      rules: [
+        { key: "warfarin", sev: "avoid", why: "INR può aumentare." },
+        { key: "qt", sev: "avoid", why: "prolungamento QT (rischio torsioni)." },
+        { key: "statine", sev: "avoid", why: "inibizione CYP3A4: ↑ rischio rabdomiolisi (specie simvastatina)." },
+      ],
+    },
+    {
+      id: "fluorochinoloni",
+      name: "Fluorochinoloni (es. levofloxacina)",
+      group: "Antibiotici",
+      rules: [
+        { key: "warfarin", sev: "caution", why: "possibile aumento INR." },
+        { key: "qt", sev: "caution", why: "può prolungare QT (dipende dal farmaco)." },
+      ],
+    },
+    {
+      id: "linezolid",
+      name: "Linezolid",
+      group: "Antibiotici",
+      rules: [
+        { key: "ssri", sev: "avoid", why: "rischio sindrome serotoninergica (azione IMAO)." },
+        { key: "tramadolo", sev: "caution", why: "aumenta rischio serotoninergico." },
+      ],
+    },
+    {
+      id: "ssri",
+      name: "SSRI (es. sertralina)",
+      group: "Psichiatria",
+      rules: [
+        { key: "linezolid", sev: "avoid", why: "rischio sindrome serotoninergica." },
+        { key: "tramadolo", sev: "caution", why: "serotonina ↑ + rischio convulsioni." },
+        { key: "warfarin", sev: "caution", why: "rischio sanguinamento ↑." },
+      ],
+    },
+    {
+      id: "tramadolo",
+      name: "Tramadolo",
+      group: "Analgesici",
+      rules: [
+        { key: "ssri", sev: "caution", why: "serotonina ↑ + rischio convulsioni." },
+        { key: "linezolid", sev: "caution", why: "rischio serotoninergico." },
+      ],
+    },
+    {
+      id: "fans",
+      name: "FANS (es. ibuprofene/ketorolac)",
+      group: "Analgesici",
+      rules: [
+        { key: "warfarin", sev: "avoid", why: "rischio emorragico ↑." },
+        { key: "doac", sev: "caution", why: "rischio sanguinamento ↑." },
+        { key: "acei", sev: "caution", why: "rischio danno renale ↑ e riduzione effetto antiipertensivo." },
+        { key: "diuretici", sev: "caution", why: "rischio danno renale ↑ (" + "triple whammy" + ")." },
+      ],
+    },
+    {
+      id: "acei",
+      name: "ACE-inibitori (es. enalapril)",
+      group: "Cardiologia",
+      rules: [
+        { key: "spironolattone", sev: "avoid", why: "iperK: rischio elevato se funzione renale ridotta." },
+        { key: "fans", sev: "caution", why: "rischio danno renale ↑." },
+      ],
+    },
+    {
+      id: "spironolattone",
+      name: "Spironolattone",
+      group: "Diuretici",
+      rules: [
+        { key: "acei", sev: "avoid", why: "iperK." },
+      ],
+    },
+    {
+      id: "digossina",
+      name: "Digossina",
+      group: "Cardiologia",
+      rules: [
+        { key: "amiodarone", sev: "avoid", why: "tossicità da aumento livelli." },
+        { key: "diuretici", sev: "caution", why: "ipoK/ipoMg aumentano rischio aritmie/tossicità." },
+      ],
+    },
+    {
+      id: "statine",
+      name: "Statine (es. simvastatina/atorvastatina)",
+      group: "Metabolismo",
+      rules: [
+        { key: "macrolidi", sev: "avoid", why: "inibizione metabolismo: miopatia/rabdomiolisi." },
+        { key: "amiodarone", sev: "caution", why: "alcune combinazioni aumentano rischio miopatia." },
+      ],
+    },
+    { id: "antipiastrinici", name: "Antiaggreganti (ASA/Clopidogrel)", group: "Antitrombotici", rules: [{ key: "doac", sev: "caution", why: "rischio emorragico ↑ (valutare indicazione)." }] },
+    { id: "diuretici", name: "Diuretici (furosemide ecc.)", group: "Diuretici", rules: [{ key: "fans", sev: "caution", why: "rischio danno renale ↑." }, { key: "digossina", sev: "caution", why: "ipoK aumenta rischio tossicità digossina." }] },
+    { id: "qt", name: "Farmaci che allungano QT", group: "Sicurezza", rules: [{ key: "amiodarone", sev: "avoid", why: "somma effetti sul QT." }, { key: "macrolidi", sev: "avoid", why: "somma effetti sul QT." }] },
+  ];
+
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<Entry | null>(null);
+
+  const options = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = DB.filter((e) => {
+      if (!q) return true;
+      const hay = `${e.name} ${e.group} ${(e.also || []).join(" ")}`.toLowerCase();
+      return hay.includes(q) || e.id.includes(q);
+    });
+    // group by relevance: startswith then includes
+    return list.slice(0, 30);
+  }, [query]);
+
+  const result = useMemo(() => {
+    if (!selected) return null;
+    const rel = DB
+      .filter((x) => x.id !== selected.id)
+      .map((other) => {
+        // find rule by exact id or by group keyword
+        const direct = selected.rules.find((r) => r.key === other.id);
+        const byGroup = selected.rules.find((r) => r.key === other.group.toLowerCase());
+        const rule = direct || byGroup || null;
+        return { other, rule };
+      });
+
+    const ok: { name: string; group: string }[] = [];
+    const caution: { name: string; why: string }[] = [];
+    const avoid: { name: string; why: string }[] = [];
+
+    for (const x of rel) {
+      if (!x.rule) {
+        ok.push({ name: x.other.name, group: x.other.group });
+      } else if (x.rule.sev === "avoid") {
+        avoid.push({ name: x.other.name, why: x.rule.why });
+      } else if (x.rule.sev === "caution") {
+        caution.push({ name: x.other.name, why: x.rule.why });
+      } else {
+        ok.push({ name: x.other.name, group: x.other.group });
+      }
+    }
+    return { ok, caution, avoid };
+  }, [selected]);
+
+  function pick(e: Entry) {
+    setSelected(e);
+    onUsed();
+  }
+
+  const pill = (bg: string) => ({
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: bg,
+    fontWeight: 900,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.92)",
+    whiteSpace: "nowrap" as const,
+  });
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div
+        style={{
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "rgba(255,255,255,0.04)",
+          borderRadius: 18,
+          padding: 12,
+        }}
+      >
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={pill("rgba(56,189,248,0.14)")}>🧪 Educational</div>
+          <div style={pill("rgba(245,158,11,0.12)")}>⚠️ Non sostituisce banche dati/SmPC</div>
+          <div style={pill("rgba(255,255,255,0.06)")}>Offline</div>
+        </div>
+        <div style={{ marginTop: 10, opacity: 0.78, fontWeight: 800, fontSize: 12 }}>
+          Seleziona un farmaco (o una classe) e visualizza: <b>compatibili</b>, <b>attenzione</b>, <b>da evitare</b>.
+        </div>
+
+        <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Cerca (es. warfarin, macrolidi, FANS...)"
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(255,255,255,0.06)",
+              color: "rgba(255,255,255,0.92)",
+              fontWeight: 900,
+              outline: "none",
+            }}
+          />
+          <div
+            style={{
+              display: "grid",
+              gap: 8,
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            }}
+          >
+            {options.map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                onClick={() => pick(e)}
+                style={{
+                  textAlign: "left",
+                  padding: 10,
+                  borderRadius: 16,
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  background: selected?.id === e.id ? "rgba(34,197,94,0.16)" : "rgba(0,0,0,0.18)",
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ fontWeight: 950 }}>{e.name}</div>
+                <div style={{ opacity: 0.72, fontWeight: 800, fontSize: 12 }}>{e.group}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {selected && result && (
+        <div
+          style={{
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: "rgba(255,255,255,0.04)",
+            borderRadius: 18,
+            padding: 12,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontWeight: 950, fontSize: 16 }}>{selected.name}</div>
+              <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>{selected.group}</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelected(null)}
+              style={{
+                padding: "8px 10px",
+                borderRadius: 14,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                color: "rgba(255,255,255,0.92)",
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              Cambia
+            </button>
+          </div>
+
+          <div style={{ marginTop: 12, display: "grid", gap: 10, gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
+            <div style={{ borderRadius: 16, border: "1px solid rgba(34,197,94,0.28)", background: "rgba(34,197,94,0.10)", padding: 10, minWidth: 0 }}>
+              <div style={{ fontWeight: 950 }}>Compatibili ✅</div>
+              <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                {result.ok.slice(0, 8).map((x) => (
+                  <div key={x.name} style={{ fontWeight: 850, opacity: 0.92, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {x.name}
+                  </div>
+                ))}
+                {result.ok.length > 8 && <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>+{result.ok.length - 8} altri…</div>}
+              </div>
+            </div>
+
+            <div style={{ borderRadius: 16, border: "1px solid rgba(245,158,11,0.28)", background: "rgba(245,158,11,0.10)", padding: 10, minWidth: 0 }}>
+              <div style={{ fontWeight: 950 }}>Attenzione ⚠️</div>
+              <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                {result.caution.length ? (
+                  result.caution.slice(0, 5).map((x) => (
+                    <div key={x.name} style={{ display: "grid", gap: 2 }}>
+                      <div style={{ fontWeight: 900, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</div>
+                      <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12, lineHeight: 1.2 }}>{x.why}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>Nessuna nota principale nel mini-database.</div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ borderRadius: 16, border: "1px solid rgba(239,68,68,0.28)", background: "rgba(239,68,68,0.10)", padding: 10, minWidth: 0 }}>
+              <div style={{ fontWeight: 950 }}>Da evitare ⛔</div>
+              <div style={{ marginTop: 8, display: "grid", gap: 8 }}>
+                {result.avoid.length ? (
+                  result.avoid.slice(0, 5).map((x) => (
+                    <div key={x.name} style={{ display: "grid", gap: 2 }}>
+                      <div style={{ fontWeight: 900, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</div>
+                      <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12, lineHeight: 1.2 }}>{x.why}</div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ opacity: 0.7, fontWeight: 800, fontSize: 12 }}>Nessuna controindicazione principale nel mini-database.</div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {selected.tips?.length ? (
+            <div style={{ marginTop: 12, padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.18)" }}>
+              <div style={{ fontWeight: 950 }}>Suggerimenti</div>
+              <ul style={{ margin: "8px 0 0", paddingLeft: 18, opacity: 0.85, fontWeight: 800, fontSize: 12, lineHeight: 1.35 }}>
+                {selected.tips.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function Input({ label, value, onChange, suffix }: { label: string; value: string; onChange: (v: string) => void; suffix?: string }) {
