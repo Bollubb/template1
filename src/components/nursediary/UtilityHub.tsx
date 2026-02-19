@@ -787,8 +787,7 @@ function ToolGCS({
           </div>
           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
             <span
-              style={
-                display: "inline-flex",
+              style={{ display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
                 padding: "6px 10px",
@@ -815,11 +814,10 @@ function ToolGCS({
                 fontWeight: 700,
                 letterSpacing: 0.2,
                 lineHeight: 1,
-              }
-            >
+              }}>
               <span
                 aria-hidden
-                style={
+                style={{
                   width: 8,
                   height: 8,
                   borderRadius: 999,
