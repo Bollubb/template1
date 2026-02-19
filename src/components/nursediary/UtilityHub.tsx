@@ -615,7 +615,54 @@ function ToolNEWS2({
           </div>
 
           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-            <Badge sev={interpretation.sev} text={interpretation.band} />
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 10px",
+                borderRadius: 999,
+                border:
+                  interpretation.sev === "avoid"
+                    ? "1px solid rgba(239, 68, 68, 0.30)"
+                    : interpretation.sev === "caution"
+                    ? "1px solid rgba(245, 158, 11, 0.32)"
+                    : "1px solid rgba(34, 197, 94, 0.30)",
+                background:
+                  interpretation.sev === "avoid"
+                    ? "rgba(239, 68, 68, 0.12)"
+                    : interpretation.sev === "caution"
+                    ? "rgba(245, 158, 11, 0.14)"
+                    : "rgba(34, 197, 94, 0.12)",
+                color:
+                  interpretation.sev === "avoid"
+                    ? "rgb(220, 38, 38)"
+                    : interpretation.sev === "caution"
+                    ? "rgb(217, 119, 6)"
+                    : "rgb(22, 163, 74)",
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: 0.2,
+                lineHeight: 1,
+              }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background:
+                    interpretation.sev === "avoid"
+                      ? "rgb(220, 38, 38)"
+                      : interpretation.sev === "caution"
+                      ? "rgb(217, 119, 6)"
+                      : "rgb(22, 163, 74)",
+                  boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
+                }}
+              />
+              {interpretation.band}
+            </span>
             {!premium && (
               <button
                 type="button"
