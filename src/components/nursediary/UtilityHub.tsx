@@ -786,7 +786,54 @@ function ToolGCS({
             <div style={{ fontWeight: 950, fontSize: 20 }}>{total}</div>
           </div>
           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-            <Badge sev={band.sev} text={band.t} />
+            <span
+              style={
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 10px",
+                borderRadius: 999,
+                border:
+                  band.sev === "avoid"
+                    ? "1px solid rgba(239, 68, 68, 0.30)"
+                    : band.sev === "caution"
+                    ? "1px solid rgba(245, 158, 11, 0.32)"
+                    : "1px solid rgba(34, 197, 94, 0.30)",
+                background:
+                  band.sev === "avoid"
+                    ? "rgba(239, 68, 68, 0.12)"
+                    : band.sev === "caution"
+                    ? "rgba(245, 158, 11, 0.14)"
+                    : "rgba(34, 197, 94, 0.12)",
+                color:
+                  band.sev === "avoid"
+                    ? "rgb(220, 38, 38)"
+                    : band.sev === "caution"
+                    ? "rgb(217, 119, 6)"
+                    : "rgb(22, 163, 74)",
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: 0.2,
+                lineHeight: 1,
+              }
+            >
+              <span
+                aria-hidden
+                style={
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background:
+                    band.sev === "avoid"
+                      ? "rgb(220, 38, 38)"
+                      : band.sev === "caution"
+                      ? "rgb(217, 119, 6)"
+                      : "rgb(22, 163, 74)",
+                  boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
+                }
+              />
+              {band.t}
+            </span>
           </div>
           <div style={{ marginTop: 8, opacity: 0.85, fontSize: 13, lineHeight: 1.35 }}>{band.note}</div>
         </div>
