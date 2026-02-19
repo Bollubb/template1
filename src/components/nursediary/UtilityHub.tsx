@@ -486,7 +486,7 @@ function ScaleShell({
           <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>{subtitle}</div>
         </div>
 
-        <button type="button" onClick={onBack} style={{ghostBtn()}}>
+        <button type="button" onClick={onBack} style={ghostBtn()}>
           Indietro
         </button>
       </div>
@@ -662,7 +662,7 @@ function ToolNEWS2({
                     "Template di consegna rapida",
                   ])
                 }
-                style={{ghostBtn()}}>
+                style={ghostBtn()}>
                 Boost
               </button>
             )}
@@ -1116,7 +1116,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                   setQ2("");
                   setB(null);
                 }}
-                style={{ghostBtn()}}>
+                style={ghostBtn()}>
                 ← Cambia farmaco 1
               </button>
 
@@ -1166,7 +1166,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
             ) : (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontSize: 13, opacity: 0.75 }}>Disponibile con Premium (ricerche illimitate + alternative).</div>
-                <button type="button" onClick={() => onUpsell("Sblocca Alternative", "Con Premium vedi alternative terapeutiche e dettagli avanzati.")} style={{ghostBtn()}}>
+                <button type="button" onClick={() => onUpsell("Sblocca Alternative", "Con Premium vedi alternative terapeutiche e dettagli avanzati.")} style={ghostBtn()}>
                   Sblocca
                 </button>
               </div>
@@ -1174,9 +1174,9 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
           </div>
 
           <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button type="button" onClick={resetAll} style={{ghostBtn()}}>Nuova ricerca</button>
+            <button type="button" onClick={resetAll} style={ghostBtn()}>Nuova ricerca</button>
             {!limit.premium && (
-              <button type="button" onClick={() => onUpsell("Ricerche illimitate", "Con Premium ricerche illimitate e contenuti avanzati in Utility.")} style={{ghostBtn()}}>
+              <button type="button" onClick={() => onUpsell("Ricerche illimitate", "Con Premium ricerche illimitate e contenuti avanzati in Utility.")} style={ghostBtn()}>
                 Passa a Premium
               </button>
             )}
@@ -1415,7 +1415,7 @@ function ToolGtt({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
       <NumRow label="Tempo (min)" value={min} setValue={setMin} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10 }}>
         <div style={{ fontWeight: 850, opacity: 0.9 }}>Deflussore</div>
-        <select value={set} onChange={(e) => setSet(Number(e.target.value))} style={{selectStyle()}}>
+        <select value={set} onChange={(e) => setSet(Number(e.target.value))} style={selectStyle()}>
           <option value={20}>20 gtt/ml</option>
           <option value={60}>60 gtt/ml</option>
         </select>
@@ -1561,7 +1561,7 @@ function NumRow({ label, value, setValue, step }: { label: string; value: number
         value={value}
         step={step}
         onChange={(e) => setValue(Number(e.target.value))}
-        style={{inputStyle()}}/>
+        style={inputStyle()}/>
     </div>
   );
 }
