@@ -1128,7 +1128,8 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                 Verifica interazione
               </button>
             </div>
-          }}/>
+          }
+        />
       )}
 
       {step === 3 && outcome && a && b && (
