@@ -66,6 +66,18 @@ function pickRandom<T>(arr: T[], n: number) {
   return a.slice(0, n);
 }
 
+function shuffleQuestion(q: QuizQuestion): QuizQuestion {
+  // shuffle options per-run to reduce memorizzazione (remap answer index)
+  const idxs = q.options.map((_, i) => i);
+  for (let i = idxs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+  }
+  const options = idxs.map((i) => q.options[i]);
+  const answer = idxs.indexOf(q.answer);
+  return { ...q, options, answer };
+}
+
 const LS = {
   pills: "nd_pills",
   premium: "nd_premium",
@@ -236,7 +248,8 @@ export default function QuizPage(): JSX.Element {
     const candidates = QUIZ_BANK.filter((q) => !recent.includes(q.id));
     const pool = candidates.length >= n ? candidates : QUIZ_BANK;
 
-    const questions = opts?.questions?.length ? opts.questions : pickRandom(pool, n);
+    const questionsRaw = opts?.questions?.length ? opts.questions : pickRandom(pool, n);
+    const questions = questionsRaw.map(shuffleQuestion);
     try {
       const nextRecent = [...questions.map((q) => q.id), ...recent].slice(0, 50);
       localStorage.setItem(recentKey, JSON.stringify(nextRecent));
