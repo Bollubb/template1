@@ -184,8 +184,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                  transition: "transform 100ms ease, background 160ms ease, border-color 160ms ease",
                  willChange: "transform",
                   transition: "transform 120ms ease, border-color 120ms ease, background 120ms ease",
-                }}
-              >
+                }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ fontSize: 16, fontWeight: 850 }}>{s.title}</div>
@@ -198,8 +197,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                           borderRadius: 999,
                           border: "1px solid rgba(255,255,255,0.15)",
                           opacity: 0.95,
-                        }}
-                      >
+                        }}>
                         {s.badge}
                       </span>
                     )}
@@ -227,8 +225,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                           padding: 12,
                           border: "1px solid rgba(255,255,255,0.08)",
                           background: "rgba(255,255,255,0.03)",
-                        }}
-                      >
+                        }}>
                         <div style={{ fontWeight: 850, fontSize: 13 }}>{k}</div>
                         <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>{h.output}</div>
                       </div>
@@ -260,8 +257,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025))",
                 fontWeight: 850,
                 cursor: "pointer",
-              }}
-            >
+              }}>
               ← Indietro
             </button>
 
@@ -276,8 +272,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 fontWeight: 850,
                 cursor: "pointer",
                 opacity: 0.85,
-              }}
-            >
+              }}>
               Chiudi
             </button>
           </div>
@@ -330,8 +325,7 @@ function CalcCard({ title, subtitle, onClick }: { title: string; subtitle: strin
         border: "1px solid rgba(255,255,255,0.08)",
         background: "rgba(255,255,255,0.03)",
         cursor: "pointer",
-      }}
-    >
+      }}>
       <div style={{ fontWeight: 850 }}>{title}</div>
       <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{subtitle}</div>
     </button>
@@ -358,8 +352,7 @@ function ComingSoon({ title, desc, onUpsell }: { title: string; desc: string; on
               background: "rgba(255,255,255,0.06)",
               fontWeight: 900,
               cursor: "pointer",
-            }}
-          >
+            }}>
             Sblocca Premium
           </button>
         )}
@@ -466,8 +459,7 @@ function ScaleCard({
         gap: 12,
         cursor: "pointer",
         transition: "transform 120ms ease, border-color 120ms ease, background 120ms ease",
-      }}
-    >
+      }}>
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ fontSize: 16, fontWeight: 900 }}>{title}</div>
@@ -593,8 +585,7 @@ function ToolNEWS2({
         onSave(item);
         try { localStorage.setItem(LS.news2Prev, JSON.stringify({ score, ts: Date.now(), band: interpretation.band })); } catch {}
         onToast("Salvato", "success");
-      }}
-    >
+      }}>
       <div style={{ display: "grid", gap: 10 }}>
         <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
@@ -669,8 +660,7 @@ function ToolNEWS2({
                 fontWeight: 700,
                 letterSpacing: 0.2,
                 lineHeight: 1,
-              }}
-            >
+              }}>
               <span
                 aria-hidden
                 style={{
@@ -684,8 +674,7 @@ function ToolNEWS2({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }}
-              />
+                }}/>
               {interpretation.band}
             </span>
             {!premium && (
@@ -748,8 +737,7 @@ function TrendNews2({ score }: { score: number }) {
         borderRadius: 999,
         border: "1px solid rgba(255,255,255,0.10)",
         background: "rgba(255,255,255,0.03)",
-      }}
-    >
+      }}>
       Δ NEWS2: {label}
     </span>
   );
@@ -791,8 +779,7 @@ function ToolGCS({
       onSave={() => {
         onSave({ tool: "GCS", ts: Date.now(), inputs: { eye, verbal, motor }, output: `GCS: ${total} (${band.t})` });
         onToast("Salvato", "success");
-      }}
-    >
+      }}>
       <div style={{ display: "grid", gap: 10 }}>
         <SelectPills
           label="Apertura occhi (E)"
@@ -838,7 +825,7 @@ function ToolGCS({
           </div>
           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
             <span
-              style={
+              style={{
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
@@ -866,11 +853,10 @@ function ToolGCS({
                 fontWeight: 700,
                 letterSpacing: 0.2,
                 lineHeight: 1,
-              }
-            >
+              }}>
               <span
                 aria-hidden
-                style={
+                style={{
                   width: 8,
                   height: 8,
                   borderRadius: 999,
@@ -881,8 +867,7 @@ function ToolGCS({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }
-              />
+                }}/>
               {band.t}
             </span>
           </div>
@@ -910,8 +895,7 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
           cursor: "pointer",
           minWidth: 92,
           textAlign: "center",
-        }}
-      >
+        }}>
         {value ? "Sì" : "No"}
       </button>
     </div>
@@ -949,8 +933,7 @@ function SelectPills({
                 fontSize: 12.5,
                 fontWeight: 850,
                 cursor: "pointer",
-              }}
-            >
+              }}>
               {o.t}
             </button>
           );
@@ -1082,7 +1065,7 @@ function ToolInfusions({
 
   const Pill = ({ sev, text }: { sev: Sev; text: string }) => (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 999, border: sev === "avoid" ? "1px solid rgba(239,68,68,0.30)" : sev === "caution" ? "1px solid rgba(245,158,11,0.32)" : "1px solid rgba(34,197,94,0.30)", background: sev === "avoid" ? "rgba(239,68,68,0.12)" : sev === "caution" ? "rgba(245,158,11,0.14)" : "rgba(34,197,94,0.12)", color: sev === "avoid" ? "rgb(220,38,38)" : sev === "caution" ? "rgb(217,119,6)" : "rgb(22,163,74)", fontSize: 12, fontWeight: 850, lineHeight: 1 }}>
-      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: sev === "avoid" ? "rgb(220,38,38)" : sev === "caution" ? "rgb(217,119,6)" : "rgb(22,163,74)" }} />
+      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: sev === "avoid" ? "rgb(220,38,38)" : sev === "caution" ? "rgb(217,119,6)" : "rgb(22,163,74)" }}/>
       {text}
     </span>
   );
@@ -1105,8 +1088,7 @@ function ToolInfusions({
           query={q1}
           setQuery={setQ1}
           results={results1.map((d) => ({ id: d.id, name: d.name, group: d.class }))}
-          onPick={(e) => { setA(DB.find((x) => x.id === e.id) || null); setStep(2); setQ2(""); setB(null); }}
-        />
+          onPick={(e) => { setA(DB.find((x) => x.id === e.id) || null); setStep(2); setQ2(""); setB(null); }}/>
       )}
 
       {step === 2 && (
@@ -1125,8 +1107,7 @@ function ToolInfusions({
                 Verifica compatibilità
               </button>
             </div>
-          }
-        />
+          }}/>
       )}
 
       {step === 3 && outcome && a && b && (
@@ -1388,8 +1369,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
             setStep(2);
             setQ2("");
             setB(null);
-          }}
-        />
+          }}/>
       )}
 
       {step === 2 && (
@@ -1422,8 +1402,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                 Verifica interazione
               </button>
             </div>
-          }
-        />
+          }}/>
       )}
 
       {step === 3 && outcome && a && b && (
@@ -1517,8 +1496,7 @@ function StepPick({
           border: "1px solid rgba(255,255,255,0.14)",
           background: "rgba(0,0,0,0.15)",
           outline: "none",
-        }}
-      />
+        }}/>
 
       <div style={{ marginTop: 10, display: "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
         {results.slice(0, 20).map((r, i) => (
@@ -1533,8 +1511,7 @@ function StepPick({
               border: "1px solid rgba(255,255,255,0.08)",
               background: "rgba(255,255,255,0.02)",
               cursor: "pointer",
-            }}
-          >
+            }}>
             <div style={{ fontWeight: 900, fontSize: 13 }}>{r.e.name}</div>
             <div style={{ opacity: 0.75, fontSize: 12, marginTop: 3 }}>{r.label}</div>
           </button>
