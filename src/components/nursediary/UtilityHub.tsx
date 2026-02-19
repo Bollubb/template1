@@ -751,7 +751,10 @@ function searchDrugs(list: { id: string; name: string; group: string; also?: str
     .map(({ e, label }) => ({ e, label }));
 }
 
-function pickWorst(a: { sev: "ok" | "caution" | "avoid" } | null, b: { sev: "ok" | "caution" | "avoid" } | null) {
+function pickWorst(
+  a: { sev: "ok" | "caution" | "avoid"; why?: string; monitor?: string[]; alternatives?: string[] } | null,
+  b: { sev: "ok" | "caution" | "avoid"; why?: string; monitor?: string[]; alternatives?: string[] } | null
+) {
   const rank = (s: "ok" | "caution" | "avoid") => (s === "avoid" ? 2 : s === "caution" ? 1 : 0);
   if (!a && !b) return null;
   if (a && !b) return a;
