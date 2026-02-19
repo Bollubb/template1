@@ -1087,8 +1087,8 @@ function ToolInfusions({
           title="Step 1 — Seleziona infusione A"
           query={q1}
           setQuery={setQ1}
-          results={results1.map((d) => ({ id: d.id, name: d.name, group: d.class }))}
-          onPick={(e) => { setA(DB.find((x) => x.id === e.id) || null); setStep(2); setQ2(""); setB(null); }}/>
+          results={results1.map((d) => ({ e: d, label: `${d.name} • ${d.class}` }))}
+          onPick={(e) => { setA(e as any); setStep(2); setQ2(""); setB(null); }}/>
       )}
 
       {step === 2 && (
@@ -1096,8 +1096,8 @@ function ToolInfusions({
           title="Step 2 — Seleziona infusione B"
           query={q2}
           setQuery={setQ2}
-          results={results2.map((d) => ({ id: d.id, name: d.name, group: d.class }))}
-          onPick={(e) => setB(DB.find((x) => x.id === e.id) || null)}
+          results={results2.map((d) => ({ e: d, label: `${d.name} • ${d.class}` }))}
+          onPick={(e) => setB(e as any)}
           footer={
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
               <button type="button" onClick={() => { setStep(1); setQ2(""); setB(null); }} style={ghostBtn()}>
