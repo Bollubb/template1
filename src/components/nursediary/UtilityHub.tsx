@@ -173,8 +173,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   gap: 12,
                   cursor: "pointer",
                   transition: "transform 120ms ease, border-color 120ms ease, background 120ms ease",
-                }}
-              >
+                }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ fontSize: 16, fontWeight: 850 }}>{s.title}</div>
@@ -187,8 +186,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                           borderRadius: 999,
                           border: "1px solid rgba(255,255,255,0.15)",
                           opacity: 0.95,
-                        }}
-                      >
+                        }}>
                         {s.badge}
                       </span>
                     )}
@@ -216,8 +214,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                           padding: 12,
                           border: "1px solid rgba(255,255,255,0.08)",
                           background: "rgba(255,255,255,0.03)",
-                        }}
-                      >
+                        }}>
                         <div style={{ fontWeight: 850, fontSize: 13 }}>{k}</div>
                         <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>{h.output}</div>
                       </div>
@@ -249,8 +246,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025))",
                 fontWeight: 850,
                 cursor: "pointer",
-              }}
-            >
+              }}>
               ← Indietro
             </button>
 
@@ -265,8 +261,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 fontWeight: 850,
                 cursor: "pointer",
                 opacity: 0.85,
-              }}
-            >
+              }}>
               Chiudi
             </button>
           </div>
@@ -319,8 +314,7 @@ function CalcCard({ title, subtitle, onClick }: { title: string; subtitle: strin
         border: "1px solid rgba(255,255,255,0.08)",
         background: "rgba(255,255,255,0.03)",
         cursor: "pointer",
-      }}
-    >
+      }}>
       <div style={{ fontWeight: 850 }}>{title}</div>
       <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{subtitle}</div>
     </button>
@@ -347,8 +341,7 @@ function ComingSoon({ title, desc, onUpsell }: { title: string; desc: string; on
               background: "rgba(255,255,255,0.06)",
               fontWeight: 900,
               cursor: "pointer",
-            }}
-          >
+            }}>
             Sblocca Premium
           </button>
         )}
@@ -455,8 +448,7 @@ function ScaleCard({
         gap: 12,
         cursor: "pointer",
         transition: "transform 120ms ease, border-color 120ms ease, background 120ms ease",
-      }}
-    >
+      }}>
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ fontSize: 16, fontWeight: 900 }}>{title}</div>
@@ -494,7 +486,7 @@ function ScaleShell({
           <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>{subtitle}</div>
         </div>
 
-        <button type="button" onClick={onBack} style={ghostBtn()}>
+        <button type="button" onClick={onBack} style={{ghostBtn()}}>
           Indietro
         </button>
       </div>
@@ -502,7 +494,7 @@ function ScaleShell({
       <div style={{ marginTop: 12 }}>{children}</div>
 
       <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-        <button type="button" onClick={onSave} style={primaryBtn(false)}>
+        <button type="button" onClick={onSave} style={{primaryBtn(false)}}>
           Salva
         </button>
       </div>
@@ -581,8 +573,7 @@ function ToolNEWS2({
         };
         onSave(item);
         onToast("Salvato", "success");
-      }}
-    >
+      }}>
       <div style={{ display: "grid", gap: 10 }}>
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 1fr" }}>
           <NumRow label="FR (atti/min)" value={rr} setValue={setRr} />
@@ -644,8 +635,7 @@ function ToolNEWS2({
                 fontWeight: 700,
                 letterSpacing: 0.2,
                 lineHeight: 1,
-              }}
-            >
+              }}>
               <span
                 aria-hidden
                 style={{
@@ -659,8 +649,7 @@ function ToolNEWS2({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }}
-              />
+                }}/>
               {interpretation.band}
             </span>
             {!premium && (
@@ -673,8 +662,7 @@ function ToolNEWS2({
                     "Template di consegna rapida",
                   ])
                 }
-                style={ghostBtn()}
-              >
+                style={{ghostBtn()}}>
                 Boost
               </button>
             )}
@@ -740,8 +728,7 @@ function ToolGCS({
       onSave={() => {
         onSave({ tool: "GCS", ts: Date.now(), inputs: { eye, verbal, motor }, output: `GCS: ${total} (${band.t})` });
         onToast("Salvato", "success");
-      }}
-    >
+      }}>
       <div style={{ display: "grid", gap: 10 }}>
         <SelectPills
           label="Apertura occhi (E)"
@@ -787,7 +774,7 @@ function ToolGCS({
           </div>
           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
             <span
-              style={
+              style={{
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
@@ -815,8 +802,7 @@ function ToolGCS({
                 fontWeight: 700,
                 letterSpacing: 0.2,
                 lineHeight: 1,
-              }
-            >
+              }}>
               <span
                 aria-hidden
                 style={{
@@ -830,8 +816,7 @@ function ToolGCS({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }}
-              />
+                }}/>
               {band.t}
             </span>
           </div>
@@ -859,8 +844,7 @@ function ToggleRow({ label, value, onChange }: { label: string; value: boolean; 
           cursor: "pointer",
           minWidth: 92,
           textAlign: "center",
-        }}
-      >
+        }}>
         {value ? "Sì" : "No"}
       </button>
     </div>
@@ -898,8 +882,7 @@ function SelectPills({
                 fontSize: 12.5,
                 fontWeight: 850,
                 cursor: "pointer",
-              }}
-            >
+              }}>
               {o.t}
             </button>
           );
@@ -1114,8 +1097,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
             setStep(2);
             setQ2("");
             setB(null);
-          }}
-        />
+          }}/>
       )}
 
       {step === 2 && (
@@ -1134,8 +1116,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                   setQ2("");
                   setB(null);
                 }}
-                style={ghostBtn()}
-              >
+                style={{ghostBtn()}}>
                 ← Cambia farmaco 1
               </button>
 
@@ -1143,13 +1124,11 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                 type="button"
                 onClick={confirm}
                 disabled={!a || !b}
-                style={primaryBtn(!a || !b)}
-              >
+                style={{primaryBtn(!a || !b)}}>
                 Verifica interazione
               </button>
             </div>
-          }}
-        />
+          }}/>
       )}
 
       {step === 3 && outcome && a && b && (
@@ -1160,7 +1139,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
               <div style={{ opacity: 0.75, marginTop: 4, fontSize: 13 }}>{a.group} • {b.group}</div>
             </div>
 
-            <span style={sevPill(outcome.sev)}>{outcome.title}</span>
+            <span style={{sevPill(outcome.sev)}}>{outcome.title}</span>
           </div>
 
           <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9, lineHeight: 1.35 }}>{outcome.why}</div>
@@ -1187,7 +1166,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
             ) : (
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontSize: 13, opacity: 0.75 }}>Disponibile con Premium (ricerche illimitate + alternative).</div>
-                <button type="button" onClick={() => onUpsell("Sblocca Alternative", "Con Premium vedi alternative terapeutiche e dettagli avanzati.")} style={ghostBtn()}>
+                <button type="button" onClick={() => onUpsell("Sblocca Alternative", "Con Premium vedi alternative terapeutiche e dettagli avanzati.")} style={{ghostBtn()}}>
                   Sblocca
                 </button>
               </div>
@@ -1195,9 +1174,9 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
           </div>
 
           <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button type="button" onClick={resetAll} style={ghostBtn()}>Nuova ricerca</button>
+            <button type="button" onClick={resetAll} style={{ghostBtn()}}>Nuova ricerca</button>
             {!limit.premium && (
-              <button type="button" onClick={() => onUpsell("Ricerche illimitate", "Con Premium ricerche illimitate e contenuti avanzati in Utility.")} style={ghostBtn()}>
+              <button type="button" onClick={() => onUpsell("Ricerche illimitate", "Con Premium ricerche illimitate e contenuti avanzati in Utility.")} style={{ghostBtn()}}>
                 Passa a Premium
               </button>
             )}
@@ -1243,8 +1222,7 @@ function StepPick({
           border: "1px solid rgba(255,255,255,0.14)",
           background: "rgba(0,0,0,0.15)",
           outline: "none",
-        }}
-      />
+        }}/>
 
       <div style={{ marginTop: 10, display: "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
         {results.slice(0, 20).map((r, i) => (
@@ -1259,8 +1237,7 @@ function StepPick({
               border: "1px solid rgba(255,255,255,0.08)",
               background: "rgba(255,255,255,0.02)",
               cursor: "pointer",
-            }}
-          >
+            }}>
             <div style={{ fontWeight: 900, fontSize: 13 }}>{r.e.name}</div>
             <div style={{ opacity: 0.75, fontSize: 12, marginTop: 3 }}>{r.label}</div>
           </button>
@@ -1438,7 +1415,7 @@ function ToolGtt({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
       <NumRow label="Tempo (min)" value={min} setValue={setMin} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10 }}>
         <div style={{ fontWeight: 850, opacity: 0.9 }}>Deflussore</div>
-        <select value={set} onChange={(e) => setSet(Number(e.target.value))} style={selectStyle()}>
+        <select value={set} onChange={(e) => setSet(Number(e.target.value))} style={{selectStyle()}}>
           <option value={20}>20 gtt/ml</option>
           <option value={60}>60 gtt/ml</option>
         </select>
@@ -1567,7 +1544,7 @@ function CalcShell({ title, subtitle, children, onSave }: { title: string; subti
       <div style={{ marginTop: 12 }}>{children}</div>
 
       <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-        <button type="button" onClick={onSave} style={primaryBtn(false)}>
+        <button type="button" onClick={onSave} style={{primaryBtn(false)}}>
           Salva
         </button>
       </div>
@@ -1584,8 +1561,7 @@ function NumRow({ label, value, setValue, step }: { label: string; value: number
         value={value}
         step={step}
         onChange={(e) => setValue(Number(e.target.value))}
-        style={inputStyle()}
-      />
+        style={{inputStyle()}}/>
     </div>
   );
 }
