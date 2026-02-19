@@ -9,6 +9,35 @@ const LS = {
   history: "nd_utility_history_v1",
 } as const;
 
+function ghostBtn() {
+  return {
+    borderRadius: 12,
+    padding: "10px 12px",
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.03)",
+    color: "inherit",
+    fontWeight: 900,
+    cursor: "pointer",
+    transition: "transform 120ms ease, background 160ms ease, border-color 160ms ease",
+    willChange: "transform",
+  } as React.CSSProperties;
+}
+
+function primaryBtn(disabled: boolean) {
+  return {
+    borderRadius: 12,
+    padding: "10px 12px",
+    border: "1px solid rgba(59,130,246,0.35)",
+    background: disabled ? "rgba(59,130,246,0.10)" : "rgba(59,130,246,0.22)",
+    color: "inherit",
+    fontWeight: 950,
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.6 : 1,
+    transition: "transform 120ms ease, background 160ms ease, border-color 160ms ease, opacity 160ms ease",
+    willChange: "transform",
+  } as React.CSSProperties;
+}
+
 type ToolId =
   | "mlh"
   | "gtt"
