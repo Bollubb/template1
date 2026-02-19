@@ -1110,8 +1110,8 @@ function ToolInfusions({
                 Verifica compatibilità
               </button>
             </div>
-          }}
-                />
+          }
+        />
       )}
 
       {step === 3 && outcome && a && b && (
@@ -1374,7 +1374,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
             setQ2("");
             setB(null);
           }}
-                />
+        />
       )}
 
       {step === 2 && (
