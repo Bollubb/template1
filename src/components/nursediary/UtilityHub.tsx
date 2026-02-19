@@ -787,7 +787,8 @@ function ToolGCS({
           </div>
           <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
             <span
-              style={{ display: "inline-flex",
+              style={
+                display: "inline-flex",
                 alignItems: "center",
                 gap: 8,
                 padding: "6px 10px",
@@ -814,7 +815,8 @@ function ToolGCS({
                 fontWeight: 700,
                 letterSpacing: 0.2,
                 lineHeight: 1,
-              }}>
+              }
+            >
               <span
                 aria-hidden
                 style={{
@@ -828,7 +830,7 @@ function ToolGCS({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }
+                }}
               />
               {band.t}
             </span>
@@ -1146,7 +1148,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                 Verifica interazione
               </button>
             </div>
-          }
+          }}
         />
       )}
 
