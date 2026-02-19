@@ -1090,7 +1090,7 @@ function ToolInfusions({
           query={q1}
           setQuery={setQ1}
           results={results1.map((d) => ({ e: d, label: `${d.name} • ${d.class}` }))}
-          onPick={(e) => { setA(e as any); setStep(2); setQ2(""); setB(null); }
+          onPick={(e) => { setA(e as any); setStep(2); setQ2(""); setB(null); }}
         />
       )}
 
