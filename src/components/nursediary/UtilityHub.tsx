@@ -494,7 +494,7 @@ function ScaleShell({
       <div style={{ marginTop: 12 }}>{children}</div>
 
       <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-        <button type="button" onClick={onSave} style={{primaryBtn(false)}}>
+        <button type="button" onClick={onSave} style={primaryBtn(false)}>
           Salva
         </button>
       </div>
@@ -1124,7 +1124,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                 type="button"
                 onClick={confirm}
                 disabled={!a || !b}
-                style={{primaryBtn(!a || !b)}}>
+                style={primaryBtn(!a || !b)}>
                 Verifica interazione
               </button>
             </div>
@@ -1139,7 +1139,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
               <div style={{ opacity: 0.75, marginTop: 4, fontSize: 13 }}>{a.group} • {b.group}</div>
             </div>
 
-            <span style={{sevPill(outcome.sev)}}>{outcome.title}</span>
+            <span style={sevPill(outcome.sev)}>{outcome.title}</span>
           </div>
 
           <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9, lineHeight: 1.35 }}>{outcome.why}</div>
@@ -1544,7 +1544,7 @@ function CalcShell({ title, subtitle, children, onSave }: { title: string; subti
       <div style={{ marginTop: 12 }}>{children}</div>
 
       <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-        <button type="button" onClick={onSave} style={{primaryBtn(false)}}>
+        <button type="button" onClick={onSave} style={primaryBtn(false)}>
           Salva
         </button>
       </div>
