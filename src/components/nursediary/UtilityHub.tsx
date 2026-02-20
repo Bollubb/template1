@@ -390,22 +390,25 @@ function ToolScales({
 }) {
   if (!active) {
     return (
-      <div style={{ display: "grid", gap: 10 }}>
-      <ScaleCard
-  title="NEWS2"
-  subtitle="Early warning score"
-  badge="CORE"
-  onClick={() => setActive("news2")}
-/>
-        <ScaleCard
-          title="Glasgow Coma Scale"
-          subtitle="GCS 3–15 con severità"
-          badge="NEURO"
-          onClick={() => setActive("gcs")}
-        <div style={{ marginTop: 6, opacity: 0.75, fontSize: 12, lineHeight: 1.35 }}>
-          Nota: questi strumenti sono di supporto operativo. In caso di dubbio o peggioramento clinico, attiva i percorsi locali e confrontati con il medico.
-        </div>
-      </div>
+			<div style={{ display: "grid", gap: 10 }}>
+				<ScaleCard
+					title="NEWS2"
+					subtitle="Early warning score"
+					badge="CORE"
+					onClick={() => setActive("news2")}
+				/>
+
+				<ScaleCard
+					title="Glasgow Coma Scale"
+					subtitle="GCS 3–15 con severità"
+					badge="NEURO"
+					onClick={() => setActive("gcs")}
+				/>
+
+				<div style={{ marginTop: 6, opacity: 0.75, fontSize: 12, lineHeight: 1.35 }}>
+					Nota: questi strumenti sono di supporto operativo. In caso di dubbio o peggioramento clinico, attiva i percorsi locali e confrontati con il medico.
+				</div>
+			</div>
     );
   }
 
@@ -417,7 +420,8 @@ function ToolScales({
         onSave={onSave}
         onUpsell={onUpsell}
         onToast={onToast}
-    );
+			/>
+		);
   }
 
   return (
@@ -426,7 +430,8 @@ function ToolScales({
       onBack={() => setActive(null)}
       onSave={onSave}
       onToast={onToast}
-  );
+		/>
+	);
 }
 
 function ScaleCard({
