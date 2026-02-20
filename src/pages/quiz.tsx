@@ -198,7 +198,7 @@ export default function QuizPage(): JSX.Element {
         if (mode === "weekly") return QUIZ_BANK.slice(10, 25);
         if (mode === "sim") return QUIZ_BANK.slice(0, 25);
         // review
-        return pickMistakeReviewQuestions(10);
+        return pickMistakeReviewQuestions(QUIZ_BANK, 10);
       })();
 
     setQuizResult(null);
@@ -375,7 +375,7 @@ export default function QuizPage(): JSX.Element {
                       setPremiumModalOpen(true);
                       return;
                     }
-                    start("review", { questions: pickMistakeReviewQuestions(10) });
+                    start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
                   }}
                   style={ghostBtn(false)}
                 >
@@ -453,7 +453,7 @@ export default function QuizPage(): JSX.Element {
                     if (quizResult.mode === "daily") start("daily");
                     else if (quizResult.mode === "weekly") start("weekly");
                     else if (quizResult.mode === "sim") start("sim");
-                    else start("review", { questions: pickMistakeReviewQuestions(10) });
+                    else start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
                   }}
                   style={primaryBtn(false)}
                 >
