@@ -340,11 +340,11 @@ export default function ToolInfusions({
   }
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+    <div className="nd-card nd-card-pad nd-fade-in">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <div>
-            <div style={{ fontSize: 16, fontWeight: 950, display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="text-base font-extrabold flex items-center gap-2">
               Compatibilità infusioni EV
               {onToggleFav && (
                 <button
@@ -352,16 +352,7 @@ export default function ToolInfusions({
                   className="nd-press"
                   onClick={onToggleFav}
                   aria-label={isFav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
-                  style={{
-                    borderRadius: 999,
-                    padding: "6px 10px",
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: isFav ? "rgba(250,204,21,0.14)" : "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.92)",
-                    fontWeight: 950,
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}>
+                  className={`nd-press rounded-full px-3 py-1.5 text-xs font-extrabold border border-white/12 ${isFav ? "bg-amber-300/15" : "bg-white/5"} text-white/90`}>
                   {isFav ? "★" : "☆"}
                 </button>
               )}
