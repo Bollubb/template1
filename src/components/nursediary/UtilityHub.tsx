@@ -308,7 +308,6 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
         title={upsellContext?.title || "Attiva Boost"}
         subtitle={upsellContext?.subtitle || "Sblocca ricerche illimitate e strumenti avanzati in Utility."}
         bullets={upsellContext?.bullets || ["Ricerche illimitate", "Alternative terapeutiche", "Dettagli clinici avanzati"]}
-      />
     </div>
   );
 }
@@ -396,13 +395,11 @@ function ToolScales({
           subtitle="Punteggio + interpretazione automatica"
           badge="CORE"
           onClick={() => setActive("news2")}
-        />
         <ScaleCard
           title="Glasgow Coma Scale"
           subtitle="GCS 3–15 con severità"
           badge="NEURO"
           onClick={() => setActive("gcs")}
-        />
         <div style={{ marginTop: 6, opacity: 0.75, fontSize: 12, lineHeight: 1.35 }}>
           Nota: questi strumenti sono di supporto operativo. In caso di dubbio o peggioramento clinico, attiva i percorsi locali e confrontati con il medico.
         </div>
@@ -418,7 +415,6 @@ function ToolScales({
         onSave={onSave}
         onUpsell={onUpsell}
         onToast={onToast}
-      />
     );
   }
 
@@ -428,7 +424,6 @@ function ToolScales({
       onBack={() => setActive(null)}
       onSave={onSave}
       onToast={onToast}
-    />
   );
 }
 
@@ -620,7 +615,6 @@ function ToolNEWS2({
                 { k: "U", t: "U" },
               ]}
               onChange={(v) => setNeuro(v as any)}
-            />
           </div>
         </div>
 
@@ -674,8 +668,7 @@ function ToolNEWS2({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }}
-              />
+          }
               {interpretation.band}
             </span>
             {!premium && (
@@ -792,7 +785,6 @@ function ToolGCS({
             { k: "1", t: "Nessuna (1)" },
           ]}
           onChange={(v) => setEye(Number(v))}
-        />
         <SelectPills
           label="Risposta verbale (V)"
           value={String(verbal)}
@@ -804,7 +796,6 @@ function ToolGCS({
             { k: "1", t: "Nessuna (1)" },
           ]}
           onChange={(v) => setVerbal(Number(v))}
-        />
         <SelectPills
           label="Risposta motoria (M)"
           value={String(motor)}
@@ -817,8 +808,6 @@ function ToolGCS({
             { k: "1", t: "Nessuna (1)" },
           ]}
           onChange={(v) => setMotor(Number(v))}
-        />
-
         <div style={{ borderRadius: 16, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
             <div style={{ fontWeight: 950 }}>Punteggio totale</div>
@@ -868,8 +857,7 @@ function ToolGCS({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }}
-              />
+          }
               {band.t}
             </span>
           </div>
@@ -1067,8 +1055,7 @@ function ToolInfusions({
 
   const Pill = ({ sev, text }: { sev: Sev; text: string }) => (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 999, border: sev === "avoid" ? "1px solid rgba(239,68,68,0.30)" : sev === "caution" ? "1px solid rgba(245,158,11,0.32)" : "1px solid rgba(34,197,94,0.30)", background: sev === "avoid" ? "rgba(239,68,68,0.12)" : sev === "caution" ? "rgba(245,158,11,0.14)" : "rgba(34,197,94,0.12)", color: sev === "avoid" ? "rgb(220,38,38)" : sev === "caution" ? "rgb(217,119,6)" : "rgb(22,163,74)", fontSize: 12, fontWeight: 850, lineHeight: 1 }}>
-      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: sev === "avoid" ? "rgb(220,38,38)" : sev === "caution" ? "rgb(217,119,6)" : "rgb(22,163,74)" }} />
-        />
+      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: sev === "avoid" ? "rgb(220,38,38)" : sev === "caution" ? "rgb(217,119,6)" : "rgb(22,163,74)" }}
       {text}
     </span>
   );
@@ -1092,7 +1079,6 @@ function ToolInfusions({
           setQuery={setQ1}
           results={results1.map((d) => ({ e: d, label: `${d.name} • ${d.class}` }))}
           onPick={(e) => { setA(e as any); setStep(2); setQ2(""); setB(null); }
-        />
       )}
 
       {step === 2 && (
@@ -1112,7 +1098,6 @@ function ToolInfusions({
               </button>
             </div>
           }
-        />
       )}
 
       {step === 3 && outcome && a && b && (
@@ -1369,13 +1354,12 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
           query={q1}
           setQuery={setQ1}
           results={results1}
-          onPick={(e) => {
+          onPick={(e) => { }}
             setA(e);
             setStep(2);
             setQ2("");
             setB(null);
-          }}
-        />
+          }
       )}
 
       {step === 2 && (
@@ -1409,7 +1393,6 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
               </button>
             </div>
           }
-        />
       )}
 
       {step === 3 && outcome && a && b && (
@@ -1504,8 +1487,6 @@ function StepPick({
           background: "rgba(0,0,0,0.15)",
           outline: "none",
         }
-        />
-
       <div style={{ marginTop: 10, display: "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
         {results.slice(0, 20).map((r, i) => (
           <button
@@ -1844,7 +1825,6 @@ function NumRow({ label, value, setValue, step }: { label: string; value: number
         step={step}
         onChange={(e) => setValue(Number(e.target.value))}
         style={inputStyle()}
-      />
     </div>
   );
 }
