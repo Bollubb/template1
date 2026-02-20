@@ -402,7 +402,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   transition: "transform 120ms ease, border-color 120ms ease, background 120ms ease",
                 }}>
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div className="flex items-center gap-2.5">
                     <span
                       aria-hidden
                       style={{
@@ -458,7 +458,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{s.subtitle}</div>
                 </div>
 
-                <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18 }}>›</div>
+                <div className="text-lg font-extrabold text-white/50">›</div>
               </button>
             ))}
           </div>
@@ -611,23 +611,8 @@ function ToolSkeleton({
 function CalcCard({ title, subtitle, icon, onClick }: { title: string; subtitle: string; icon: string; onClick: () => void }) {
   const a = ACCENTS["calculators"];
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="nd-press"
-      style={{
-        textAlign: "left",
-        borderRadius: 18,
-        padding: 14,
-        border: `1px solid ${a.border}`,
-        background: `linear-gradient(180deg, ${a.soft}, rgba(255,255,255,0.02))`,
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-      }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <button type="button" onClick={onClick} className="nd-card nd-card-pad nd-press w-full text-left flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2.5">
         <span
           aria-hidden
           style={{
