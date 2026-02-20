@@ -81,28 +81,6 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                 margin: "0 auto",
               }}
             >
-              {headerOverride?.showBack && headerOverride.onBack && (
-              <button
-                type="button"
-                onClick={() => headerOverride.onBack && headerOverride.onBack()}
-                aria-label="Indietro"
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(0,0,0,0.18)",
-                  color: "rgba(255,255,255,0.92)",
-                  display: "grid",
-                  placeItems: "center",
-                  fontWeight: 950,
-                  cursor: "pointer",
-                  marginRight: 10,
-                }}
-              >
-                ←
-              </button>
-            )}
               {/* Logo + dropdown trigger */}
               <div ref={menuRef} style={{ position: "relative" }}>
                 <button
@@ -125,8 +103,37 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                     boxShadow: "0 10px 28px rgba(0,0,0,0.30)",
                   }}
                 >
-                  {headerOverride?.showBack ? (
-                    <span style={{ fontSize: 16, marginRight: 2 }}>←</span>
+                  {headerOverride?.showBack && headerOverride.onBack ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        headerOverride.onBack && headerOverride.onBack();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          headerOverride.onBack && headerOverride.onBack();
+                        }
+                      }}
+                      aria-label="Indietro"
+                      style={{
+                        display: "inline-grid",
+                        placeItems: "center",
+                        width: 28,
+                        height: 28,
+                        borderRadius: 10,
+                        border: "1px solid rgba(255,255,255,0.10)",
+                        background: "rgba(0,0,0,0.14)",
+                        fontSize: 16,
+                        fontWeight: 950,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ←
+                    </span>
                   ) : null}
                   <img src="/logo.png" alt="NurseDiary" width={26} height={26} style={{ borderRadius: 8 }} />
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.05 }}>
