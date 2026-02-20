@@ -29,6 +29,12 @@ type UtilityHistoryItem = {
 type UtilityToolId = "INTERACTIONS" | "INFUSION" | "NEWS2" | "GCS";
 type RecentItem = { tool: UtilityToolId; ts: number };
 
+const UTILITY_TOOLS: UtilityToolId[] = ["INTERACTIONS", "INFUSION", "NEWS2", "GCS"];
+
+function isUtilityToolId(x: any): x is UtilityToolId {
+  return UTILITY_TOOLS.includes(x as UtilityToolId);
+}
+
 function safeJson<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
   try {
@@ -43,8 +49,7 @@ const isBrowser = () => typeof window !== "undefined" && typeof localStorage !==
 function readFavs(): UtilityToolId[] {
   if (!isBrowser()) return [];
   const raw = safeJson<string[]>(localStorage.getItem(LS.favs), []);
-  const allowed: UtilityToolId[] = ["INTERACTIONS", "INFUSION", "NEWS2", "GCS"];
-  return raw.filter((x): x is UtilityToolId => allowed.includes(x as UtilityToolId));
+  return raw.filter((x): x is UtilityToolId => isUtilityToolId(x));
 }
 
 function writeFavs(next: UtilityToolId[]) {
@@ -56,7 +61,12 @@ function writeFavs(next: UtilityToolId[]) {
 
 function readRecent(): RecentItem[] {
   if (!isBrowser()) return [];
-  return safeJson<RecentItem[]>(localStorage.getItem(LS.recent), []);
+  const raw = safeJson<any[]>(localStorage.getItem(LS.recent), []);
+  // Defensive: older builds may have stored other tool ids
+  return raw
+    .filter((x) => x && isUtilityToolId(x.tool))
+    .map((x) => ({ tool: x.tool as UtilityToolId, ts: typeof x.ts === "number" ? x.ts : Date.now() }))
+    .slice(0, 10);
 }
 
 function writeRecent(next: RecentItem[]) {
@@ -234,8 +244,10 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   const mostUsed = useMemo(() => {
     const counts: Record<UtilityToolId, number> = {} as any;
     for (const h of history) {
-      if (!h?.tool) continue;
-      counts[h.tool as UtilityToolId] = (counts[h.tool as UtilityToolId] || 0) + 1;
+      const t = h?.tool;
+      if (!t) continue;
+      if (!isUtilityToolId(t)) continue;
+      counts[t] = (counts[t] || 0) + 1;
     }
     return (Object.keys(counts) as UtilityToolId[])
       .sort((a, b) => (counts[b] || 0) - (counts[a] || 0))
@@ -389,6 +401,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       {mostUsed.map((id) => {
         const m = TOOL_META[id];
+        if (!m) return null;
         return (
           <button
             key={id}
