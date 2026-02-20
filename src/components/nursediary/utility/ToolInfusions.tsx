@@ -365,7 +365,7 @@ export default function ToolInfusions({
           type="button"
           className="nd-press"
           onClick={() => onUpsell("Compatibilità infusioni EV — ICU", "Con Premium sblocchi dettagli avanzati e database ampliato.", ["Dettagli avanzati", "Database più ampio"])}
-          className="nd-btn-ghost nd-press">
+          style={ghostBtn()}>
           ICU Boost
         </button>
       </div>
@@ -404,7 +404,7 @@ export default function ToolInfusions({
           onPick={(e) => setB(e)}
           footer={
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
-              <button type="button" className="nd-press" onClick={() => { setStep(1); setQ2(""); setB(null); }} className="nd-btn-ghost nd-press">
+              <button type="button" className="nd-press" onClick={() => { setStep(1); setQ2(""); setB(null); }} style={ghostBtn()}>
                 ← Cambia infusione A
               </button>
               <button type="button" className="nd-press" onClick={confirm} disabled={!a || !b} style={primaryBtn(!a || !b)}>
@@ -444,7 +444,7 @@ export default function ToolInfusions({
           )}
 
           <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <button type="button" className="nd-press" onClick={() => { setStep(2); setOutcome(null); }} className="nd-btn-ghost nd-press">
+            <button type="button" className="nd-press" onClick={() => { setStep(2); setOutcome(null); }} style={ghostBtn()}>
               ← Modifica scelta
             </button>
             <button type="button" className="nd-press" onClick={() => { onSave({ tool: "INFUSION", ts: Date.now(), inputs: { a: a.id, b: b.id }, output: `${a.name} + ${b.name}: ${outcome.title}${outcome.flush ? " (flush)" : ""}` }); onToast("Salvato in storico", "success"); }} style={primaryBtn(false)}>
