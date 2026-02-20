@@ -303,24 +303,152 @@ export default function QuizPage(): JSX.Element {
   return (
     <Page title="Quiz" headerOverride={headerOverride}>
       <Section>
-        {!runQuiz && (
+                {!runQuiz && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+              <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="nd-h1">Quiz</div>
-                  <div className="nd-subtitle">Daily, Weekly e simulazione</div>
+                  <div className="nd-h1 flex items-center gap-2">
+                    <span className="nd-badge nd-badge-sky">Quiz</span>
+                    <span className="text-white">Daily • Weekly</span>
+                  </div>
+                  <div className="nd-subtitle">Routine breve per mantenere il ritmo</div>
                 </div>
-                <div className="nd-meta">
-                  Daily: {msToHMS(dailyLeft)} • Weekly: {msToHMS(weeklyLeft)}
+                <div className="text-right">
+                  <div className="nd-meta">Reset Daily: {msToHMS(dailyLeft)}</div>
+                  <div className="nd-meta">Reset Weekly: {msToHMS(weeklyLeft)}</div>
                 </div>
               </div>
 
-              {streak > 0 && (
-                <div className="mt-2.5 flex items-center gap-2 text-xs font-extrabold text-white/80">
-                  🔥 Streak: {streak} giorni
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {streak > 0 ? (
+                  <span className="nd-badge nd-badge-amber">🔥 Streak {streak}g</span>
+                ) : (
+                  <span className="nd-badge nd-badge-slate">Inizia oggi e crea la streak</span>
+                )}
+                <span className="nd-badge nd-badge-slate">+XP su Daily/Weekly</span>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-2.5">
+                <div className="nd-tile">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-extrabold text-white">Daily</div>
+                      <div className="nd-help">Sessione rapida</div>
+                    </div>
+                    <span className={daily.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"}>
+                      {daily.status === "done" ? "Completato" : "Disponibile"}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
+                    <span>Progress</span>
+                    <span>{Math.round(dailyProgress * 100)}%</span>
+                  </div>
+                  <div className="mt-1.5 nd-progress">
+                    <div className="nd-progress-fill nd-progress-fill-emerald" style={{ width: `${Math.round(clamp01(dailyProgress) * 100)}%` }} />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => start("daily")}
+                    disabled={daily.status === "done"}
+                    className="mt-3 nd-btn nd-btn-emerald nd-press disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {daily.status === "done" ? "Daily completato ✅" : "Avvia Daily"}
+                  </button>
                 </div>
-              )}
+
+                <div className="nd-tile">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-extrabold text-white">Weekly</div>
+                      <div className="nd-help">Più lunga, più reward</div>
+                    </div>
+                    <span className={weekly.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"}>
+                      {weekly.status === "done" ? "Completato" : "Disponibile"}
+                    </span>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
+                    <span>Progress</span>
+                    <span>{Math.round(weeklyProgress * 100)}%</span>
+                  </div>
+                  <div className="mt-1.5 nd-progress">
+                    <div className="nd-progress-fill nd-progress-fill-indigo" style={{ width: `${Math.round(clamp01(weeklyProgress) * 100)}%` }} />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => start("weekly")}
+                    disabled={weekly.status === "done"}
+                    className="mt-3 nd-btn nd-btn-indigo nd-press disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="nd-card nd-card-pad">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="nd-badge nd-badge-sky">Simulazione</span>
+                    <div className="text-sm font-extrabold text-white">Esame</div>
+                  </div>
+                  <div className="nd-subtitle">25 domande • risultato finale</div>
+                </div>
+                {!premium && <span className="nd-pill nd-pill-amber">Premium</span>}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!premium) {
+                    setPremiumModalOpen(true);
+                    return;
+                  }
+                  start("sim");
+                }}
+                className="mt-3 nd-btn nd-btn-sky nd-press"
+              >
+                Avvia simulazione (25)
+              </button>
+
+              {!premium && <div className="mt-2 nd-help">Sblocca simulazione + ripasso errori.</div>}
+            </div>
+
+            <div className="nd-card nd-card-pad">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="nd-badge nd-badge-amber">Ripasso</span>
+                    <div className="text-sm font-extrabold text-white">Errori</div>
+                  </div>
+                  <div className="nd-subtitle">10 domande dalle risposte sbagliate</div>
+                </div>
+                {!premium && <span className="nd-pill nd-pill-amber">Premium</span>}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!premium) {
+                    setPremiumModalOpen(true);
+                    return;
+                  }
+                  start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
+                }}
+                className="mt-3 nd-btn nd-btn-ghost nd-press"
+              >
+                Avvia ripasso (10)
+              </button>
+
+              {!premium && <div className="mt-2 nd-help">Perfetto per convertire gli errori in punti forti.</div>}
+            </div>
+          </div>
+        )}
 
               <div className="mt-3 grid grid-cols-2 gap-2.5">
                 <button type="button" onClick={() => start("daily")} disabled={daily.status === "done"} className="nd-btn-primary nd-press">
