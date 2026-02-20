@@ -301,7 +301,6 @@ export default function QuizPage(): JSX.Element {
   );
 
   return (
-    <>
     <Page title="Quiz" headerOverride={headerOverride}>
       <Section>
                 {!runQuiz && (
@@ -638,6 +637,5 @@ export default function QuizPage(): JSX.Element {
 
       <PremiumUpsellModal open={premiumModalOpen} onClose={() => setPremiumModalOpen(false)} context="quiz" />
     </Page>
-  </>
   );
 }
