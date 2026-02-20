@@ -485,23 +485,29 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             </button>
           </div>
 
-          {section === "interactions" && (toolLoading.on && toolLoading.id === "INTERACTIONS" ? <ToolSkeleton title="Interazioni" accent={ACCENTS["interactions"]} /> : <ToolInteractions onSave={pushHistory} onUpsell={openUpsell} />)}
-          {section === "infusion" && (
-            toolLoading.on && toolLoading.id === "INFUSION" ? (
+          {section === "interactions" &&
+            (toolLoading.on && toolLoading.id === "INTERACTIONS" ? (
+              <ToolSkeleton title="Interazioni" accent={ACCENTS["interactions"]} />
+            ) : (
+              <ToolInteractions onSave={pushHistory} onUpsell={openUpsell} />
+            ))}
+
+          {section === "infusion" &&
+            (toolLoading.on && toolLoading.id === "INFUSION" ? (
               <ToolSkeleton title="Infusioni EV" accent={ACCENTS["infusion"]} />
             ) : (
-            <ToolInfusions
-              onOpen={() => markRecent("INFUSION")}
-              onSave={(it) => {
-                pushHistory(it);
-                markRecent("INFUSION");
-              }}
-              onUpsell={openUpsell}
-              onToast={(m, t) => toast.push(m, t)}
-              isFav={favs.includes("INFUSION")}
-              onToggleFav={() => toggleFav("INFUSION")}
-            />
-          )}
+              <ToolInfusions
+                onOpen={() => markRecent("INFUSION")}
+                onSave={(it) => {
+                  pushHistory(it);
+                  markRecent("INFUSION");
+                }}
+                onUpsell={openUpsell}
+                onToast={(m, t) => toast.push(m, t)}
+                isFav={favs.includes("INFUSION")}
+                onToggleFav={() => toggleFav("INFUSION")}
+              />
+            ))}
           {section === "scales" && (
             <ToolScales
               active={activeScale}
@@ -551,6 +557,47 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
         subtitle={upsellContext?.subtitle || "Sblocca ricerche illimitate e strumenti avanzati in Utility."}
         bullets={upsellContext?.bullets || ["Ricerche illimitate", "Alternative terapeutiche", "Dettagli clinici avanzati"]}
       />
+    </div>
+  );
+}
+
+function ToolSkeleton({
+  title,
+  accent,
+}: {
+  title: string;
+  accent: { solid: string; soft: string; border: string };
+}) {
+  return (
+    <div
+      className="nd-fade-in"
+      style={{
+        border: `1px solid ${accent.border}`,
+        background: `linear-gradient(180deg, ${accent.soft}, rgba(255,255,255,0.03))`,
+        borderRadius: 18,
+        padding: 14,
+      }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <div style={{ fontWeight: 950, color: accent.solid, letterSpacing: -0.2 }}>{title}</div>
+          <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2 }}>Caricamento…</div>
+        </div>
+        <div
+          className="nd-skel"
+          style={{
+            width: 86,
+            height: 26,
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.10)",
+            background: "rgba(255,255,255,0.06)",
+          }}
+        />
+      </div>
+      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+        <div className="nd-skel" style={{ height: 14, borderRadius: 10, background: "rgba(255,255,255,0.06)" }} />
+        <div className="nd-skel" style={{ height: 14, borderRadius: 10, width: "92%", background: "rgba(255,255,255,0.06)" }} />
+        <div className="nd-skel" style={{ height: 14, borderRadius: 10, width: "84%", background: "rgba(255,255,255,0.06)" }} />
+      </div>
     </div>
   );
 }
