@@ -182,6 +182,22 @@ function ghostBtn(disabled?: boolean): React.CSSProperties {
   };
 }
 
+function MiniProgressBar({ progress, label }: { progress: number; label: string }) {
+  const p = Math.max(0, Math.min(1, progress));
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 850, opacity: 0.72 }}>
+        <span>{label}</span>
+        <span>{Math.round(p * 100)}%</span>
+      </div>
+      <div style={{ marginTop: 6, height: 6, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+        <div style={{ width: `${Math.round(p * 100)}%`, height: "100%", background: "rgba(255,255,255,0.28)" }} />
+      </div>
+    </div>
+  );
+}
+
+
 export default function QuizPage(): JSX.Element {
   const router = useRouter();
   const goTab = (tab: "home" | "didattica" | "carte" | "profilo") => router.push(`/?tab=${tab}`);
@@ -221,10 +237,11 @@ export default function QuizPage(): JSX.Element {
   const daily = useMemo(() => getDailyState(), [dailyLeft]);
   const weekly = useMemo(() => getWeeklyState(), [weeklyLeft]);
 
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const WEEK_MS = 7 * DAY_MS;
-  const dailyProgress = Math.max(0, Math.min(1, 1 - dailyLeft / DAY_MS));
-  const weeklyProgress = Math.max(0, Math.min(1, 1 - weeklyLeft / WEEK_MS));
+  const DAILY_MS = 24 * 60 * 60 * 1000;
+  const WEEK_MS = 7 * DAILY_MS;
+  const dailyProg = Math.max(0, Math.min(1, daily.status === "done" ? 1 : 1 - (dailyLeft || 0) / DAILY_MS));
+  const weeklyProg = Math.max(0, Math.min(1, weekly.status === "done" ? 1 : 1 - (weeklyLeft || 0) / WEEK_MS));
+
 
   function startQuiz(mode: "daily" | "weekly" | "sim" | "review", opts?: { questions?: QuizQuestion[] }) {
     if (mode === "daily") {
@@ -235,8 +252,6 @@ export default function QuizPage(): JSX.Element {
       const w = getWeeklyState();
       if (w.status === "done") return;
     }
-
-    if (mode === "review" && !(localStorage.getItem(LS.premium) === "1")) return;
 
     const n = mode === "daily" ? 5 : mode === "weekly" ? 12 : mode === "sim" ? 25 : 10;
 
@@ -435,90 +450,126 @@ export default function QuizPage(): JSX.Element {
   return (
     <Page
       title="Quiz"
-      headerOverride={{ title: "Quiz", subtitle: "Daily • Weekly • Simulazione", showBack: true }}>
-      <div style={card()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-              <div>
-                <div style={{ fontWeight: 950, fontSize: 18 }}>Quiz</div>
-                <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Daily • Weekly • Simulazione</div>
+      headerOverride={{
+        title: "Quiz",
+        subtitle: "Daily • Weekly • Simulazione",
+        showBack: true,
+        onBack: () => router.back(),
+      }}
+    >
+      <Section>
+        <div style={{ display: "grid", gap: 12 }}>
+          {!runQuiz && !quizResult && (
+            <>
+              {/* Oggi */}
+              <div style={card()}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 950, fontSize: 18 }}>Quiz di oggi</div>
+                    <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Ripasso rapido (3–5 min)</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>Reset tra {msToHMS(dailyLeft)}</div>
+                    {daily.streak > 0 && (
+                      <div style={{ marginTop: 2, opacity: 0.92, fontWeight: 900, fontSize: 12 }}>Streak: {daily.streak} 🔥</div>
+                    )}
+                  </div>
+                </div>
+
+                <MiniProgressBar progress={dailyProg} label="Avanzamento reset" />
+
+                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>}>
+                  <button type="button" onClick={() => startQuiz("daily")} disabled={daily.status === "done"} style={primaryBtn(daily.status === "done")}>
+                    {daily.status === "done" ? "Daily completato ✅" : "Avvia Daily"}
+                  </button>
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", opacity: 0.78, fontWeight: 850, fontSize: 12 }}>
+                    <div>Domande: 5</div>
+                    <div>•</div>
+                    <div>Timer: opzionale</div>
+                  </div>
+                </div>
               </div>
 
-              <div style={{ textAlign: "right", opacity: 0.78, fontWeight: 900, fontSize: 12, lineHeight: 1.25 }}>
-                <div>Reset Daily: {msToHMS(dailyLeft)}</div>
-                <div>Reset Weekly: {msToHMS(weeklyLeft)}</div>
-                {daily?.streak ? <div style={{ marginTop: 4, opacity: 0.9 }}>Streak: {daily.streak}🔥</div> : null}
+              {/* Weekly + Sim */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div style={card()}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                    <div>
+                      <div style={{ fontWeight: 950, fontSize: 16 }}>Weekly</div>
+                      <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Ripasso più lungo</div>
+                    </div>
+                    <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>Reset tra {msToHMS(weeklyLeft)}</div>
+                  </div>
+
+                  <MiniProgressBar progress={weeklyProg} label="Avanzamento reset" />
+
+                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                    <button type="button" onClick={() => startQuiz("weekly")} disabled={weekly.status === "done"} style={ghostBtn(weekly.status === "done")}>
+                      {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
+                    </button>
+                    <div style={{ opacity: 0.78, fontWeight: 850, fontSize: 12 }}>Domande: 12</div>
+                  </div>
+                </div>
+
+                <div style={card()}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                    <div>
+                      <div style={{ fontWeight: 950, fontSize: 16 }}>Simulazione esame</div>
+                      <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Modalità 25 domande</div>
+                    </div>
+                    <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>⏱️</div>
+                  </div>
+
+                  <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                    <button type="button" onClick={() => startQuiz("sim")} style={ghostBtn(false)}>
+                      Avvia Simulazione (25)
+                    </button>
+
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.92, fontWeight: 850, fontSize: 13 }}>
+                      <input type="checkbox" checked={simTimer} onChange={(e) => setSimTimer(e.target.checked)} />
+                      Timer (25 min) opzionale
+                    </label>
+                  </div>
+                </div>
               </div>
-            </div>
 
-            {/* progress bars */}
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 850, opacity: 0.86 }}>
-                  <span>Daily</span>
-                  <span>{Math.round(dailyProgress * 100)}%</span>
+              {/* Ripasso errori (Premium) */}
+              <div style={card()}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 950, fontSize: 16 }}>Ripasso errori</div>
+                    <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Domande sbagliate più spesso</div>
+                  </div>
+                  <div style={{ opacity: 0.70, fontWeight: 900, fontSize: 12 }}>Premium</div>
                 </div>
-                <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: 6 }}>
-                  <div style={{ height: "100%", width: `${Math.round(dailyProgress * 100)}%`, background: "rgba(96,165,250,0.55)" }} />
+
+                <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!premium) {
+                        setPremiumModalOpen(true);
+                        return;
+                      }
+                      const qs = pickMistakeReviewQuestions(QUIZ_BANK, 10);
+                      startQuiz("review", { questions: qs });
+                    }}
+                    style={ghostBtn(false)}
+                  >
+                    Avvia ripasso (10)
+                  </button>
+
+                  <div style={{ opacity: 0.72, fontWeight: 850, fontSize: 12 }}>
+                    Sblocca Premium per ripassare gli errori e salvare preferiti.
+                  </div>
                 </div>
               </div>
+            </>
+          )}
 
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 850, opacity: 0.86 }}>
-                  <span>Weekly</span>
-                  <span>{Math.round(weeklyProgress * 100)}%</span>
-                </div>
-                <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: 6 }}>
-                  <div style={{ height: "100%", width: `${Math.round(weeklyProgress * 100)}%`, background: "rgba(34,197,94,0.45)" }} />
-                </div>
-              </div>
-            </div>
 
-            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <button type="button" onClick={() => startQuiz("daily")} disabled={daily.status === "done" || !!runQuiz} style={primaryBtn(daily.status === "done" || !!runQuiz)}>
-                {daily.status === "done" ? "Daily completato ✅" : "Avvia Daily"}
-              </button>
-              <button type="button" onClick={() => startQuiz("weekly")} disabled={weekly.status === "done" || !!runQuiz} style={ghostBtn(weekly.status === "done" || !!runQuiz)}>
-                {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
-              </button>
-            </div>
-
-            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-              <button
-                type="button"
-                onClick={() => startQuiz("sim")}
-                disabled={!!runQuiz}
-                style={ghostBtn(!!runQuiz)}
-              >
-                Simulazione esame (25 domande)
-              </button>
-
-              <label style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.92, fontWeight: 850, fontSize: 13 }}>
-                <input type="checkbox" checked={simTimer} onChange={(e) => setSimTimer(e.target.checked)} />
-                Timer (25 min) opzionale
-              </label>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (!premium) { setPremiumModalOpen(true); return; }
-                  const qs = pickMistakeReviewQuestions(QUIZ_BANK, 10);
-                  startQuiz("review", { questions: qs });
-                }}
-                disabled={!!runQuiz}
-                style={ghostBtn(!!runQuiz)}
-              >
-                {premium ? "Ripasso errori (10) — Premium" : "Ripasso errori (10) 🔒 Premium"}
-              </button>
-
-              {!premium && (
-                <div style={{ opacity: 0.72, fontSize: 12, fontWeight: 700 }}>
-                  Premium sblocca il ripasso errori + strumenti avanzati.
-                </div>
-              )}
-            </div>
-          </div>
-
-            {runQuiz && (
+{runQuiz && (
               <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
                 <div style={{ fontWeight: 950 }}>
                   {runQuiz.mode === "review" ? "REVISIONE" : runQuiz.mode.toUpperCase()} • Domanda {runQuiz.idx + 1}/{runQuiz.questions.length}
