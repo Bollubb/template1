@@ -304,53 +304,53 @@ export default function QuizPage(): JSX.Element {
     <Page title="Quiz" headerOverride={headerOverride}>
       <Section>
         {!runQuiz && (
-          <div style={{ display: "grid", gap: 12 }}>
-            <div style={card()}>
+          <div className="grid gap-3">
+            <div className="nd-card nd-card-pad">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
                 <div>
-                  <div style={{ fontWeight: 950, fontSize: 18 }}>Quiz</div>
-                  <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Daily, Weekly e simulazione</div>
+                  <div className="nd-h1">Quiz</div>
+                  <div className="nd-subtitle">Daily, Weekly e simulazione</div>
                 </div>
-                <div style={{ opacity: 0.75, fontWeight: 900, fontSize: 12 }}>
+                <div className="nd-meta">
                   Daily: {msToHMS(dailyLeft)} • Weekly: {msToHMS(weeklyLeft)}
                 </div>
               </div>
 
               {streak > 0 && (
-                <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8, opacity: 0.9, fontWeight: 900, fontSize: 12 }}>
+                <div className="mt-2.5 flex items-center gap-2 text-xs font-extrabold text-white/80">
                   🔥 Streak: {streak} giorni
                 </div>
               )}
 
-              <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <button type="button" onClick={() => start("daily")} disabled={daily.status === "done"} style={primaryBtn(daily.status === "done")}>
+              <div className="mt-3 grid grid-cols-2 gap-2.5">
+                <button type="button" onClick={() => start("daily")} disabled={daily.status === "done"} className="nd-btn-primary nd-press">
                   {daily.status === "done" ? "Daily completato ✅" : "Avvia Daily"}
                 </button>
-                <button type="button" onClick={() => start("weekly")} disabled={weekly.status === "done"} style={ghostBtn(weekly.status === "done")}>
+                <button type="button" onClick={() => start("weekly")} disabled={weekly.status === "done"} className="nd-btn-ghost nd-press">
                   {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
                 </button>
               </div>
 
-              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 850, opacity: 0.8 }}>
+              <div className="mt-3 grid gap-2.5">
+                <div className="flex justify-between text-xs font-extrabold text-white/70">
                   <span>Daily progress</span>
                   <span>{Math.round(dailyProgress * 100)}%</span>
                 </div>
-                <div style={bar(dailyProgress)}>
-                  <div style={barFill(dailyProgress)} />
+                <div className="nd-progress">
+                  <div className="nd-progress-fill" style={{ width: `${Math.round(clamp01(dailyProgress) * 100)}%` }} />
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 850, opacity: 0.8, marginTop: 6 }}>
                   <span>Weekly progress</span>
                   <span>{Math.round(weeklyProgress * 100)}%</span>
                 </div>
-                <div style={bar(weeklyProgress)}>
-                  <div style={barFill(weeklyProgress)} />
+                <div className="nd-progress">
+                  <div className="nd-progress-fill" style={{ width: `${Math.round(clamp01(weeklyProgress) * 100)}%` }} />
                 </div>
               </div>
             </div>
 
-            <div style={card()}>
+            <div className="nd-card nd-card-pad">
               <div style={{ fontWeight: 950, fontSize: 15 }}>Simulazione Esame</div>
               <div style={{ marginTop: 6, opacity: 0.78, fontWeight: 800, fontSize: 12 }}>25 domande • risultato finale</div>
               <div style={{ marginTop: 10 }}>
@@ -363,7 +363,7 @@ export default function QuizPage(): JSX.Element {
                     }
                     start("sim");
                   }}
-                  style={primaryBtn(false)}
+                  className="nd-btn-primary nd-press"
                 >
                   Avvia simulazione (25)
                 </button>
@@ -375,7 +375,7 @@ export default function QuizPage(): JSX.Element {
               </div>
             </div>
 
-            <div style={card()}>
+            <div className="nd-card nd-card-pad">
               <div style={{ fontWeight: 950, fontSize: 15 }}>Ripasso errori</div>
               <div style={{ marginTop: 6, opacity: 0.78, fontWeight: 800, fontSize: 12 }}>10 domande dalle risposte sbagliate</div>
               <div style={{ marginTop: 10 }}>
@@ -388,7 +388,7 @@ export default function QuizPage(): JSX.Element {
                     }
                     start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
                   }}
-                  style={ghostBtn(false)}
+                  className="nd-btn-ghost nd-press"
                 >
                   Avvia ripasso (10) ⭐ Premium
                 </button>
@@ -398,8 +398,8 @@ export default function QuizPage(): JSX.Element {
         )}
 
         {runQuiz && (
-          <div style={{ display: "grid", gap: 12 }}>
-            <div style={card()}>
+          <div className="grid gap-3">
+            <div className="nd-card nd-card-pad">
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontWeight: 950 }}>
                   {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "sim" ? "Simulazione" : "Ripasso errori"}
@@ -436,10 +436,10 @@ export default function QuizPage(): JSX.Element {
               </div>
 
               <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-                <button type="button" onClick={() => setRunQuiz(null)} style={ghostBtn(false)}>
+                <button type="button" onClick={() => setRunQuiz(null)} className="nd-btn-ghost nd-press">
                   Esci
                 </button>
-                <button type="button" onClick={confirmAnswer} disabled={selected === null} style={primaryBtn(selected === null)}>
+                <button type="button" onClick={confirmAnswer} disabled={selected === null} className="nd-btn-primary nd-press">
                   Conferma
                 </button>
               </div>
@@ -449,13 +449,13 @@ export default function QuizPage(): JSX.Element {
 
         {!runQuiz && quizResult && (
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
-            <div style={card()}>
+            <div className="nd-card nd-card-pad">
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
               <div style={{ marginTop: 6, opacity: 0.8, fontWeight: 850, fontSize: 13 }}>
                 {quizResult.correct}/{quizResult.total} corrette • {msToHMS(quizResult.ms)}
               </div>
               <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
-                <button type="button" onClick={() => setQuizResult(null)} style={ghostBtn(false)}>
+                <button type="button" onClick={() => setQuizResult(null)} className="nd-btn-ghost nd-press">
                   Chiudi
                 </button>
                 <button
@@ -466,7 +466,7 @@ export default function QuizPage(): JSX.Element {
                     else if (quizResult.mode === "sim") start("sim");
                     else start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
                   }}
-                  style={primaryBtn(false)}
+                  className="nd-btn-primary nd-press"
                 >
                   Rifai
                 </button>
@@ -474,7 +474,7 @@ export default function QuizPage(): JSX.Element {
             </div>
 
             {quizResult.wrong.length > 0 && (
-              <div style={card()}>
+              <div className="nd-card nd-card-pad">
                 <div style={{ fontWeight: 950 }}>Errori da rivedere</div>
                 <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                   {quizResult.wrong.slice(0, 12).map((w, idx) => {
