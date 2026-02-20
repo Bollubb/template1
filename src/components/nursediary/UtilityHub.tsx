@@ -130,6 +130,14 @@ const SECTIONS: { id: SectionId; title: string; subtitle: string; badge?: string
   { id: "checklists", title: "Checklist operative", subtitle: "Procedure step-by-step (in arrivo)" },
 ];
 
+const ACCENTS: Record<SectionId, { solid: string; soft: string; border: string }> = {
+  interactions: { solid: "rgb(59,130,246)", soft: "rgba(59,130,246,0.16)", border: "rgba(59,130,246,0.34)" }, // blue
+  infusion: { solid: "rgb(34,197,94)", soft: "rgba(34,197,94,0.16)", border: "rgba(34,197,94,0.34)" }, // green
+  calculators: { solid: "rgb(168,85,247)", soft: "rgba(168,85,247,0.16)", border: "rgba(168,85,247,0.34)" }, // violet
+  scales: { solid: "rgb(245,158,11)", soft: "rgba(245,158,11,0.16)", border: "rgba(245,158,11,0.34)" }, // amber
+  checklists: { solid: "rgb(236,72,153)", soft: "rgba(236,72,153,0.16)", border: "rgba(236,72,153,0.34)" }, // pink
+};
+
 export default function UtilityHub({ onBack }: { onBack: () => void }) {
   const toast = useToast();
   const premium = isPremium();
@@ -214,11 +222,11 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     setUpsellOpen(true);
   }
 
-  const TOOL_META: Record<UtilityToolId, { label: string; open: () => void; badge?: string }> = {
-    INTERACTIONS: { label: "Interazioni", badge: "TOP", open: () => { goSection("interactions"); markRecent("INTERACTIONS"); } },
-    INFUSION: { label: "Infusioni EV", badge: "ICU", open: () => { goSection("infusion"); markRecent("INFUSION"); } },
-    NEWS2: { label: "NEWS2", badge: "CORE", open: () => { goSection("scales"); setActiveScale("news2"); markRecent("NEWS2"); } },
-    GCS: { label: "GCS", badge: "NEURO", open: () => { goSection("scales"); setActiveScale("gcs"); markRecent("GCS"); } },
+  const TOOL_META: Record<UtilityToolId, { label: string; open: () => void; badge?: string; accent: { solid: string; soft: string; border: string } }> = {
+    INTERACTIONS: { label: "Interazioni", badge: "TOP", open: () => { goSection("interactions"); markRecent("INTERACTIONS"); } , accent: ACCENTS["interactions"] },
+    INFUSION: { label: "Infusioni EV", badge: "ICU", open: () => { goSection("infusion"); markRecent("INFUSION"); } , accent: ACCENTS["infusion"] },
+    NEWS2: { label: "NEWS2", badge: "CORE", open: () => { goSection("scales"); setActiveScale("news2"); markRecent("NEWS2"); } , accent: ACCENTS["scales"] },
+    GCS: { label: "GCS", badge: "NEURO", open: () => { goSection("scales"); setActiveScale("gcs"); markRecent("GCS"); } , accent: ACCENTS["scales"] },
   };
 
   // NOTE: Nessuna utility genera XP (evita spam classifica)
@@ -228,7 +236,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
       {!section && (
         <div>
           <div style={{ display: "grid", gap: 10, marginBottom: 14 }} className="nd-fade-in">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Accesso rapido</div>
               {!premium && (
                 <button
@@ -244,7 +252,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   style={{
                     borderRadius: 999,
                     padding: "6px 10px",
-                    border: "1px solid rgba(255,255,255,0.14)",
+                    border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
                     background: "rgba(255,255,255,0.04)",
                     color: "rgba(255,255,255,0.90)",
                     fontWeight: 900,
@@ -279,9 +287,9 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                         gap: 8,
                         padding: "8px 10px",
                         borderRadius: 999,
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: locked ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.05)",
-                        color: "rgba(255,255,255,0.92)",
+                        border: locked ? "1px solid rgba(255,255,255,0.10)" : `1px solid ${m.accent.border}`,
+                        background: locked ? "rgba(255,255,255,0.02)" : `linear-gradient(180deg, ${m.accent.soft}, rgba(255,255,255,0.03))`,
+                        color: locked ? "rgba(255,255,255,0.90)" : m.accent.solid,
                         fontSize: 12.5,
                         fontWeight: 850,
                         cursor: "pointer",
@@ -289,7 +297,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                       }}>
                       <span style={{ opacity: 0.9 }}>{m.label}</span>
                       {m.badge && (
-                        <span style={{ fontSize: 10.5, fontWeight: 950, padding: "2px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)", opacity: 0.85 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 950, padding: "2px 7px", borderRadius: 999, border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`, opacity: 0.85 }}>
                           {m.badge}
                         </span>
                       )}
@@ -339,8 +347,8 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   textAlign: "left",
                   borderRadius: 18,
                   padding: 16,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025))",
+                  border: `1px solid ${ACCENTS[s.id].border}`,
+                  background: `linear-gradient(180deg, ${ACCENTS[s.id].soft}, rgba(255,255,255,0.02))`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -357,7 +365,8 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ fontSize: 16, fontWeight: 850 }}>{s.title}</div>
+                    <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: ACCENTS[s.id].solid, boxShadow: `0 0 0 3px ${ACCENTS[s.id].soft}` }} />
+                    <div style={{ fontSize: 16, fontWeight: 900, color: ACCENTS[s.id].solid }}>{s.title}</div>
                     {s.badge && (
                       <span
                         style={{
@@ -365,8 +374,10 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                           fontWeight: 850,
                           padding: "3px 8px",
                           borderRadius: 999,
-                          border: "1px solid rgba(255,255,255,0.15)",
-                          opacity: 0.95,
+                          border: `1px solid ${ACCENTS[s.id].border}`,
+                          background: ACCENTS[s.id].soft,
+                          color: ACCENTS[s.id].solid,
+                          opacity: 0.98,
                         }}>
                         {s.badge}
                       </span>
@@ -430,21 +441,6 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 cursor: "pointer",
               }}>
               ← Indietro
-            </button>
-
-            <button
-              type="button"
-              onClick={onBack}
-              style={{
-                borderRadius: 999,
-                padding: "10px 12px",
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025))",
-                fontWeight: 850,
-                cursor: "pointer",
-                opacity: 0.85,
-              }}>
-              Chiudi
             </button>
           </div>
 
@@ -891,7 +887,7 @@ function StepPick({
           marginTop: 10,
           borderRadius: 14,
           padding: "12px 12px",
-          border: "1px solid rgba(255,255,255,0.14)",
+          border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
           background: "rgba(0,0,0,0.15)",
           outline: "none",
         }}
@@ -980,7 +976,7 @@ function primaryBtn(disabled: boolean): React.CSSProperties {
   return {
     borderRadius: 999,
     padding: "10px 14px",
-    border: "1px solid rgba(255,255,255,0.14)",
+    border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
     background: disabled ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.10)",
     fontWeight: 950,
     cursor: disabled ? "not-allowed" : "pointer",
@@ -1254,7 +1250,7 @@ function inputStyle(): React.CSSProperties {
     width: 140,
     borderRadius: 12,
     padding: "10px 10px",
-    border: "1px solid rgba(255,255,255,0.14)",
+    border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
     background: "rgba(0,0,0,0.15)",
     outline: "none",
     textAlign: "right",
@@ -1267,7 +1263,7 @@ function selectStyle(): React.CSSProperties {
     width: 160,
     borderRadius: 12,
     padding: "10px 10px",
-    border: "1px solid rgba(255,255,255,0.14)",
+    border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
     background: "rgba(0,0,0,0.15)",
     outline: "none",
     fontWeight: 850,
