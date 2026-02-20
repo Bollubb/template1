@@ -229,13 +229,194 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     GCS: { label: "GCS", badge: "NEURO", open: () => { goSection("scales"); setActiveScale("gcs"); markRecent("GCS"); } , accent: ACCENTS["scales"] },
   };
 
+  const [query, setQuery] = useState("");
+
+  const mostUsed = useMemo(() => {
+    const counts: Record<UtilityToolId, number> = {} as any;
+    for (const h of history) {
+      if (!h?.tool) continue;
+      counts[h.tool as UtilityToolId] = (counts[h.tool as UtilityToolId] || 0) + 1;
+    }
+    return (Object.keys(counts) as UtilityToolId[])
+      .sort((a, b) => (counts[b] || 0) - (counts[a] || 0))
+      .slice(0, 6);
+  }, [history]);
+
+  const quickTools = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [] as UtilityToolId[];
+    return (Object.keys(TOOL_META) as UtilityToolId[])
+      .filter((id) => TOOL_META[id].label.toLowerCase().includes(q))
+      .slice(0, 6);
+  }, [query]);
+
+  const filteredSections = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return SECTIONS;
+    return SECTIONS.filter((s) => (s.title + " " + s.subtitle).toLowerCase().includes(q));
+  }, [query]);
+
   // NOTE: Nessuna utility genera XP (evita spam classifica)
 
   return (
     <div>
       {!section && (
         <div>
+<div className="nd-sticky-header">
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+    <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+      <div style={{ fontSize: 18, fontWeight: 950, letterSpacing: -0.2 }}>Utility</div>
+      <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 800 }}>Tool rapidi, guidati e “safe”</div>
+    </div>
+  </div>
+
+  <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
+    <div style={{ flex: 1, position: "relative" }}>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Cerca tool o sezioni…"
+        className="nd-input"
+        style={{
+          width: "100%",
+          borderRadius: 14,
+          padding: "10px 12px",
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "rgba(0,0,0,0.25)",
+          color: "rgba(255,255,255,0.92)",
+          outline: "none",
+          fontWeight: 800,
+          fontSize: 13,
+        }}
+      />
+    </div>
+    {query.trim() && (
+      <button
+        type="button"
+        className="nd-press"
+        onClick={() => setQuery("")}
+        style={{
+          padding: "10px 12px",
+          borderRadius: 14,
+          border: "1px solid rgba(255,255,255,0.10)",
+          background: "rgba(255,255,255,0.05)",
+          fontWeight: 900,
+          color: "rgba(255,255,255,0.92)",
+        }}>
+        Pulisci
+      </button>
+    )}
+  </div>
+
+  {quickTools.length > 0 && (
+    <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {quickTools.map((id) => {
+        const m = TOOL_META[id];
+        const locked = !premium && !favs.includes(id);
+        return (
+          <button
+            key={id}
+            type="button"
+            className="nd-press"
+            onClick={() => {
+              if (locked) {
+                openUpsell("Utility Premium", "Sblocca preferiti e tool avanzati: quando ti serve, non quando ti disturba.", ["Preferiti", "Illimitato", "Dettagli avanzati"]);
+                return;
+              }
+              m.open();
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              borderRadius: 999,
+              border: locked ? "1px solid rgba(255,255,255,0.10)" : `1px solid ${m.accent.border}`,
+              background: locked ? "rgba(255,255,255,0.04)" : m.accent.soft,
+              color: "rgba(255,255,255,0.92)",
+              fontWeight: 900,
+              fontSize: 12,
+            }}
+          >
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: locked ? "rgba(255,255,255,0.35)" : m.accent.solid }} />
+            {m.label}
+          </button>
+        );
+      })}
+    </div>
+  )}
+</div>
+
           <div style={{ display: "grid", gap: 10, marginBottom: 14 }} className="nd-fade-in">
+{(query.trim() === "" && recent.length > 0) && (
+  <div style={{ display: "grid", gap: 8 }}>
+    <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Ultimi usati</div>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {recent.slice(0, 6).map((r) => {
+        const m = TOOL_META[r.tool];
+        if (!m) return null;
+        return (
+          <button
+            key={r.tool}
+            type="button"
+            className="nd-press"
+            onClick={() => m.open()}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              borderRadius: 999,
+              border: `1px solid ${m.accent.border}`,
+              background: m.accent.soft,
+              color: "rgba(255,255,255,0.92)",
+              fontWeight: 900,
+              fontSize: 12,
+            }}
+          >
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
+            {m.label}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+)}
+
+{(query.trim() === "" && mostUsed.length > 0) && (
+  <div style={{ display: "grid", gap: 8 }}>
+    <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Più usati</div>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {mostUsed.map((id) => {
+        const m = TOOL_META[id];
+        return (
+          <button
+            key={id}
+            type="button"
+            className="nd-press"
+            onClick={() => m.open()}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              borderRadius: 999,
+              border: `1px solid ${m.accent.border}`,
+              background: "rgba(255,255,255,0.04)",
+              color: "rgba(255,255,255,0.92)",
+              fontWeight: 900,
+              fontSize: 12,
+            }}
+          >
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
+            {m.label}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+)}
+
             <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Accesso rapido</div>
               {!premium && (
@@ -252,7 +433,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   style={{
                     borderRadius: 999,
                     padding: "6px 10px",
-                    border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
+                    border: "1px solid rgba(255,255,255,0.14)",
                     background: "rgba(255,255,255,0.04)",
                     color: "rgba(255,255,255,0.90)",
                     fontWeight: 900,
@@ -297,7 +478,8 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                       }}>
                       <span style={{ opacity: 0.9 }}>{m.label}</span>
                       {m.badge && (
-                        <span style={{ fontSize: 10.5, fontWeight: 950, padding: "2px 7px", borderRadius: 999, border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`, opacity: 0.85 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 950, padding: "2px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)",
+                    opacity: 0.85 }}>
                           {m.badge}
                         </span>
                       )}
@@ -337,7 +519,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
           </div>
 
           <div style={{ display: "grid", gap: 12 }}>
-            {SECTIONS.map((s) => (
+            {filteredSections.map((s) => (
               <button
                 key={s.id}
                 type="button"
@@ -887,8 +1069,8 @@ function StepPick({
           marginTop: 10,
           borderRadius: 14,
           padding: "12px 12px",
-          border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
-          background: "rgba(0,0,0,0.15)",
+          border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.15)",
           outline: "none",
         }}
       />
@@ -976,8 +1158,8 @@ function primaryBtn(disabled: boolean): React.CSSProperties {
   return {
     borderRadius: 999,
     padding: "10px 14px",
-    border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
-    background: disabled ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.10)",
+    border: "1px solid rgba(255,255,255,0.14)",
+                    background: disabled ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.10)",
     fontWeight: 950,
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.6 : 1,
@@ -1250,8 +1432,8 @@ function inputStyle(): React.CSSProperties {
     width: 140,
     borderRadius: 12,
     padding: "10px 10px",
-    border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
-    background: "rgba(0,0,0,0.15)",
+    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.15)",
     outline: "none",
     textAlign: "right",
     fontWeight: 850,
@@ -1263,8 +1445,8 @@ function selectStyle(): React.CSSProperties {
     width: 160,
     borderRadius: 12,
     padding: "10px 10px",
-    border: locked ? "1px solid rgba(255,255,255,0.14)" : `1px solid ${m.accent.border}`,
-    background: "rgba(0,0,0,0.15)",
+    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(0,0,0,0.15)",
     outline: "none",
     fontWeight: 850,
   };
