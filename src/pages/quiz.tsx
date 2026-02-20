@@ -221,6 +221,11 @@ export default function QuizPage(): JSX.Element {
   const daily = useMemo(() => getDailyState(), [dailyLeft]);
   const weekly = useMemo(() => getWeeklyState(), [weeklyLeft]);
 
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const WEEK_MS = 7 * DAY_MS;
+  const dailyProgress = Math.max(0, Math.min(1, 1 - dailyLeft / DAY_MS));
+  const weeklyProgress = Math.max(0, Math.min(1, 1 - weeklyLeft / WEEK_MS));
+
   function startQuiz(mode: "daily" | "weekly" | "sim" | "review", opts?: { questions?: QuizQuestion[] }) {
     if (mode === "daily") {
       const d = getDailyState();
@@ -231,8 +236,9 @@ export default function QuizPage(): JSX.Element {
       if (w.status === "done") return;
     }
 
-    const n = mode === "daily" ? 5 : mode === "weekly" ? 12 : 20;
-    if (mode === "sim" && !(localStorage.getItem(LS.premium) === "1")) return;
+    if (mode === "review" && !(localStorage.getItem(LS.premium) === "1")) return;
+
+    const n = mode === "daily" ? 5 : mode === "weekly" ? 12 : mode === "sim" ? 25 : 10;
 
 
     // anti-ripetizione "soft"
@@ -430,26 +436,45 @@ export default function QuizPage(): JSX.Element {
     <Page
       title="Quiz"
       headerOverride={{
-        title: "Quiz",
-        subtitle: "Daily • Weekly • Simulazione",
-        showBack: true,
-        onBack: () => router.back(),
-      }}
-    >
-      <Section>
-        <div style={{ display: "grid", gap: 12 }}>
+      
           <div style={card()}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
               <div>
                 <div style={{ fontWeight: 950, fontSize: 18 }}>Quiz</div>
-                <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Daily e Weekly con timer</div>
+                <div style={{ opacity: 0.78, fontWeight: 800, fontSize: 12 }}>Daily • Weekly • Simulazione</div>
               </div>
-              <div style={{ opacity: 0.75, fontWeight: 900, fontSize: 12 }}>
-                Daily: {msToHMS(dailyLeft)} • Weekly: {msToHMS(weeklyLeft)}
+
+              <div style={{ textAlign: "right", opacity: 0.78, fontWeight: 900, fontSize: 12, lineHeight: 1.25 }}>
+                <div>Reset Daily: {msToHMS(dailyLeft)}</div>
+                <div>Reset Weekly: {msToHMS(weeklyLeft)}</div>
+                {daily?.streak ? <div style={{ marginTop: 4, opacity: 0.9 }}>Streak: {daily.streak}🔥</div> : null}
               </div>
             </div>
 
-            <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {/* progress bars */}
+            <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 850, opacity: 0.86 }}>
+                  <span>Daily</span>
+                  <span>{Math.round(dailyProgress * 100)}%</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: 6 }}>
+                  <div style={{ height: "100%", width: `${Math.round(dailyProgress * 100)}%`, background: "rgba(96,165,250,0.55)" }} />
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 850, opacity: 0.86 }}>
+                  <span>Weekly</span>
+                  <span>{Math.round(weeklyProgress * 100)}%</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 999, background: "rgba(255,255,255,0.08)", overflow: "hidden", marginTop: 6 }}>
+                  <div style={{ height: "100%", width: `${Math.round(weeklyProgress * 100)}%`, background: "rgba(34,197,94,0.45)" }} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <button type="button" onClick={() => startQuiz("daily")} disabled={daily.status === "done" || !!runQuiz} style={primaryBtn(daily.status === "done" || !!runQuiz)}>
                 {daily.status === "done" ? "Daily completato ✅" : "Avvia Daily"}
               </button>
@@ -461,26 +486,39 @@ export default function QuizPage(): JSX.Element {
             <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
               <button
                 type="button"
+                onClick={() => startQuiz("sim")}
+                disabled={!!runQuiz}
+                style={ghostBtn(!!runQuiz)}
+              >
+                Simulazione esame (25 domande)
+              </button>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.92, fontWeight: 850, fontSize: 13 }}>
+                <input type="checkbox" checked={simTimer} onChange={(e) => setSimTimer(e.target.checked)} />
+                Timer (25 min) opzionale
+              </label>
+
+              <button
+                type="button"
                 onClick={() => {
-                  if (!premium) {
-                    setPremiumModalOpen(true);
-                    return;
-                  }
-                  startQuiz("sim");
+                  if (!premium) { setPremiumModalOpen(true); return; }
+                  const qs = pickMistakeReviewQuestions(QUIZ_BANK, 10);
+                  startQuiz("review", { questions: qs });
                 }}
                 disabled={!!runQuiz}
                 style={ghostBtn(!!runQuiz)}
               >
-                {premium ? "Simulazione esame (20 domande)" : "Simulazione esame (20 domande) 🔒 Premium"}
+                {premium ? "Ripasso errori (10) — Premium" : "Ripasso errori (10) 🔒 Premium"}
               </button>
-              {premium && (
-                <label style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.92, fontWeight: 850, fontSize: 13 }}>
-                  <input type="checkbox" checked={simTimer} onChange={(e) => setSimTimer(e.target.checked)} />
-                  Timer (25 min) opzionale
-                </label>
-              )}
+
               {!premium && (
                 <div style={{ opacity: 0.72, fontSize: 12, fontWeight: 700 }}>
+                  Premium sblocca il ripasso errori + strumenti avanzati.
+                </div>
+              )}
+            </div>
+          </div>
+: 0.72, fontSize: 12, fontWeight: 700 }}>
                   Attiva Premium dal profilo per sbloccare la simulazione completa + correzione errori.
                 </div>
               )}
