@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { isPremium } from "@/features/profile/premium";
 
 type UtilityHistoryItem = {
@@ -76,13 +76,19 @@ function useDailyLimit(key: string, limit: number) {
  * Disclaimer: strumento di supporto/educativo. Verifica sempre protocolli locali, RCP/SmPC e condizioni del paziente.
  */
 export default function ToolInfusions({
+  onOpen,
   onSave,
   onUpsell,
   onToast,
+  isFav,
+  onToggleFav,
 }: {
+  onOpen?: () => void;
   onSave: (item: UtilityHistoryItem) => void;
   onUpsell: (t: string, d: string, bullets?: string[]) => void;
   onToast: (m: string, type?: any) => void;
+  isFav?: boolean;
+  onToggleFav?: () => void;
 }) {
   type Sev = "ok" | "caution" | "avoid";
   type Compat = { with: string; sev: Sev; note: string; flush?: boolean; advanced?: string[] };
@@ -90,6 +96,11 @@ export default function ToolInfusions({
 
   const premium = isPremium();
   const limit = useDailyLimit(LS_INFUSIONS_DAILY, 5); // free: 5 controlli/die
+
+  useEffect(() => {
+    onOpen?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const DB: Drug[] = [
     {
@@ -109,6 +120,160 @@ export default function ToolInfusions({
     { id: "propofol", name: "Propofol", class: "Sedativi", compat: [{ with: "noradrenalina", sev: "avoid", note: "Emulsione lipidica: linea dedicata.", flush: true }, { with: "fentanil", sev: "avoid", note: "Emulsione lipidica: evitare Y-site.", flush: true }, { with: "midazolam", sev: "avoid", note: "Emulsione lipidica: evitare Y-site.", flush: true }] },
     { id: "fentanil", name: "Fentanil", class: "Oppioidi", compat: [{ with: "noradrenalina", sev: "ok", note: "Spesso compatibile." }, { with: "midazolam", sev: "ok", note: "Spesso compatibile." }, { with: "propofol", sev: "avoid", note: "Propofol: evitare Y-site.", flush: true }] },
     { id: "bicarbonato", name: "Bicarbonato di sodio", class: "Elettroliti", compat: [{ with: "noradrenalina", sev: "avoid", note: "Rischio incompatibilità/precipitazioni con molte soluzioni. Linea dedicata.", flush: true }] },
+
+    /* =====================
+     * ICU DB ampliato (v1)
+     * Nota: compatibilità dipende da diluente, concentrazione, flusso e dispositivo.
+     * ===================== */
+    {
+      id: "adrenalina",
+      name: "Adrenalina",
+      class: "Vasopressori",
+      compat: [
+        { with: "propofol", sev: "avoid", note: "Emulsione lipidica: evitare co-infusione. Linea dedicata.", flush: true, advanced: ["Preferire linea dedicata", "Evita Y-site con emulsioni"] },
+        { with: "fentanil", sev: "ok", note: "Spesso compatibile a concentrazioni comuni (monitorare).", advanced: ["Osserva torbidità/precipitati"] },
+        { with: "bicarbonato", sev: "avoid", note: "Alcalinizzazione e rischio incompatibilità: evitare. Linea dedicata.", flush: true },
+      ],
+    },
+    {
+      id: "vasopressina",
+      name: "Vasopressina",
+      class: "Vasopressori",
+      compat: [
+        { with: "noradrenalina", sev: "caution", note: "Spesso gestita su linee dedicate; se Y-site: flush e sorveglianza.", flush: true, advanced: ["Riduci co-infusione", "Preferire linee separate in shock"] },
+        { with: "propofol", sev: "avoid", note: "Emulsione lipidica: evitare Y-site.", flush: true },
+        { with: "midazolam", sev: "caution", note: "Compatibilità variabile: flush consigliato.", flush: true },
+      ],
+    },
+    {
+      id: "dopamina",
+      name: "Dopamina",
+      class: "Vasopressori",
+      compat: [
+        { with: "bicarbonato", sev: "avoid", note: "Soluzioni alcaline: evitare co-infusione.", flush: true },
+        { with: "furosemide", sev: "caution", note: "Compatibilità variabile: preferire flush/linea dedicata.", flush: true },
+        { with: "fentanil", sev: "ok", note: "Spesso compatibile a concentrazioni comuni." },
+      ],
+    },
+    {
+      id: "dobutamina",
+      name: "Dobutamina",
+      class: "Inotropi",
+      compat: [
+        { with: "bicarbonato", sev: "avoid", note: "Soluzioni alcaline: evitare.", flush: true },
+        { with: "noradrenalina", sev: "caution", note: "Preferire linee separate se possibile (farmaci vasoattivi).", flush: true },
+        { with: "midazolam", sev: "caution", note: "Compatibilità variabile: flush consigliato.", flush: true },
+      ],
+    },
+    {
+      id: "nitroglicerina",
+      name: "Nitroglicerina",
+      class: "Vasodilatatori",
+      compat: [
+        { with: "noradrenalina", sev: "caution", note: "Possibile, ma preferire linee dedicate per vasoattivi.", flush: true },
+        { with: "propofol", sev: "avoid", note: "Emulsione lipidica: evitare Y-site.", flush: true },
+        { with: "fentanil", sev: "ok", note: "Spesso compatibile." },
+      ],
+    },
+    {
+      id: "nicardipina",
+      name: "Nicardipina",
+      class: "Vasodilatatori",
+      compat: [
+        { with: "noradrenalina", sev: "caution", note: "Preferire linee separate; se necessario flush.", flush: true },
+        { with: "midazolam", sev: "caution", note: "Compatibilità variabile: flush consigliato.", flush: true },
+      ],
+    },
+    {
+      id: "insulina",
+      name: "Insulina regolare",
+      class: "Ormoni",
+      compat: [
+        { with: "noradrenalina", sev: "caution", note: "Preferire linee separate; attenzione a dead space e assorbimento.", flush: true, advanced: ["Attenzione a adsorbimento su set", "Rivaluta glicemia frequentemente"] },
+        { with: "kcl", sev: "ok", note: "Spesso compatibile (protocollo insulin/potassio)." },
+      ],
+    },
+    {
+      id: "eparina",
+      name: "Eparina",
+      class: "Anticoagulanti",
+      compat: [
+        { with: "noradrenalina", sev: "caution", note: "Compatibilità variabile: preferire flush/linea dedicata.", flush: true },
+        { with: "vancomicina", sev: "caution", note: "Potenziale incompatibilità: meglio linea separata o flush.", flush: true },
+      ],
+    },
+    {
+      id: "kcl",
+      name: "Cloruro di potassio (KCl)",
+      class: "Elettroliti",
+      compat: [
+        { with: "ceftriaxone", sev: "caution", note: "Dipende da diluente/concentrazione: preferire flush.", flush: true },
+        { with: "insulina", sev: "ok", note: "Spesso compatibile in protocolli dedicati." },
+      ],
+    },
+    {
+      id: "mgso4",
+      name: "Solfato di magnesio",
+      class: "Elettroliti",
+      compat: [
+        { with: "noradrenalina", sev: "caution", note: "Possibile ma preferire flush/linea dedicata.", flush: true },
+        { with: "ceftriaxone", sev: "caution", note: "Compatibilità variabile: flush consigliato.", flush: true },
+      ],
+    },
+    {
+      id: "calcio",
+      name: "Calcio gluconato",
+      class: "Elettroliti",
+      compat: [
+        { with: "ceftriaxone", sev: "avoid", note: "Rischio precipitazione (soprattutto neonati). Evitare co-infusione.", flush: true, advanced: ["Non co-infondere con ceftriaxone", "Linea dedicata"] },
+        { with: "bicarbonato", sev: "avoid", note: "Rischio precipitati con bicarbonato: evitare.", flush: true },
+      ],
+    },
+    {
+      id: "ceftriaxone",
+      name: "Ceftriaxone",
+      class: "Antibiotici",
+      compat: [
+        { with: "calcio", sev: "avoid", note: "Evitare co-infusione con calcio per rischio precipitazione.", flush: true },
+        { with: "noradrenalina", sev: "caution", note: "Compatibilità variabile: flush consigliato.", flush: true },
+      ],
+    },
+    {
+      id: "piptazo",
+      name: "Piperacillina/Tazobactam",
+      class: "Antibiotici",
+      compat: [
+        { with: "vancomicina", sev: "caution", note: "Possibile incompatibilità: preferire linee separate o flush.", flush: true, advanced: ["Evita co-infusione prolungata", "Usa flush prima/dopo"] },
+        { with: "noradrenalina", sev: "caution", note: "Preferire flush.", flush: true },
+      ],
+    },
+    {
+      id: "meropenem",
+      name: "Meropenem",
+      class: "Antibiotici",
+      compat: [
+        { with: "noradrenalina", sev: "caution", note: "Compatibilità variabile: flush consigliato.", flush: true },
+        { with: "vancomicina", sev: "caution", note: "Preferire linee separate o flush.", flush: true },
+      ],
+    },
+    {
+      id: "vancomicina",
+      name: "Vancomicina",
+      class: "Antibiotici",
+      compat: [
+        { with: "piptazo", sev: "caution", note: "Potenziale incompatibilità: meglio linea separata o flush.", flush: true },
+        { with: "eparina", sev: "caution", note: "Compatibilità variabile: preferire flush.", flush: true },
+      ],
+    },
+    {
+      id: "furosemide",
+      name: "Furosemide",
+      class: "Diuretici",
+      compat: [
+        { with: "dopamina", sev: "caution", note: "Compatibilità variabile: flush consigliato.", flush: true },
+        { with: "noradrenalina", sev: "caution", note: "Preferire flush/linea dedicata.", flush: true },
+      ],
+    },
   ];
 
   function allIndex(d: Drug) {
@@ -177,16 +342,52 @@ export default function ToolInfusions({
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 950 }}>Compatibilità infusioni EV</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 950, display: "flex", alignItems: "center", gap: 8 }}>
+              Compatibilità infusioni EV
+              {onToggleFav && (
+                <button
+                  type="button"
+                  className="nd-press"
+                  onClick={onToggleFav}
+                  aria-label={isFav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+                  style={{
+                    borderRadius: 999,
+                    padding: "6px 10px",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: isFav ? "rgba(250,204,21,0.14)" : "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.92)",
+                    fontWeight: 950,
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}>
+                  {isFav ? "★" : "☆"}
+                </button>
+              )}
+            </div>
           <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
             Y-site / flush • Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/5 controlli disponibili oggi`}
           </div>
+          </div>
         </div>
-        <button type="button" onClick={() => onUpsell("Compatibilità infusioni EV — ICU", "Con Premium sblocchi dettagli avanzati e database ampliato.", ["Dettagli avanzati", "Database più ampio"])} style={ghostBtn()}>
+        <button
+          type="button"
+          className="nd-press"
+          onClick={() => onUpsell("Compatibilità infusioni EV — ICU", "Con Premium sblocchi dettagli avanzati e database ampliato.", ["Dettagli avanzati", "Database più ampio"])}
+          style={ghostBtn()}>
           ICU Boost
         </button>
       </div>
+
+      {!limit.premium && limit.usedLeft() <= 1 && (
+        <div className="nd-fade-in" style={{ marginTop: 10, borderRadius: 14, padding: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", opacity: 0.95 }}>
+          <div style={{ fontWeight: 900, fontSize: 13 }}>Tip</div>
+          <div style={{ marginTop: 6, fontSize: 13, opacity: 0.85, lineHeight: 1.35 }}>
+            Ti resta <b>{limit.usedLeft()}</b> controllo gratuito oggi. Con Premium: illimitato + database ampliato ICU.
+          </div>
+        </div>
+      )}
 
       {step === 1 && (
         <StepPick<Drug>
@@ -213,10 +414,10 @@ export default function ToolInfusions({
           onPick={(e) => setB(e)}
           footer={
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
-              <button type="button" onClick={() => { setStep(1); setQ2(""); setB(null); }} style={ghostBtn()}>
+              <button type="button" className="nd-press" onClick={() => { setStep(1); setQ2(""); setB(null); }} style={ghostBtn()}>
                 ← Cambia infusione A
               </button>
-              <button type="button" onClick={confirm} disabled={!a || !b} style={primaryBtn(!a || !b)}>
+              <button type="button" className="nd-press" onClick={confirm} disabled={!a || !b} style={primaryBtn(!a || !b)}>
                 Verifica compatibilità
               </button>
             </div>
@@ -225,7 +426,7 @@ export default function ToolInfusions({
       )}
 
       {step === 3 && outcome && a && b && (
-        <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", marginTop: 12 }}>
+        <div className="nd-pop" style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", marginTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
             <div>
               <div style={{ fontWeight: 950, fontSize: 15 }}>{a.name} + {b.name}</div>
@@ -253,10 +454,10 @@ export default function ToolInfusions({
           )}
 
           <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <button type="button" onClick={() => { setStep(2); setOutcome(null); }} style={ghostBtn()}>
+            <button type="button" className="nd-press" onClick={() => { setStep(2); setOutcome(null); }} style={ghostBtn()}>
               ← Modifica scelta
             </button>
-            <button type="button" onClick={() => { onSave({ tool: "INFUSION", ts: Date.now(), inputs: { a: a.id, b: b.id }, output: `${a.name} + ${b.name}: ${outcome.title}${outcome.flush ? " (flush)" : ""}` }); onToast("Salvato in storico", "success"); }} style={primaryBtn(false)}>
+            <button type="button" className="nd-press" onClick={() => { onSave({ tool: "INFUSION", ts: Date.now(), inputs: { a: a.id, b: b.id }, output: `${a.name} + ${b.name}: ${outcome.title}${outcome.flush ? " (flush)" : ""}` }); onToast("Salvato in storico", "success"); }} style={primaryBtn(false)}>
               Salva
             </button>
             <button type="button" onClick={() => { setStep(1); setOutcome(null); setA(null); setB(null); setQ1(""); setQ2(""); }} style={primaryBtn(false)}>

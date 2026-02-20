@@ -30,6 +30,8 @@ export default function ToolScales({
   onSave,
   onUpsell,
   onToast,
+  favs,
+  onToggleFav,
 }: {
   active: ScaleToolId | null;
   setActive: (id: ScaleToolId | null) => void;
@@ -37,12 +39,28 @@ export default function ToolScales({
   onSave: (item: UtilityHistoryItem) => void;
   onUpsell: (t: string, d: string, bullets?: string[]) => void;
   onToast: (m: string, type?: any) => void;
+  favs: ("INTERACTIONS" | "INFUSION" | "NEWS2" | "GCS")[];
+  onToggleFav: (tool: "INTERACTIONS" | "INFUSION" | "NEWS2" | "GCS") => void;
 }) {
   if (!active) {
     return (
       <div style={{ display: "grid", gap: 10 }}>
-        <ScaleCard title="NEWS2" subtitle="Early warning score" badge="CORE" onClick={() => setActive("news2")} />
-        <ScaleCard title="Glasgow Coma Scale" subtitle="GCS 3–15 con severità" badge="NEURO" onClick={() => setActive("gcs")} />
+        <ScaleCard
+          title="NEWS2"
+          subtitle="Early warning score"
+          badge="CORE"
+          isFav={favs.includes("NEWS2")}
+          onFav={() => onToggleFav("NEWS2")}
+          onClick={() => setActive("news2")}
+        />
+        <ScaleCard
+          title="Glasgow Coma Scale"
+          subtitle="GCS 3–15 con severità"
+          badge="NEURO"
+          isFav={favs.includes("GCS")}
+          onFav={() => onToggleFav("GCS")}
+          onClick={() => setActive("gcs")}
+        />
 
         <div style={{ marginTop: 6, opacity: 0.75, fontSize: 12, lineHeight: 1.35 }}>
           Nota: questi strumenti sono di supporto operativo. In caso di dubbio o peggioramento clinico, attiva i percorsi
@@ -71,17 +89,22 @@ function ScaleCard({
   title,
   subtitle,
   badge,
+  isFav,
+  onFav,
   onClick,
 }: {
   title: string;
   subtitle: string;
   badge?: string;
+  isFav: boolean;
+  onFav: () => void;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      className="nd-press"
       style={{
         textAlign: "left",
         borderRadius: 18,
@@ -116,7 +139,31 @@ function ScaleCard({
         </div>
         <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{subtitle}</div>
       </div>
-      <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18 }}>›</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          type="button"
+          className="nd-press"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onFav();
+          }}
+          aria-label={isFav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+          style={{
+            borderRadius: 999,
+            padding: "6px 10px",
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: isFav ? "rgba(250,204,21,0.14)" : "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.92)",
+            fontWeight: 950,
+            fontSize: 12,
+            cursor: "pointer",
+          }}
+        >
+          {isFav ? "★" : "☆"}
+        </button>
+        <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18 }}>›</div>
+      </div>
     </button>
   );
 }
@@ -135,14 +182,14 @@ function ScaleShell({
   onSave: () => void;
 }) {
   return (
-    <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+    <div className="nd-fade-in" style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div>
           <div style={{ fontWeight: 950, fontSize: 15 }}>{title}</div>
           <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>{subtitle}</div>
         </div>
 
-        <button type="button" onClick={onBack} style={ghostBtn()}>
+        <button type="button" className="nd-press" onClick={onBack} style={ghostBtn()}>
           Indietro
         </button>
       </div>
@@ -150,7 +197,7 @@ function ScaleShell({
       <div style={{ marginTop: 12 }}>{children}</div>
 
       <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
-        <button type="button" onClick={onSave} style={primaryBtn()}>
+        <button type="button" className="nd-press" onClick={onSave} style={primaryBtn()}>
           Salva
         </button>
       </div>
