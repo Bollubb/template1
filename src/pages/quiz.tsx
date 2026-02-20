@@ -240,8 +240,9 @@ export default function QuizPage(): JSX.Element {
     wrong.forEach((w) => recordMistake(w.q.id));
 
     // history (for recency)
+    const byCategory: QuizHistoryItem["byCategory"] = {};
+
     try {
-      const byCategory: QuizHistoryItem["byCategory"] = {};
       run.questions.forEach((q, i) => {
         const cat = String((q as any).category || "other");
         const bucket = (byCategory as any)[cat] || { correct: 0, total: 0 };
