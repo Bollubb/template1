@@ -116,8 +116,7 @@ function ScaleCard({
       <div className="flex items-center gap-2.5">
         <button
           type="button"
-          className="nd-press"
-          onClick={(e) => {
+                    onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             onFav();
