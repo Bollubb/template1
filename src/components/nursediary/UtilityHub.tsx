@@ -9,6 +9,7 @@ const LS = {
   section: "nd_utility_section_v1",
   favs: "nd_utility_favs",
   history: "nd_utility_history_v1",
+  recent: "nd_utility_recent_tools_v1",
   interactionsDaily: "nd_utility_interactions_daily_v1",
   infusionsDaily: "nd_utility_infusions_daily_v1",
   news2Prev: "nd_utility_news2_prev_v1",
@@ -25,6 +26,9 @@ type UtilityHistoryItem = {
   output: string;
 };
 
+type UtilityToolId = "INTERACTIONS" | "INFUSION" | "NEWS2" | "GCS";
+type RecentItem = { tool: UtilityToolId; ts: number };
+
 function safeJson<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
   try {
@@ -35,6 +39,32 @@ function safeJson<T>(raw: string | null, fallback: T): T {
 }
 
 const isBrowser = () => typeof window !== "undefined" && typeof localStorage !== "undefined";
+
+function readFavs(): UtilityToolId[] {
+  if (!isBrowser()) return [];
+  const raw = safeJson<string[]>(localStorage.getItem(LS.favs), []);
+  const allowed: UtilityToolId[] = ["INTERACTIONS", "INFUSION", "NEWS2", "GCS"];
+  return raw.filter((x): x is UtilityToolId => allowed.includes(x as UtilityToolId));
+}
+
+function writeFavs(next: UtilityToolId[]) {
+  if (!isBrowser()) return;
+  try {
+    localStorage.setItem(LS.favs, JSON.stringify(Array.from(new Set(next))));
+  } catch {}
+}
+
+function readRecent(): RecentItem[] {
+  if (!isBrowser()) return [];
+  return safeJson<RecentItem[]>(localStorage.getItem(LS.recent), []);
+}
+
+function writeRecent(next: RecentItem[]) {
+  if (!isBrowser()) return;
+  try {
+    localStorage.setItem(LS.recent, JSON.stringify(next));
+  } catch {}
+}
 
 function dayKey(d = new Date()) {
   return d.toISOString().slice(0, 10);
@@ -102,6 +132,7 @@ const SECTIONS: { id: SectionId; title: string; subtitle: string; badge?: string
 
 export default function UtilityHub({ onBack }: { onBack: () => void }) {
   const toast = useToast();
+  const premium = isPremium();
 
   const [section, setSection] = useState<SectionId | null>(() => {
     if (!isBrowser()) return null;
@@ -118,6 +149,9 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     if (!isBrowser()) return [];
     return safeJson<UtilityHistoryItem[]>(localStorage.getItem(LS.history), []);
   });
+
+  const [favs, setFavs] = useState<UtilityToolId[]>(() => readFavs());
+  const [recent, setRecent] = useState<RecentItem[]>(() => readRecent());
 
   const lastByTool = useMemo(() => {
     const map = {} as Record<string, UtilityHistoryItem | null>;
@@ -138,6 +172,33 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     });
   }
 
+  function markRecent(tool: UtilityToolId) {
+    if (!isBrowser()) return;
+    setRecent((prev) => {
+      const next: RecentItem[] = [{ tool, ts: Date.now() }, ...prev.filter((x) => x.tool !== tool)].slice(0, 10);
+      writeRecent(next);
+      return next;
+    });
+  }
+
+  function toggleFav(tool: UtilityToolId) {
+    if (!premium) {
+      openUpsell(
+        "Preferiti Premium",
+        "Salva i tool che usi di più e ritrovali in 1 tap. Con Free puoi usare i tool, ma non salvarli tra i preferiti.",
+        ["Preferiti illimitati", "Accesso rapido", "Tool avanzati"]
+      );
+      return;
+    }
+    setFavs((prev) => {
+      const removing = prev.includes(tool);
+      const next = removing ? prev.filter((x) => x !== tool) : [tool, ...prev];
+      writeFavs(next);
+      toast.push(removing ? "Rimosso dai preferiti" : "Aggiunto ai preferiti", "success");
+      return next;
+    });
+  }
+
   function goSection(next: SectionId) {
     setSection(next);
     setActiveCalc(null);
@@ -153,18 +214,127 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     setUpsellOpen(true);
   }
 
+  const TOOL_META: Record<UtilityToolId, { label: string; open: () => void; badge?: string }> = {
+    INTERACTIONS: { label: "Interazioni", badge: "TOP", open: () => { goSection("interactions"); markRecent("INTERACTIONS"); } },
+    INFUSION: { label: "Infusioni EV", badge: "ICU", open: () => { goSection("infusion"); markRecent("INFUSION"); } },
+    NEWS2: { label: "NEWS2", badge: "CORE", open: () => { goSection("scales"); setActiveScale("news2"); markRecent("NEWS2"); } },
+    GCS: { label: "GCS", badge: "NEURO", open: () => { goSection("scales"); setActiveScale("gcs"); markRecent("GCS"); } },
+  };
+
   // NOTE: Nessuna utility genera XP (evita spam classifica)
 
   return (
     <div>
       {!section && (
         <div>
+          <div style={{ display: "grid", gap: 10, marginBottom: 14 }} className="nd-fade-in">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Accesso rapido</div>
+              {!premium && (
+                <button
+                  type="button"
+                  className="nd-press"
+                  onClick={() =>
+                    openUpsell(
+                      "Utility Premium",
+                      "Sblocca preferiti, ricerche illimitate e dettagli avanzati: quando ti serve, non quando ti disturba.",
+                      ["Preferiti", "Illimitato", "Dettagli avanzati"]
+                    )
+                  }
+                  style={{
+                    borderRadius: 999,
+                    padding: "6px 10px",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    background: "rgba(255,255,255,0.04)",
+                    color: "rgba(255,255,255,0.90)",
+                    fontWeight: 900,
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}>
+                  Sblocca preferiti
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {(favs.length > 0 ? favs : premium ? [] : (["INFUSION", "NEWS2"] as UtilityToolId[])).slice(0, 6).map((id) => {
+                  const m = TOOL_META[id];
+                  const locked = !premium && !favs.includes(id);
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className="nd-press"
+                      onClick={() => {
+                        if (locked) {
+                          openUpsell("Preferiti Premium", "Con Premium puoi salvare e aprire al volo i tool più usati.", ["Preferiti", "Accesso rapido"]);
+                          return;
+                        }
+                        m.open();
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 10px",
+                        borderRadius: 999,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: locked ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.05)",
+                        color: "rgba(255,255,255,0.92)",
+                        fontSize: 12.5,
+                        fontWeight: 850,
+                        cursor: "pointer",
+                        opacity: locked ? 0.65 : 1,
+                      }}>
+                      <span style={{ opacity: 0.9 }}>{m.label}</span>
+                      {m.badge && (
+                        <span style={{ fontSize: 10.5, fontWeight: 950, padding: "2px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)", opacity: 0.85 }}>
+                          {m.badge}
+                        </span>
+                      )}
+                      {locked && <span style={{ opacity: 0.85 }}>🔒</span>}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {recent.length > 0 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {recent.slice(0, 4).map((r) => (
+                    <button
+                      key={r.tool}
+                      type="button"
+                      className="nd-press"
+                      onClick={() => TOOL_META[r.tool]?.open()}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "7px 10px",
+                        borderRadius: 999,
+                        border: "1px solid rgba(255,255,255,0.10)",
+                        background: "rgba(255,255,255,0.03)",
+                        color: "rgba(255,255,255,0.82)",
+                        fontSize: 12,
+                        fontWeight: 800,
+                        cursor: "pointer",
+                      }}>
+                      <span style={{ opacity: 0.85 }}>Ultimo:</span> {TOOL_META[r.tool]?.label || r.tool}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div style={{ display: "grid", gap: 12 }}>
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => goSection(s.id)}
+                className="nd-press"
                 style={{
                   textAlign: "left",
                   borderRadius: 18,
@@ -242,6 +412,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12 }}>
             <button
               type="button"
+              className="nd-press"
               onClick={() => {
                 if (activeCalc) return setActiveCalc(null);
                 setSection(null);
@@ -278,8 +449,39 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
           </div>
 
           {section === "interactions" && <ToolInteractions onSave={pushHistory} onUpsell={openUpsell} />}
-          {section === "infusion" && <ToolInfusions onSave={pushHistory} onUpsell={openUpsell} onToast={(m,t)=>toast.push(m,t)} />}
-          {section === "scales" && <ToolScales active={activeScale} setActive={setActiveScale} lastByTool={lastByTool} onSave={pushHistory} onUpsell={openUpsell} onToast={(m,t)=>toast.push(m,t)} />}
+          {section === "infusion" && (
+            <ToolInfusions
+              onOpen={() => markRecent("INFUSION")}
+              onSave={(it) => {
+                pushHistory(it);
+                markRecent("INFUSION");
+              }}
+              onUpsell={openUpsell}
+              onToast={(m, t) => toast.push(m, t)}
+              isFav={favs.includes("INFUSION")}
+              onToggleFav={() => toggleFav("INFUSION")}
+            />
+          )}
+          {section === "scales" && (
+            <ToolScales
+              active={activeScale}
+              setActive={(id) => {
+                setActiveScale(id);
+                if (id === "news2") markRecent("NEWS2");
+                if (id === "gcs") markRecent("GCS");
+              }}
+              lastByTool={lastByTool}
+              onSave={(it) => {
+                pushHistory(it);
+                if (it.tool === "NEWS2") markRecent("NEWS2");
+                if (it.tool === "GCS") markRecent("GCS");
+              }}
+              onUpsell={openUpsell}
+              onToast={(m, t) => toast.push(m, t)}
+              favs={favs}
+              onToggleFav={toggleFav}
+            />
+          )}
           {section === "checklists" && <ComingSoon title="Checklist operative" desc="Checklist step-by-step, stampabili e pronte da reparto." onUpsell={openUpsell} />}
 
           {section === "calculators" && (
