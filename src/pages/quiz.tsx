@@ -435,9 +435,8 @@ export default function QuizPage(): JSX.Element {
   return (
     <Page
       title="Quiz"
-      headerOverride={{
-      
-          <div style={card()}>
+      headerOverride={{ title: "Quiz", subtitle: "Daily • Weekly • Simulazione", showBack: true }}>
+      <div style={card()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
               <div>
                 <div style={{ fontWeight: 950, fontSize: 18 }}>Quiz</div>
