@@ -244,33 +244,44 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
 
   const TOOL_META: Record<UtilityToolId, { label: string; open: () => void; badge?: string; accent: { solid: string; soft: string; border: string } }> = {
     INTERACTIONS: { label: "Interazioni", badge: "TOP", open: () => { goSection("interactions"); markRecent("INTERACTIONS"); } , accent: ACCENTS["interactions"] },
-    INFUSION: { label: "Infusioni EV", badge: "ICU", open: () => { goSection("infusion"); markRecent("INFUSION"); } , accent: ACCENTS["infusion"] },
+    INFUSION: { label: "Infusioni EV", badge: "ICU", open: () => { startToolLoad("INFUSION"); goSection("infusion"); markRecent("INFUSION"); } , accent: ACCENTS["infusion"] },
     NEWS2: { label: "NEWS2", badge: "CORE", open: () => { goSection("scales"); setActiveScale("news2"); markRecent("NEWS2"); } , accent: ACCENTS["scales"] },
     GCS: { label: "GCS", badge: "NEURO", open: () => { goSection("scales"); setActiveScale("gcs"); markRecent("GCS"); } , accent: ACCENTS["scales"] },
   };
 
   const [query, setQuery] = useState("");
 
-  const mostUsed = useMemo(() => {
-    const counts: Record<UtilityToolId, number> = {} as any;
-    for (const h of history) {
-      const t = h?.tool;
-      if (!t) continue;
-      if (!isUtilityToolId(t)) continue;
-      counts[t] = (counts[t] || 0) + 1;
-    }
-    return (Object.keys(counts) as UtilityToolId[])
-      .sort((a, b) => (counts[b] || 0) - (counts[a] || 0))
-      .slice(0, 6);
-  }, [history]);
+  const [toolLoading, setToolLoading] = useState<{ id: UtilityToolId | null; on: boolean }>({ id: null, on: false });
+  function startToolLoad(id: UtilityToolId, ms = 180) {
+    setToolLoading({ id, on: true });
+    window.setTimeout(() => setToolLoading((p) => (p.id === id ? { id: null, on: false } : p)), ms);
+  }
 
-  const quickTools = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [] as UtilityToolId[];
-    return (Object.keys(TOOL_META) as UtilityToolId[])
-      .filter((id) => TOOL_META[id].label.toLowerCase().includes(q))
-      .slice(0, 6);
-  }, [query]);
+
+  const recent3 = useMemo(() => {
+    const uniq: UtilityToolId[] = [];
+    // 1) recent list (already unique by tool)
+    for (const r of recent) {
+      const t = r?.tool;
+      if (!t) continue;
+      if (!TOOL_META[t]) continue;
+      if (!uniq.includes(t)) uniq.push(t);
+      if (uniq.length >= 3) break;
+    }
+    // 2) fallback from history
+    if (uniq.length < 3) {
+      for (const h of history) {
+        const t = h?.tool as any;
+        if (!t) continue;
+        if (!isUtilityToolId(t)) continue;
+        if (!TOOL_META[t]) continue;
+        if (uniq.includes(t)) continue;
+        uniq.push(t);
+        if (uniq.length >= 3) break;
+      }
+    }
+    return uniq;
+  }, [recent, history]);
 
   const filteredSections = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -330,37 +341,33 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     )}
   </div>
 
-  {quickTools.length > 0 && (
+  
+  {query.trim() === "" && recent3.length > 0 && (
     <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {quickTools.map((id) => {
+      {recent3.map((id) => {
         const m = TOOL_META[id];
-        const locked = !premium && !favs.includes(id);
+        if (!m) return null;
         return (
           <button
             key={id}
             type="button"
             className="nd-press"
-            onClick={() => {
-              if (locked) {
-                openUpsell("Utility Premium", "Sblocca preferiti e tool avanzati: quando ti serve, non quando ti disturba.", ["Preferiti", "Illimitato", "Dettagli avanzati"]);
-                return;
-              }
-              m.open();
-            }}
+            onClick={() => m.open()}
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: 8,
               padding: "8px 10px",
               borderRadius: 999,
-              border: locked ? "1px solid rgba(255,255,255,0.10)" : `1px solid ${m.accent.border}`,
-              background: locked ? "rgba(255,255,255,0.04)" : m.accent.soft,
+              border: `1px solid ${m.accent.border}`,
+              background: m.accent.soft,
               color: "rgba(255,255,255,0.92)",
-              fontWeight: 900,
+              fontWeight: 950,
               fontSize: 12,
+              letterSpacing: -0.2,
             }}
           >
-            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: locked ? "rgba(255,255,255,0.35)" : m.accent.solid }} />
+            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
             {m.label}
           </button>
         );
@@ -369,113 +376,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   )}
 </div>
 
-          <div style={{ display: "grid", gap: 10, marginBottom: 14 }} className="nd-fade-in">
-  {query.trim() === "" && (
-    (() => {
-      const uniq: UtilityToolId[] = [];
-      const push = (id?: UtilityToolId) => {
-        if (!id) return;
-        if (!TOOL_META[id]) return;
-        if (uniq.includes(id)) return;
-        uniq.push(id);
-      };
-
-      // Ordine: Preferiti (solo premium) → Recenti → Più usati → fallback
-      if (premium) favs.slice(0, 6).forEach((id) => push(id));
-      recent.slice(0, 10).forEach((r) => push(r.tool));
-      mostUsed.slice(0, 10).forEach((id) => push(id));
-      if (uniq.length === 0) (["INTERACTIONS", "INFUSION", "NEWS2"] as UtilityToolId[]).forEach((id) => push(id));
-
-      const tools = uniq.slice(0, 6);
-
-      return (
-        <div style={{ display: "grid", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            <div style={{ fontSize: 13, opacity: 0.88, fontWeight: 950 }}>
-              Continua
-              <span style={{ fontSize: 12, fontWeight: 850, opacity: 0.6, marginLeft: 8 }}>
-                {premium ? "preferiti • recenti" : "recenti"}
-              </span>
-            </div>
-
-            {!premium && (
-              <button
-                type="button"
-                className="nd-press"
-                onClick={() =>
-                  openUpsell(
-                    "Utility Premium",
-                    "Sblocca preferiti e accesso istantaneo ai tool che usi di più.",
-                    ["Preferiti", "Accesso rapido", "Dettagli avanzati"]
-                  )
-                }
-                style={{
-                  borderRadius: 999,
-                  padding: "6px 10px",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: "rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.86)",
-                  fontWeight: 900,
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
-              >
-                Sblocca preferiti
-              </button>
-            )}
-          </div>
-
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {tools.map((id) => {
-              const m = TOOL_META[id];
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  className="nd-press"
-                  onClick={() => m.open()}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "8px 10px",
-                    borderRadius: 999,
-                    border: `1px solid ${m.accent.border}`,
-                    background: m.accent.soft,
-                    color: "rgba(255,255,255,0.92)",
-                    fontWeight: 900,
-                    fontSize: 12,
-                    maxWidth: "100%",
-                  }}
-                >
-                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
-                  <span style={{ opacity: 0.95 }}>{m.label}</span>
-                  {m.badge && (
-                    <span
-                      style={{
-                        fontSize: 10.5,
-                        fontWeight: 950,
-                        padding: "2px 7px",
-                        borderRadius: 999,
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: "rgba(255,255,255,0.03)",
-                        opacity: 0.85,
-                      }}
-                    >
-                      {m.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      );
-    })()
-  )}
-</div>
-
-<div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "grid", gap: 12 }}>
             {filteredSections.map((s) => (
               <button
                 key={s.id}
@@ -532,28 +433,6 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
               </button>
             ))}
           </div>
-
-          {history.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 13, opacity: 0.8, fontWeight: 800, marginBottom: 8 }}>Ultimi utilizzi</div>
-              <div style={{ display: "grid", gap: 8 }}>
-                {Object.entries(lastByTool)
-                  .slice(0, 4)
-                  .map(([k, h]) =>
-                    h ? (
-                      <div
-                        key={k}
-                        style={{
-                          borderRadius: 14,
-                          padding: 12,
-                          border: "1px solid rgba(255,255,255,0.08)",
-                          background: "rgba(255,255,255,0.03)",
-                        }}>
-                        <div style={{ fontWeight: 850, fontSize: 13 }}>{k}</div>
-                        <div style={{ opacity: 0.75, fontSize: 12, marginTop: 4 }}>{h.output}</div>
-                      </div>
-                    ) : null
-                  )}
               </div>
             </div>
           )}
@@ -586,8 +465,11 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             </button>
           </div>
 
-          {section === "interactions" && <ToolInteractions onSave={pushHistory} onUpsell={openUpsell} />}
+          {section === "interactions" && (toolLoading.on && toolLoading.id === "INTERACTIONS" ? <ToolSkeleton title="Interazioni" accent={ACCENTS["interactions"]} /> : <ToolInteractions onSave={pushHistory} onUpsell={openUpsell} />)}
           {section === "infusion" && (
+            toolLoading.on && toolLoading.id === "INFUSION" ? (
+              <ToolSkeleton title="Infusioni EV" accent={ACCENTS["infusion"]} />
+            ) : (
             <ToolInfusions
               onOpen={() => markRecent("INFUSION")}
               onSave={(it) => {
@@ -626,12 +508,12 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             <>
               {!activeCalc ? (
                 <div style={{ display: "grid", gap: 10 }}>
-                  <CalcCard title="Velocità infusione" subtitle="ml/h da volume e tempo" onClick={() => setActiveCalc("mlh")} />
-                  <CalcCard title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" onClick={() => setActiveCalc("gtt")} />
-                  <CalcCard title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" onClick={() => setActiveCalc("mgkgmin")} />
-                  <CalcCard title="MAP" subtitle="Pressione arteriosa media" onClick={() => setActiveCalc("map")} />
-                  <CalcCard title="BMI" subtitle="Indice di massa corporea" onClick={() => setActiveCalc("bmi")} />
-                  <CalcCard title="Diuresi" subtitle="ml/kg/h" onClick={() => setActiveCalc("diuresi")} />
+                  <CalcCard title="Velocità infusione" subtitle="ml/h da volume e tempo" icon="⏱" onClick={() => setActiveCalc("mlh")} />
+                  <CalcCard title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" icon="滴" onClick={() => setActiveCalc("gtt")} />
+                  <CalcCard title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" icon="⚗" onClick={() => setActiveCalc("mgkgmin")} />
+                  <CalcCard title="MAP" subtitle="Pressione arteriosa media" icon="MAP" onClick={() => setActiveCalc("map")} />
+                  <CalcCard title="BMI" subtitle="Indice di massa corporea" icon="BMI" onClick={() => setActiveCalc("bmi")} />
+                  <CalcCard title="Diuresi" subtitle="ml/kg/h" icon="H₂O" onClick={() => setActiveCalc("diuresi")} />
                 </div>
               ) : (
                 <ToolRenderer id={activeCalc} last={lastByTool[activeCalc] ?? null} onSave={pushHistory} onToast={toast.push} />
@@ -653,21 +535,52 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   );
 }
 
-function CalcCard({ title, subtitle, onClick }: { title: string; subtitle: string; onClick: () => void }) {
+function CalcCard({ title, subtitle, icon, onClick }: { title: string; subtitle: string; icon: string; onClick: () => void }) {
+  const a = ACCENTS["calculators"];
   return (
     <button
       type="button"
       onClick={onClick}
+      className="nd-press"
       style={{
         textAlign: "left",
-        borderRadius: 16,
+        borderRadius: 18,
         padding: 14,
-        border: "1px solid rgba(255,255,255,0.08)",
-        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${a.border}`,
+        background: `linear-gradient(180deg, ${a.soft}, rgba(255,255,255,0.02))`,
         cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
       }}>
-      <div style={{ fontWeight: 850 }}>{title}</div>
-      <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{subtitle}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          aria-hidden
+          style={{
+            minWidth: 34,
+            height: 26,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 8px",
+            borderRadius: 999,
+            border: `1px solid ${a.border}`,
+            background: "rgba(0,0,0,0.18)",
+            color: a.solid,
+            fontSize: 12,
+            fontWeight: 950,
+            letterSpacing: -0.2,
+          }}>
+          {icon}
+        </span>
+        <div>
+          <div style={{ fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{title}</div>
+          <div style={{ fontSize: 13, opacity: 0.75, marginTop: 2 }}>{subtitle}</div>
+        </div>
+      </div>
+
+      <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18, color: a.solid }}>›</div>
     </button>
   );
 }
