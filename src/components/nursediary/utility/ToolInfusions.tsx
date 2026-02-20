@@ -365,7 +365,7 @@ export default function ToolInfusions({
           type="button"
           className="nd-press"
           onClick={() => onUpsell("Compatibilità infusioni EV — ICU", "Con Premium sblocchi dettagli avanzati e database ampliato.", ["Dettagli avanzati", "Database più ampio"])}
-          style={ghostBtn()}>
+          className="nd-btn-ghost nd-press">
           ICU Boost
         </button>
       </div>
@@ -404,7 +404,7 @@ export default function ToolInfusions({
           onPick={(e) => setB(e)}
           footer={
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 10 }}>
-              <button type="button" className="nd-press" onClick={() => { setStep(1); setQ2(""); setB(null); }} style={ghostBtn()}>
+              <button type="button" className="nd-press" onClick={() => { setStep(1); setQ2(""); setB(null); }} className="nd-btn-ghost nd-press">
                 ← Cambia infusione A
               </button>
               <button type="button" className="nd-press" onClick={confirm} disabled={!a || !b} style={primaryBtn(!a || !b)}>
@@ -444,7 +444,7 @@ export default function ToolInfusions({
           )}
 
           <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <button type="button" className="nd-press" onClick={() => { setStep(2); setOutcome(null); }} style={ghostBtn()}>
+            <button type="button" className="nd-press" onClick={() => { setStep(2); setOutcome(null); }} className="nd-btn-ghost nd-press">
               ← Modifica scelta
             </button>
             <button type="button" className="nd-press" onClick={() => { onSave({ tool: "INFUSION", ts: Date.now(), inputs: { a: a.id, b: b.id }, output: `${a.name} + ${b.name}: ${outcome.title}${outcome.flush ? " (flush)" : ""}` }); onToast("Salvato in storico", "success"); }} style={primaryBtn(false)}>
@@ -477,27 +477,18 @@ function StepPick<T>({
 }) {
   return (
     <div style={{ marginTop: 12 }}>
-      <div className="nd-h2">{title}</div>
+      <div style={{ fontWeight: 950, fontSize: 14 }}>{title}</div>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Cerca…"
+        style={{ marginTop: 10, width: "100%", borderRadius: 14, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.02)", color: "inherit", fontWeight: 800 }}
+      />
 
-      <div style={{ marginTop: 10 }}>
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cerca…"
-          className="nd-input"
-        />
-      </div>
-
-      <div className="nd-list" style={{ marginTop: 10 }}>
+      <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
         {results.map((r) => (
-          <button key={r.label} type="button" onClick={() => onPick(r.e)} className="nd-list-item nd-press">
-            <div className="nd-list-left">
-              <span aria-hidden className="nd-icon-bubble">＋</span>
-              <div className="nd-list-text">
-                <div className="nd-list-title">{r.label}</div>
-              </div>
-            </div>
-            <span aria-hidden className="nd-chev">›</span>
+          <button key={r.label} type="button" onClick={() => onPick(r.e)} style={{ textAlign: "left", borderRadius: 14, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)", cursor: "pointer", fontWeight: 850, fontSize: 13 }}>
+            {r.label}
           </button>
         ))}
       </div>
@@ -507,7 +498,7 @@ function StepPick<T>({
   );
 }
 
-function SeverityPill({ sev, text }: { sev: "ok" | "caution" | "avoid"; text: string }) {({ sev, text }: { sev: "ok" | "caution" | "avoid"; text: string }) {
+function SeverityPill({ sev, text }: { sev: "ok" | "caution" | "avoid"; text: string }) {
   const palette =
     sev === "avoid"
       ? { border: "1px solid rgba(239,68,68,0.30)", bg: "rgba(239,68,68,0.12)", fg: "rgb(220,38,38)" }
