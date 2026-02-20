@@ -528,7 +528,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
           {section === "calculators" && (
             <>
               {!activeCalc ? (
-                <div style={{ display: "grid", gap: 10 }}>
+                <div className="nd-list">
                   <CalcCard title="Velocità infusione" subtitle="ml/h da volume e tempo" icon="⏱" onClick={() => setActiveCalc("mlh")} />
                   <CalcCard title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" icon="滴" onClick={() => setActiveCalc("gtt")} />
                   <CalcCard title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" icon="⚗" onClick={() => setActiveCalc("mgkgmin")} />
@@ -600,34 +600,17 @@ function ToolSkeleton({
 function CalcCard({ title, subtitle, icon, onClick }: { title: string; subtitle: string; icon: string; onClick: () => void }) {
   const a = ACCENTS["calculators"];
   return (
-    <button type="button" onClick={onClick} className="nd-card nd-card-pad nd-press w-full text-left flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2.5">
-        <span
-          aria-hidden
-          style={{
-            minWidth: 34,
-            height: 26,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "0 8px",
-            borderRadius: 999,
-            border: `1px solid ${a.border}`,
-            background: "rgba(0,0,0,0.18)",
-            color: a.solid,
-            fontSize: 12,
-            fontWeight: 950,
-            letterSpacing: -0.2,
-          }}>
+    <button type="button" onClick={onClick} className="nd-list-item nd-press w-full text-left">
+      <div className="nd-list-left">
+        <span aria-hidden className="nd-icon-bubble" style={{ borderColor: a.border, color: a.solid }}>
           {icon}
         </span>
-        <div>
-          <div style={{ fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{title}</div>
-          <div style={{ fontSize: 13, opacity: 0.75, marginTop: 2 }}>{subtitle}</div>
+        <div className="nd-list-text">
+          <div className="nd-list-title">{title}</div>
+          <div className="nd-list-sub">{subtitle}</div>
         </div>
       </div>
-
-      <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18, color: a.solid }}>›</div>
+      <span aria-hidden className="nd-chev">›</span>
     </button>
   );
 }
