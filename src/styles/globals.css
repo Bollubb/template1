@@ -82,3 +82,46 @@
   0%{ transform: translateX(-100%); }
   100%{ transform: translateX(100%); }
 }
+
+
+/* NurseDiary – card/input/button primitives (tailwind @apply) */
+.nd-card {
+  @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_12px_32px_rgba(0,0,0,0.35)];
+}
+.nd-card-pad { @apply p-4; }
+
+.nd-h1 { @apply text-lg font-extrabold text-white; }
+.nd-h2 { @apply text-base font-extrabold text-white; }
+.nd-subtitle { @apply text-xs font-extrabold text-white/70; }
+.nd-meta { @apply text-xs font-extrabold text-white/65; }
+
+.nd-btn-primary {
+  @apply w-full rounded-xl px-4 py-3 font-extrabold text-white border border-sky-300/30 bg-sky-400/20;
+  @apply hover:bg-sky-400/25 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed;
+}
+.nd-btn-ghost {
+  @apply w-full rounded-xl px-4 py-3 font-extrabold text-white/90 border border-white/12 bg-white/5;
+  @apply hover:bg-white/7 active:scale-[0.99] disabled:opacity-60 disabled:cursor-not-allowed;
+}
+.nd-btn-chip {
+  @apply rounded-full px-3 py-1.5 text-xs font-extrabold border border-white/12 bg-white/5 text-white/90;
+  @apply hover:bg-white/7 active:scale-[0.99];
+}
+
+.nd-input {
+  @apply w-full rounded-xl bg-white/5 border border-white/12 px-3 py-2 text-white placeholder-white/35;
+  @apply focus:outline-none focus:ring-2 focus:ring-sky-400/35;
+}
+.nd-select {
+  @apply w-full rounded-xl bg-white/5 border border-white/12 px-3 py-2 text-white;
+  @apply focus:outline-none focus:ring-2 focus:ring-sky-400/35;
+}
+.nd-label { @apply text-xs font-extrabold text-white/70; }
+.nd-help { @apply text-[11px] font-bold text-white/55; }
+
+.nd-progress {
+  @apply h-2 rounded-full bg-white/8 overflow-hidden;
+}
+.nd-progress-fill {
+  @apply h-full rounded-full bg-sky-400/60 transition-[width] duration-200;
+}
