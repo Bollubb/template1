@@ -674,8 +674,8 @@ function ToolNEWS2({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-	                }}
-	              />
+          }
+        />
               {interpretation.band}
             </span>
             {!premium && (
@@ -868,8 +868,8 @@ function ToolGCS({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-	                }}
-	              />
+          }
+        />
               {band.t}
             </span>
           </div>
@@ -1091,7 +1091,12 @@ function ToolInfusions({
           query={q1}
           setQuery={setQ1}
           results={results1.map((d) => ({ e: d, label: `${d.name} • ${d.class}` }))}
-          onPick={(e) => { setA(e as any); setStep(2); setQ2(""); setB(null); }
+          onPick={(e) => {
+            setA(e as any);
+            setStep(2);
+            setQ2("");
+            setB(null);
+          }}
         />
       )}
 
