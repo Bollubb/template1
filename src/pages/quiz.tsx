@@ -36,6 +36,8 @@ type QuizResult = {
   correct: number;
   total: number;
   ms: number;
+  byCategory: Record<string, { correct: number; total: number }>;
+  perfect: boolean;
   wrong: { q: QuizQuestion; chosen: number }[];
 };
 
@@ -266,6 +268,8 @@ export default function QuizPage(): JSX.Element {
       correct: run.correct,
       total: run.questions.length,
       ms,
+      byCategory,
+      perfect: run.correct === run.questions.length,
       wrong,
     });
   }
@@ -431,7 +435,12 @@ export default function QuizPage(): JSX.Element {
                 Avvia simulazione (25)
               </button>
 
-              {!premium && <div className="mt-2 nd-help">Sblocca simulazione + ripasso errori.</div>}
+              {!premium && (
+                <div className="mt-2 nd-help">
+                  Sblocca simulazione + ripasso errori.
+                  <button type="button" onClick={() => setPremiumModalOpen(true)} className="ml-2 nd-btn-chip nd-press">Vedi Premium</button>
+                </div>
+              )}
             </div>
 
             <div className="nd-card nd-card-pad">
@@ -460,7 +469,12 @@ export default function QuizPage(): JSX.Element {
                 Avvia ripasso (10)
               </button>
 
-              {!premium && <div className="mt-2 nd-help">Perfetto per convertire gli errori in punti forti.</div>}
+              {!premium && (
+                <div className="mt-2 nd-help">
+                  Perfetto per convertire gli errori in punti forti.
+                  <button type="button" onClick={() => setPremiumModalOpen(true)} className="ml-2 nd-btn-chip nd-press">Vedi Premium</button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -476,38 +490,17 @@ export default function QuizPage(): JSX.Element {
                   {runQuiz.idx + 1}/{runQuiz.questions.length} • {msToHMS(nowTs - runQuiz.startedAt)}
                 </div>
               </div>
-              
+
               <div style={{ marginTop: 10 }}>
                 <div className="nd-progress">
-                  <div
-                    className="nd-progress-fill"
-                    style={{ width: `${Math.round(((runQuiz.idx) / runQuiz.questions.length) * 100)}%` }}
-                  />
+                  <div className="nd-progress-fill" style={{ width: `${Math.round(((runQuiz.idx + (reveal ? 1 : 0)) / runQuiz.questions.length) * 100)}%` }} />
                 </div>
-                <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 850, opacity: 0.78 }}>
-                  <span>Progress</span>
-                  <span>{Math.max(0, runQuiz.questions.length - runQuiz.idx)} rimanenti</span>
-                </div>
+                {reveal && (
+                  <div className={`nd-quiz-feedback ${reveal.isCorrect ? "ok" : "bad"}`} style={{ marginTop: 10 }}>
+                    {reveal.isCorrect ? "✅ Corretto!" : "❌ Non proprio."} <span style={{ opacity: 0.82 }}>Risposta corretta: {runQuiz.questions[runQuiz.idx].options[reveal.correctIdx]}</span>
+                  </div>
+                )}
               </div>
-
-              {reveal && (
-                <div className="nd-quiz-banner" style={{ marginTop: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span aria-hidden style={{ fontSize: 16 }}>{reveal.isCorrect ? "✅" : "❌"}</span>
-                    <div>
-                      <div style={{ fontWeight: 950 }}>{reveal.isCorrect ? "Corretto" : "Non corretto"}</div>
-                      {!reveal.isCorrect && (
-                        <div style={{ opacity: 0.78, fontWeight: 850, fontSize: 12 }}>
-                          Risposta giusta: <strong>{runQuiz.questions[runQuiz.idx].options[reveal.correctIdx]}</strong>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ opacity: 0.75, fontWeight: 850, fontSize: 12 }}>
-                    {runQuiz.idx + 1}/{runQuiz.questions.length}
-                  </div>
-                </div>
-              )}
 
               <div style={{ marginTop: 10, fontWeight: 900, fontSize: 15 }}>{runQuiz.questions[runQuiz.idx].q}</div>
 
@@ -568,8 +561,46 @@ export default function QuizPage(): JSX.Element {
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
             <div className="nd-card nd-card-pad">
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
+              {!premium && (
+                <div style={{ marginTop: 10 }} className="nd-card nd-card-pad">
+                  <div className="flex items-center justify-between gap-2">
+                    <div style={{ fontWeight: 950 }}>Sblocca Premium</div>
+                    <span className="nd-pill nd-pill-amber">Premium</span>
+                  </div>
+                  <div className="mt-2 nd-help">Simulazione (25) + Ripasso errori + XP bonus.</div>
+                  <div className="mt-3" style={{ display: "flex", gap: 10 }}>
+                    <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-primary nd-press">
+                      Scopri Premium
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div style={{ marginTop: 6, opacity: 0.8, fontWeight: 850, fontSize: 13 }}>
                 {quizResult.correct}/{quizResult.total} corrette • {msToHMS(quizResult.ms)}
+              {Object.keys(quizResult.byCategory || {}).length > 0 && (
+                <div style={{ marginTop: 10 }}>
+                  <div className="nd-subtitle">Categorie da ripassare</div>
+                  <div className="mt-2" style={{ display: "grid", gap: 8 }}>
+                    {Object.entries(quizResult.byCategory)
+                      .map(([k, v]) => ({ k, ...v, rate: v.total ? v.correct / v.total : 0 }))
+                      .sort((a, b) => a.rate - b.rate)
+                      .slice(0, 3)
+                      .map((it) => (
+                        <div key={it.k} style={{ padding: 10, borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                            <div style={{ fontWeight: 900 }}>{it.k}</div>
+                            <div className="nd-meta">{it.correct}/{it.total}</div>
+                          </div>
+                          <div className="mt-2 nd-progress">
+                            <div className="nd-progress-fill" style={{ width: `${Math.round(Math.max(0, Math.min(1, it.rate)) * 100)}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
               </div>
               <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
                 <button type="button" onClick={() => setQuizResult(null)} className="nd-btn-ghost nd-press">
