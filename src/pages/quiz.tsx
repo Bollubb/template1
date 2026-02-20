@@ -517,13 +517,6 @@ export default function QuizPage(): JSX.Element {
               )}
             </div>
           </div>
-: 0.72, fontSize: 12, fontWeight: 700 }}>
-                  Attiva Premium dal profilo per sbloccare la simulazione completa + correzione errori.
-                </div>
-              )}
-            </div>
-
-
 
             {runQuiz && (
               <div style={{ marginTop: 12, borderTop: "1px solid rgba(255,255,255,0.10)", paddingTop: 12 }}>
