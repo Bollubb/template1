@@ -61,3 +61,24 @@
   border-color: rgba(255,255,255,0.18);
   box-shadow: 0 0 0 3px rgba(255,255,255,0.06);
 }
+
+
+/* skeleton micro-loader */
+.nd-skel{
+  position: relative;
+  overflow: hidden;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.nd-skel::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+  animation: nd-skel 1.05s ease-in-out infinite;
+}
+@keyframes nd-skel{
+  0%{ transform: translateX(-100%); }
+  100%{ transform: translateX(100%); }
+}
