@@ -101,36 +101,37 @@ function ScaleCard({
   onClick: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className="nd-card nd-card-pad nd-press w-full text-left flex items-center justify-between gap-3">
-      <div>
-        <div className="flex items-center gap-2.5">
-          <div className="text-base font-extrabold">{title}</div>
-          {badge && (
-            <span className="nd-btn-chip">
-              {badge}
-            </span>
-          )}
+    <button type="button" onClick={onClick} className="nd-list-item nd-press w-full text-left">
+      <div className="nd-list-left">
+        <span aria-hidden className="nd-icon-bubble">{badge ? badge.slice(0, 3) : "Σ"}</span>
+        <div className="nd-list-text">
+          <div className="flex items-center gap-2.5">
+            <div className="nd-list-title">{title}</div>
+            {badge && <span className="nd-pill nd-pill-muted">{badge}</span>}
+          </div>
+          <div className="nd-list-sub">{subtitle}</div>
         </div>
-        <div className="mt-1 text-sm font-bold text-white/65">{subtitle}</div>
       </div>
+
       <div className="flex items-center gap-2.5">
         <button
           type="button"
-                    onClick={(e) => {
-            e.preventDefault();
+          onClick={(e) => {
             e.stopPropagation();
             onFav();
           }}
           aria-label={isFav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
-          className={`nd-press rounded-full px-3 py-1.5 text-xs font-extrabold border border-white/12 ${isFav ? "bg-amber-300/15" : "bg-white/5"} text-white/90`}
+          className={`nd-fav-btn nd-press ${isFav ? "is-on" : ""}`}
         >
           {isFav ? "★" : "☆"}
         </button>
-        <div className="text-lg font-extrabold text-white/50">›</div>
+        <span aria-hidden className="nd-chev">›</span>
       </div>
     </button>
   );
 }
+
+function ScaleShell({
 
 function ScaleShell({
   title,
@@ -635,8 +636,8 @@ function SelectPills({
 }) {
   return (
     <div>
-      <div style={{ fontSize: 12.5, opacity: 0.85, fontWeight: 850, marginBottom: 6 }}>{label}</div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      <div className="nd-field-label">{label}</div>
+      <div className="nd-pills">
         {options.map((o) => {
           const active = o.k === value;
           return (
@@ -644,15 +645,7 @@ function SelectPills({
               key={o.k}
               type="button"
               onClick={() => onChange(o.k)}
-              style={{
-                borderRadius: 999,
-                padding: "8px 10px",
-                border: active ? "1px solid rgba(255,255,255,0.24)" : "1px solid rgba(255,255,255,0.10)",
-                background: active ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.02)",
-                cursor: "pointer",
-                fontWeight: 900,
-                fontSize: 12,
-              }}
+              className={`nd-pill-choice nd-press ${active ? "is-active" : ""}`}
             >
               {o.t}
             </button>
@@ -663,7 +656,7 @@ function SelectPills({
   );
 }
 
-function ghostBtn(): React.CSSProperties {
+function ghostBtn(): React.CSSProperties {(): React.CSSProperties {
   return {
     borderRadius: 999,
     padding: "8px 10px",

@@ -477,18 +477,27 @@ function StepPick<T>({
 }) {
   return (
     <div style={{ marginTop: 12 }}>
-      <div style={{ fontWeight: 950, fontSize: 14 }}>{title}</div>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Cerca…"
-        style={{ marginTop: 10, width: "100%", borderRadius: 14, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.02)", color: "inherit", fontWeight: 800 }}
-      />
+      <div className="nd-h2">{title}</div>
 
-      <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+      <div style={{ marginTop: 10 }}>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Cerca…"
+          className="nd-input"
+        />
+      </div>
+
+      <div className="nd-list" style={{ marginTop: 10 }}>
         {results.map((r) => (
-          <button key={r.label} type="button" onClick={() => onPick(r.e)} style={{ textAlign: "left", borderRadius: 14, padding: "10px 12px", border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)", cursor: "pointer", fontWeight: 850, fontSize: 13 }}>
-            {r.label}
+          <button key={r.label} type="button" onClick={() => onPick(r.e)} className="nd-list-item nd-press">
+            <div className="nd-list-left">
+              <span aria-hidden className="nd-icon-bubble">＋</span>
+              <div className="nd-list-text">
+                <div className="nd-list-title">{r.label}</div>
+              </div>
+            </div>
+            <span aria-hidden className="nd-chev">›</span>
           </button>
         ))}
       </div>
@@ -498,7 +507,7 @@ function StepPick<T>({
   );
 }
 
-function SeverityPill({ sev, text }: { sev: "ok" | "caution" | "avoid"; text: string }) {
+function SeverityPill({ sev, text }: { sev: "ok" | "caution" | "avoid"; text: string }) {({ sev, text }: { sev: "ok" | "caution" | "avoid"; text: string }) {
   const palette =
     sev === "avoid"
       ? { border: "1px solid rgba(239,68,68,0.30)", bg: "rgba(239,68,68,0.12)", fg: "rgb(220,38,38)" }
