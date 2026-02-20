@@ -244,3 +244,24 @@
 .nd-glow-emergency:hover{box-shadow:0 0 0 1px rgba(249,115,22,.4),0 8px 24px rgba(249,115,22,.12);}
 .nd-glow-neuro:hover{box-shadow:0 0 0 1px rgba(139,92,246,.4),0 8px 24px rgba(139,92,246,.12);}
 .nd-glow-pharma:hover{box-shadow:0 0 0 1px rgba(56,189,248,.4),0 8px 24px rgba(56,189,248,.12);}
+
+
+/* === Accent v2 softer + background tint === */
+.nd-accent-bg{position:relative;}
+.nd-accent-bg::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+  opacity:.08;
+}
+.nd-accent-bg.nd-accent-icu::after{background:rgba(34,197,94,.4);}
+.nd-accent-bg.nd-accent-emergency::after{background:rgba(249,115,22,.4);}
+.nd-accent-bg.nd-accent-neuro::after{background:rgba(139,92,246,.4);}
+.nd-accent-bg.nd-accent-pharma::after{background:rgba(56,189,248,.4);}
+
+.nd-premium-card{
+  backdrop-filter:blur(6px);
+}
+
