@@ -391,11 +391,12 @@ function ToolScales({
   if (!active) {
     return (
       <div style={{ display: "grid", gap: 10 }}>
-        <ScaleCard
-          title="NEWS2"
-          subtitle="Punteggio + interpretazione automatica"
-          badge="CORE"
-          onClick={() => setActive("news2")}
+      <ScaleCard
+  title="NEWS2"
+  subtitle="Early warning score"
+  badge="CORE"
+  onClick={() => setActive("news2")}
+/>
         <ScaleCard
           title="Glasgow Coma Scale"
           subtitle="GCS 3–15 con severità"
