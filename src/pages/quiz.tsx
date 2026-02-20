@@ -478,6 +478,8 @@ export default function QuizPage(): JSX.Element {
               </div>
             </div>
 
+            </Section>
+
             <div className="nd-card nd-card-pad">
               <div style={{ fontWeight: 950, fontSize: 15 }}>Simulazione Esame</div>
               <div style={{ marginTop: 6, opacity: 0.78, fontWeight: 800, fontSize: 12 }}>25 domande • risultato finale</div>
