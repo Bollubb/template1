@@ -674,7 +674,7 @@ function ToolNEWS2({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }
+                }}
                 />
               {interpretation.band}
             </span>
@@ -868,7 +868,7 @@ function ToolGCS({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }
+                }}
         />
               {band.t}
             </span>
@@ -1111,7 +1111,7 @@ function ToolInfusions({
                 Verifica compatibilità
               </button>
             </div>
-          }
+          }}
         />
       )}
 
@@ -1374,7 +1374,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
             setStep(2);
             setQ2("");
             setB(null);
-          }
+          }}
         />
       )}
 
@@ -1408,7 +1408,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                 Verifica interazione
               </button>
             </div>
-          }
+          }}
         />
       )}
 
@@ -1503,7 +1503,7 @@ function StepPick({
           border: "1px solid rgba(255,255,255,0.14)",
           background: "rgba(0,0,0,0.15)",
           outline: "none",
-        }
+        }}
         />
 
       <div style={{ marginTop: 10, display: "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
