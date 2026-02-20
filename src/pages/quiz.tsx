@@ -224,14 +224,15 @@ export default function QuizPage(): JSX.Element {
 
     // mark done for daily/weekly
     if (run.mode === "daily") {
-      setDailyState({ status: "done", ts: Date.now() });
-      addXp(calcDailyReward(run.correct, run.questions.length));
+      const nextStreak = daily.status === "done" ? daily.streak : daily.streak + 1;
+      setDailyState({ ...daily, status: "done", streak: nextStreak });
+      try { localStorage.setItem("nd_quiz_streak", String(nextStreak)); } catch {}
+      addXp(calcDailyReward(run.correct, run.questions.length, run.correct === run.questions.length, nextStreak));
     } else if (run.mode === "weekly") {
-      setWeeklyState({ status: "done", ts: Date.now() });
-      addXp(calcWeeklyReward(run.correct, run.questions.length));
+      setWeeklyState({ ...weekly, status: "done" });
+      addXp(calcWeeklyReward(run.correct, run.questions.length, run.correct === run.questions.length));
     }
-
-    // mistakes log
+// mistakes log
     wrong.forEach((w) => recordMistake(w.q.id));
 
     // history (for recency)
