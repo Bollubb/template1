@@ -237,12 +237,22 @@ export default function QuizPage(): JSX.Element {
 
     // history (for recency)
     try {
+      const byCategory: QuizHistoryItem["byCategory"] = {};
+      run.questions.forEach((q, i) => {
+        const cat = String((q as any).category || "other");
+        const bucket = (byCategory as any)[cat] || { correct: 0, total: 0 };
+        bucket.total += 1;
+        const chosen = run.answers[i];
+        if (chosen === q.answer) bucket.correct += 1;
+        (byCategory as any)[cat] = bucket;
+      });
+
       const item: QuizHistoryItem = {
         ts: Date.now(),
         mode: run.mode,
         correct: run.correct,
         total: run.questions.length,
-        ms,
+        byCategory,
       };
       pushHistory(item);
     } catch {}
