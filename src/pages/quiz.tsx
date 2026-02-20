@@ -131,6 +131,7 @@ export default function QuizPage(): JSX.Element {
 
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
+  const [reveal, setReveal] = useState<null | { isCorrect: boolean; correctIdx: number; chosen: number }>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
 
@@ -203,6 +204,7 @@ export default function QuizPage(): JSX.Element {
 
     setQuizResult(null);
     setSelected(null);
+    setReveal(null);
     setRunQuiz({
       mode,
       idx: 0,
@@ -271,6 +273,7 @@ export default function QuizPage(): JSX.Element {
   function confirmAnswer() {
     if (!runQuiz) return;
     if (selected === null) return;
+    if (reveal) return;
 
     const q = runQuiz.questions[runQuiz.idx];
     const answers = [...runQuiz.answers];
@@ -278,17 +281,29 @@ export default function QuizPage(): JSX.Element {
 
     const isCorrect = selected === q.answer;
     const correct = runQuiz.correct + (isCorrect ? 1 : 0);
-    const nextIdx = runQuiz.idx + 1;
 
-    const next: QuizRun = { ...runQuiz, answers, correct, idx: nextIdx };
+    // stay on same question, reveal feedback first
+    setRunQuiz({ ...runQuiz, answers, correct });
+    setReveal({ isCorrect, correctIdx: q.answer, chosen: selected });
+  }
+
+  function goNext() {
+    if (!runQuiz) return;
+    if (!reveal) return;
+
+    const nextIdx = runQuiz.idx + 1;
+    const next: QuizRun = { ...runQuiz, idx: nextIdx };
+
+    setReveal(null);
+    setSelected(null);
 
     if (nextIdx >= runQuiz.questions.length) {
       finish(next);
     } else {
       setRunQuiz(next);
-      setSelected(null);
     }
   }
+
 
   const headerOverride = useMemo(
     () => ({
@@ -461,26 +476,60 @@ export default function QuizPage(): JSX.Element {
                   {runQuiz.idx + 1}/{runQuiz.questions.length} • {msToHMS(nowTs - runQuiz.startedAt)}
                 </div>
               </div>
+              
+              <div style={{ marginTop: 10 }}>
+                <div className="nd-progress">
+                  <div
+                    className="nd-progress-fill"
+                    style={{ width: `${Math.round(((runQuiz.idx) / runQuiz.questions.length) * 100)}%` }}
+                  />
+                </div>
+                <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 850, opacity: 0.78 }}>
+                  <span>Progress</span>
+                  <span>{Math.max(0, runQuiz.questions.length - runQuiz.idx)} rimanenti</span>
+                </div>
+              </div>
+
+              {reveal && (
+                <div className="nd-quiz-banner" style={{ marginTop: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span aria-hidden style={{ fontSize: 16 }}>{reveal.isCorrect ? "✅" : "❌"}</span>
+                    <div>
+                      <div style={{ fontWeight: 950 }}>{reveal.isCorrect ? "Corretto" : "Non corretto"}</div>
+                      {!reveal.isCorrect && (
+                        <div style={{ opacity: 0.78, fontWeight: 850, fontSize: 12 }}>
+                          Risposta giusta: <strong>{runQuiz.questions[runQuiz.idx].options[reveal.correctIdx]}</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ opacity: 0.75, fontWeight: 850, fontSize: 12 }}>
+                    {runQuiz.idx + 1}/{runQuiz.questions.length}
+                  </div>
+                </div>
+              )}
+
               <div style={{ marginTop: 10, fontWeight: 900, fontSize: 15 }}>{runQuiz.questions[runQuiz.idx].q}</div>
 
               <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                 {runQuiz.questions[runQuiz.idx].options.map((opt, i) => {
                   const active = selected === i;
+                  const correct = reveal ? i === reveal.correctIdx : false;
+                  const wrong = reveal ? i === reveal.chosen && !reveal.isCorrect : false;
+
+                  const cls =
+                    "nd-quiz-option" +
+                    (active && !reveal ? " nd-quiz-option--active" : "") +
+                    (correct ? " nd-quiz-option--correct" : "") +
+                    (wrong ? " nd-quiz-option--wrong" : "");
+
                   return (
                     <button
                       key={i}
                       type="button"
                       onClick={() => setSelected(i)}
-                      style={{
-                        textAlign: "left",
-                        padding: "12px 12px",
-                        borderRadius: 14,
-                        border: active ? "1px solid rgba(56,189,248,0.55)" : "1px solid rgba(255,255,255,0.10)",
-                        background: active ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.03)",
-                        color: "rgba(255,255,255,0.92)",
-                        cursor: "pointer",
-                        fontWeight: 850,
-                      }}
+                      disabled={!!reveal}
+                      className={cls}
                     >
                       {opt}
                     </button>
@@ -489,18 +538,33 @@ export default function QuizPage(): JSX.Element {
               </div>
 
               <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-                <button type="button" onClick={() => setRunQuiz(null)} className="nd-btn-ghost nd-press">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRunQuiz(null);
+                    setReveal(null);
+                    setSelected(null);
+                  }}
+                  className="nd-btn-ghost nd-press"
+                >
                   Esci
                 </button>
-                <button type="button" onClick={confirmAnswer} disabled={selected === null} className="nd-btn-primary nd-press">
-                  Conferma
-                </button>
+
+                {!reveal ? (
+                  <button type="button" onClick={confirmAnswer} disabled={selected === null} className="nd-btn-primary nd-press">
+                    Conferma
+                  </button>
+                ) : (
+                  <button type="button" onClick={goNext} className="nd-btn-primary nd-press">
+                    Avanti
+                  </button>
+                )}
               </div>
+
             </div>
           </div>
         )}
-
-        {!runQuiz && quizResult && (
+{!runQuiz && quizResult && (
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
             <div className="nd-card nd-card-pad">
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
