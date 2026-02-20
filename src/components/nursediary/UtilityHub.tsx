@@ -295,88 +295,86 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     <div>
       {!section && (
         <div>
-<div className="nd-sticky-header">
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-    <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-      <div style={{ fontSize: 18, fontWeight: 950, letterSpacing: -0.2 }}>Utility</div>
-      <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 800 }}>Tool rapidi, guidati e “safe”</div>
-    </div>
-  </div>
+          <div className="nd-sticky-header">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+                <div style={{ fontSize: 18, fontWeight: 950, letterSpacing: -0.2 }}>Utility</div>
+                <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 800 }}>Tool rapidi, guidati e “safe”</div>
+              </div>
+            </div>
 
-  <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
-    <div style={{ flex: 1, position: "relative" }}>
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Cerca tool o sezioni…"
-        className="nd-input"
-        style={{
-          width: "100%",
-          borderRadius: 14,
-          padding: "10px 12px",
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "rgba(0,0,0,0.25)",
-          color: "rgba(255,255,255,0.92)",
-          outline: "none",
-          fontWeight: 800,
-          fontSize: 13,
-        }}
-      />
-    </div>
-    {query.trim() && (
-      <button
-        type="button"
-        className="nd-press"
-        onClick={() => setQuery("")}
-        style={{
-          padding: "10px 12px",
-          borderRadius: 14,
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: "rgba(255,255,255,0.05)",
-          fontWeight: 900,
-          color: "rgba(255,255,255,0.92)",
-        }}>
-        Pulisci
-      </button>
-    )}
-  </div>
+            <div style={{ marginTop: 10, display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ flex: 1, position: "relative" }}>
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Cerca tool o sezioni…"
+                  className="nd-input"
+                  style={{
+                    width: "100%",
+                    borderRadius: 14,
+                    padding: "10px 12px",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(0,0,0,0.25)",
+                    color: "rgba(255,255,255,0.92)",
+                    outline: "none",
+                    fontWeight: 800,
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+              {query.trim() && (
+                <button
+                  type="button"
+                  className="nd-press"
+                  onClick={() => setQuery("")}
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 14,
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.05)",
+                    fontWeight: 900,
+                    color: "rgba(255,255,255,0.92)",
+                  }}>
+                  Pulisci
+                </button>
+              )}
+            </div>
 
-  
-  {query.trim() === "" && recent3.length > 0 && (
-    <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {recent3.map((id) => {
-        const m = TOOL_META[id];
-        if (!m) return null;
-        return (
-          <button
-            key={id}
-            type="button"
-            className="nd-press"
-            onClick={() => m.open()}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 10px",
-              borderRadius: 999,
-              border: `1px solid ${m.accent.border}`,
-              background: m.accent.soft,
-              color: "rgba(255,255,255,0.92)",
-              fontWeight: 950,
-              fontSize: 12,
-              letterSpacing: -0.2,
-            }}
-          >
-            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
-            {m.label}
-          </button>
-        );
-      })}
-    </div>
-  )}
-</div>
+            {query.trim() === "" && recent3.length > 0 && (
+              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {recent3.map((id) => {
+                  const m = TOOL_META[id];
+                  if (!m) return null;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className="nd-press"
+                      onClick={() => m.open()}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "8px 10px",
+                        borderRadius: 999,
+                        border: `1px solid ${m.accent.border}`,
+                        background: m.accent.soft,
+                        color: "rgba(255,255,255,0.92)",
+                        fontWeight: 950,
+                        fontSize: 12,
+                        letterSpacing: -0.2,
+                      }}>
+                      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
+                      {m.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-          <div style={{ display: "grid", gap: 12 }}>
+          <div style={{ display: "grid", gap: 12, paddingTop: 10 }}>
             {filteredSections.map((s) => (
               <button
                 key={s.id}
@@ -405,8 +403,33 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: ACCENTS[s.id].solid, boxShadow: `0 0 0 3px ${ACCENTS[s.id].soft}` }} />
-                    <span aria-hidden style={{ minWidth: 34, height: 26, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 8px", borderRadius: 999, border: `1px solid ${ACCENTS[s.id].border}`, background: "rgba(255,255,255,0.03)", color: "rgba(255,255,255,0.92)", fontSize: 12, fontWeight: 950, letterSpacing: -0.2 }}>
+                    <span
+                      aria-hidden
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 999,
+                        background: ACCENTS[s.id].solid,
+                        boxShadow: `0 0 0 3px ${ACCENTS[s.id].soft}`,
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      style={{
+                        minWidth: 34,
+                        height: 26,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0 8px",
+                        borderRadius: 999,
+                        border: `1px solid ${ACCENTS[s.id].border}`,
+                        background: "rgba(255,255,255,0.03)",
+                        color: "rgba(255,255,255,0.92)",
+                        fontSize: 12,
+                        fontWeight: 950,
+                        letterSpacing: -0.2,
+                      }}>
                       {SECTION_ICONS[s.id]}
                     </span>
                     <div style={{ fontSize: 16, fontWeight: 900, color: ACCENTS[s.id].solid }}>{s.title}</div>
@@ -433,9 +456,6 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
               </button>
             ))}
           </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
