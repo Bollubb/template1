@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useToast } from "./Toast";
 import { isPremium } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
@@ -146,6 +146,22 @@ const ACCENTS: Record<SectionId, { solid: string; soft: string; border: string }
   calculators: { solid: "rgb(168,85,247)", soft: "rgba(168,85,247,0.16)", border: "rgba(168,85,247,0.34)" }, // violet
   scales: { solid: "rgb(245,158,11)", soft: "rgba(245,158,11,0.16)", border: "rgba(245,158,11,0.34)" }, // amber
   checklists: { solid: "rgb(236,72,153)", soft: "rgba(236,72,153,0.16)", border: "rgba(236,72,153,0.34)" }, // pink
+
+const SECTION_ICONS: Record<SectionId, string> = {
+  interactions: "↔",
+  infusion: "IV",
+  calculators: "∑",
+  scales: "⚠",
+  checklists: "✓",
+};
+
+const TOOL_ICONS: Record<UtilityToolId, string> = {
+  INTERACTIONS: "↔",
+  INFUSION: "IV",
+  NEWS2: "⚠",
+  GCS: "🧠",
+};
+
 };
 
 export default function UtilityHub({ onBack }: { onBack: () => void }) {
@@ -232,14 +248,25 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     setUpsellOpen(true);
   }
 
-  const TOOL_META: Record<UtilityToolId, { label: string; open: () => void; badge?: string; accent: { solid: string; soft: string; border: string } }> = {
-    INTERACTIONS: { label: "Interazioni", badge: "TOP", open: () => { goSection("interactions"); markRecent("INTERACTIONS"); } , accent: ACCENTS["interactions"] },
-    INFUSION: { label: "Infusioni EV", badge: "ICU", open: () => { goSection("infusion"); markRecent("INFUSION"); } , accent: ACCENTS["infusion"] },
-    NEWS2: { label: "NEWS2", badge: "CORE", open: () => { goSection("scales"); setActiveScale("news2"); markRecent("NEWS2"); } , accent: ACCENTS["scales"] },
-    GCS: { label: "GCS", badge: "NEURO", open: () => { goSection("scales"); setActiveScale("gcs"); markRecent("GCS"); } , accent: ACCENTS["scales"] },
+  const TOOL_META: Record<UtilityToolId, { label: string; icon: string; open: () => void; badge?: string; accent: { solid: string; soft: string; border: string } }> = {
+    INTERACTIONS: { label: "Interazioni", icon: TOOL_ICONS.INTERACTIONS, badge: "TOP", open: () => { goSection("interactions"); markRecent("INTERACTIONS"); }, accent: ACCENTS["interactions"] },
+    INFUSION: { label: "Infusioni EV", icon: TOOL_ICONS.INFUSION, badge: "ICU", open: () => { goSection("infusion"); markRecent("INFUSION"); }, accent: ACCENTS["infusion"] },
+    NEWS2: { label: "NEWS2", icon: TOOL_ICONS.NEWS2, badge: "CORE", open: () => { goSection("scales"); setActiveScale("news2"); markRecent("NEWS2"); }, accent: ACCENTS["scales"] },
+    GCS: { label: "GCS", icon: TOOL_ICONS.GCS, badge: "NEURO", open: () => { goSection("scales"); setActiveScale("gcs"); markRecent("GCS"); }, accent: ACCENTS["scales"] },
   };
 
   const [query, setQuery] = useState("");
+
+
+  const [microLoading, setMicroLoading] = useState(false);  useEffect(() => {
+    if (section === "interactions" || section === "infusion") {
+      setMicroLoading(true);
+      const t = setTimeout(() => setMicroLoading(false), 180);
+      return () => clearTimeout(t);
+    }
+    setMicroLoading(false);
+  }, [section]);
+
 
   const mostUsed = useMemo(() => {
     const counts: Record<UtilityToolId, number> = {} as any;
@@ -324,18 +351,14 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
       {quickTools.map((id) => {
         const m = TOOL_META[id];
-        const locked = !premium && !favs.includes(id);
+        const locked = false;
         return (
           <button
             key={id}
             type="button"
             className="nd-press"
             onClick={() => {
-              if (locked) {
-                openUpsell("Utility Premium", "Sblocca preferiti e tool avanzati: quando ti serve, non quando ti disturba.", ["Preferiti", "Illimitato", "Dettagli avanzati"]);
-                return;
-              }
-              m.open();
+m.open();
             }}
             style={{
               display: "inline-flex",
@@ -350,8 +373,15 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
               fontSize: 12,
             }}
           >
-            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: locked ? "rgba(255,255,255,0.35)" : m.accent.solid }} />
-            {m.label}
+            <span aria-hidden style={{ width: 22, height: 22, borderRadius: 10, display: "grid", placeItems: "center", background: locked ? "rgba(255,255,255,0.04)" : m.accent.soft, border: locked ? "1px solid rgba(255,255,255,0.10)" : `1px solid ${m.accent.border}`, fontSize: 12, fontWeight: 950 }}>
+              {m.icon}
+            </span>
+            <span style={{ opacity: 0.98 }}>{m.label}</span>
+            {locked ? (
+              <span style={{ fontSize: 10.5, fontWeight: 950, padding: "2px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.04)", opacity: 0.85 }}>
+                PRO
+              </span>
+            ) : null}
           </button>
         );
       })}
@@ -359,177 +389,207 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   )}
 </div>
 
-          <div style={{ display: "grid", gap: 10, marginBottom: 14 }} className="nd-fade-in">
-{(query.trim() === "" && recent.length > 0) && (
-  <div style={{ display: "grid", gap: 8 }}>
-    <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Ultimi usati</div>
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {recent.slice(0, 6).map((r) => {
-        const m = TOOL_META[r.tool];
-        if (!m) return null;
-        return (
-          <button
-            key={r.tool}
-            type="button"
-            className="nd-press"
-            onClick={() => m.open()}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 10px",
-              borderRadius: 999,
-              border: `1px solid ${m.accent.border}`,
-              background: m.accent.soft,
-              color: "rgba(255,255,255,0.92)",
-              fontWeight: 900,
-              fontSize: 12,
-            }}
-          >
-            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
-            {m.label}
-          </button>
-        );
-      })}
-    </div>
-  </div>
-)}
+          {!query.trim() && (
+            <div style={{ display: "grid", gap: 12, marginBottom: 14 }} className="nd-fade-in">
+              {premium && favs.length > 0 && (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Preferiti</div>
+                    <span style={{ fontSize: 11, opacity: 0.65, fontWeight: 800 }}>⭐</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {favs.slice(0, 6).map((id) => {
+                      const m = TOOL_META[id];
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          className="nd-press"
+                          onClick={() => m.open()}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 10px",
+                            borderRadius: 999,
+                            border: `1px solid ${m.accent.border}`,
+                            background: m.accent.soft,
+                            color: "rgba(255,255,255,0.92)",
+                            fontWeight: 900,
+                            fontSize: 12,
+                          }}
+                        >
+                          <span
+                            aria-hidden
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 10,
+                              display: "grid",
+                              placeItems: "center",
+                              background: "rgba(0,0,0,0.18)",
+                              border: `1px solid ${m.accent.border}`,
+                              color: "rgba(255,255,255,0.92)",
+                              fontSize: 12,
+                              fontWeight: 950,
+                            }}
+                          >
+                            {m.icon}
+                          </span>
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-{(query.trim() === "" && mostUsed.length > 0) && (
-  <div style={{ display: "grid", gap: 8 }}>
-    <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Più usati</div>
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {mostUsed.map((id) => {
-        const m = TOOL_META[id];
-        if (!m) return null;
-        return (
-          <button
-            key={id}
-            type="button"
-            className="nd-press"
-            onClick={() => m.open()}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 10px",
-              borderRadius: 999,
-              border: `1px solid ${m.accent.border}`,
-              background: "rgba(255,255,255,0.04)",
-              color: "rgba(255,255,255,0.92)",
-              fontWeight: 900,
-              fontSize: 12,
-            }}
-          >
-            <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
-            {m.label}
-          </button>
-        );
-      })}
-    </div>
-  </div>
-)}
+              {recent.length > 0 && (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Ultimi usati</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {recent.slice(0, 5).map((r) => {
+                      const m = TOOL_META[r.tool];
+                      if (!m) return null;
+                      return (
+                        <button
+                          key={r.tool}
+                          type="button"
+                          className="nd-press"
+                          onClick={() => m.open()}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 10px",
+                            borderRadius: 999,
+                            border: `1px solid ${m.accent.border}`,
+                            background: "rgba(255,255,255,0.035)",
+                            color: "rgba(255,255,255,0.92)",
+                            fontWeight: 900,
+                            fontSize: 12,
+                          }}
+                        >
+                          <span
+                            aria-hidden
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 10,
+                              display: "grid",
+                              placeItems: "center",
+                              background: m.accent.soft,
+                              border: `1px solid ${m.accent.border}`,
+                              color: "rgba(255,255,255,0.92)",
+                              fontSize: 12,
+                              fontWeight: 950,
+                            }}
+                          >
+                            {m.icon}
+                          </span>
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Accesso rapido</div>
+              {mostUsed.length > 0 && (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <div style={{ fontSize: 13, opacity: 0.85, fontWeight: 900 }}>Più usati</div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {mostUsed.slice(0, 5).map((id) => {
+                      const m = TOOL_META[id];
+                      if (!m) return null;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          className="nd-press"
+                          onClick={() => m.open()}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 10px",
+                            borderRadius: 999,
+                            border: `1px solid ${m.accent.border}`,
+                            background: "rgba(255,255,255,0.03)",
+                            color: "rgba(255,255,255,0.92)",
+                            fontWeight: 900,
+                            fontSize: 12,
+                          }}
+                        >
+                          <span
+                            aria-hidden
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 10,
+                              display: "grid",
+                              placeItems: "center",
+                              background: "rgba(0,0,0,0.14)",
+                              border: `1px solid ${m.accent.border}`,
+                              color: "rgba(255,255,255,0.92)",
+                              fontSize: 12,
+                              fontWeight: 950,
+                            }}
+                          >
+                            {m.icon}
+                          </span>
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {!premium && (
                 <button
                   type="button"
                   className="nd-press"
                   onClick={() =>
                     openUpsell(
-                      "Utility Premium",
-                      "Sblocca preferiti, ricerche illimitate e dettagli avanzati: quando ti serve, non quando ti disturba.",
-                      ["Preferiti", "Illimitato", "Dettagli avanzati"]
+                      "Preferiti Premium",
+                      "Salva i tool che usi di più e ritrovali in 1 tap. Nessun popup: solo quando ti serve davvero.",
+                      ["Preferiti illimitati", "Accesso rapido", "Tool avanzati"]
                     )
                   }
                   style={{
-                    borderRadius: 999,
-                    padding: "6px 10px",
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.90)",
-                    fontWeight: 900,
-                    fontSize: 12,
+                    textAlign: "left",
+                    borderRadius: 16,
+                    padding: 12,
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(255,255,255,0.03)",
                     cursor: "pointer",
-                  }}>
-                  Sblocca preferiti
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    <div>
+                      <div style={{ fontWeight: 950, fontSize: 13 }}>Sblocca Preferiti</div>
+                      <div style={{ fontSize: 12, opacity: 0.72, marginTop: 2 }}>⭐ Apri i tool più usati in 1 tap</div>
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 950,
+                        padding: "4px 8px",
+                        borderRadius: 999,
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        background: "rgba(255,255,255,0.05)",
+                        opacity: 0.9,
+                      }}
+                    >
+                      PRO
+                    </span>
+                  </div>
                 </button>
               )}
             </div>
+          )}
 
-            <div style={{ display: "grid", gap: 8 }}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {(favs.length > 0 ? favs : premium ? [] : (["INFUSION", "NEWS2"] as UtilityToolId[])).slice(0, 6).map((id) => {
-                  const m = TOOL_META[id];
-                  const locked = !premium && !favs.includes(id);
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      className="nd-press"
-                      onClick={() => {
-                        if (locked) {
-                          openUpsell("Preferiti Premium", "Con Premium puoi salvare e aprire al volo i tool più usati.", ["Preferiti", "Accesso rapido"]);
-                          return;
-                        }
-                        m.open();
-                      }}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "8px 10px",
-                        borderRadius: 999,
-                        border: locked ? "1px solid rgba(255,255,255,0.10)" : `1px solid ${m.accent.border}`,
-                        background: locked ? "rgba(255,255,255,0.02)" : `linear-gradient(180deg, ${m.accent.soft}, rgba(255,255,255,0.03))`,
-                        color: locked ? "rgba(255,255,255,0.90)" : m.accent.solid,
-                        fontSize: 12.5,
-                        fontWeight: 850,
-                        cursor: "pointer",
-                        opacity: locked ? 0.65 : 1,
-                      }}>
-                      <span style={{ opacity: 0.9 }}>{m.label}</span>
-                      {m.badge && (
-                        <span style={{ fontSize: 10.5, fontWeight: 950, padding: "2px 7px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.14)",
-                    opacity: 0.85 }}>
-                          {m.badge}
-                        </span>
-                      )}
-                      {locked && <span style={{ opacity: 0.85 }}>🔒</span>}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {recent.length > 0 && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {recent.slice(0, 4).map((r) => (
-                    <button
-                      key={r.tool}
-                      type="button"
-                      className="nd-press"
-                      onClick={() => TOOL_META[r.tool]?.open()}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "7px 10px",
-                        borderRadius: 999,
-                        border: "1px solid rgba(255,255,255,0.10)",
-                        background: "rgba(255,255,255,0.03)",
-                        color: "rgba(255,255,255,0.82)",
-                        fontSize: 12,
-                        fontWeight: 800,
-                        cursor: "pointer",
-                      }}>
-                      <span style={{ opacity: 0.85 }}>Ultimo:</span> {TOOL_META[r.tool]?.label || r.tool}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
 
           <div style={{ display: "grid", gap: 12 }}>
             {filteredSections.map((s) => (
@@ -560,7 +620,9 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 }}>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: ACCENTS[s.id].solid, boxShadow: `0 0 0 3px ${ACCENTS[s.id].soft}` }} />
+                    <span aria-hidden style={{ width: 34, height: 34, borderRadius: 16, display: "grid", placeItems: "center", background: ACCENTS[s.id].soft, border: `1px solid ${ACCENTS[s.id].border}`, color: "rgba(255,255,255,0.92)", fontSize: 14, fontWeight: 950 }}>
+                      {SECTION_ICONS[s.id]}
+                    </span>
                     <div style={{ fontSize: 16, fontWeight: 900, color: ACCENTS[s.id].solid }}>{s.title}</div>
                     {s.badge && (
                       <span
@@ -578,7 +640,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{s.subtitle}</div>
+                  <div style={{ fontSize: 13, opacity: 0.72, marginTop: 4 }}>{s.subtitle}</div>
                 </div>
 
                 <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18 }}>›</div>
@@ -639,8 +701,8 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             </button>
           </div>
 
-          {section === "interactions" && <ToolInteractions onSave={pushHistory} onUpsell={openUpsell} />}
-          {section === "infusion" && (
+          {section === "interactions" && (microLoading ? <ToolSkeleton title="Interazioni farmacologiche" /> : <ToolInteractions onSave={pushHistory} onUpsell={openUpsell} />)}
+          {section === "infusion" && (microLoading ? <ToolSkeleton title="Compatibilità infusioni EV" /> : (
             <ToolInfusions
               onOpen={() => markRecent("INFUSION")}
               onSave={(it) => {
@@ -652,7 +714,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
               isFav={favs.includes("INFUSION")}
               onToggleFav={() => toggleFav("INFUSION")}
             />
-          )}
+          ))}
           {section === "scales" && (
             <ToolScales
               active={activeScale}
@@ -679,12 +741,12 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             <>
               {!activeCalc ? (
                 <div style={{ display: "grid", gap: 10 }}>
-                  <CalcCard title="Velocità infusione" subtitle="ml/h da volume e tempo" onClick={() => setActiveCalc("mlh")} />
-                  <CalcCard title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" onClick={() => setActiveCalc("gtt")} />
-                  <CalcCard title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" onClick={() => setActiveCalc("mgkgmin")} />
-                  <CalcCard title="MAP" subtitle="Pressione arteriosa media" onClick={() => setActiveCalc("map")} />
-                  <CalcCard title="BMI" subtitle="Indice di massa corporea" onClick={() => setActiveCalc("bmi")} />
-                  <CalcCard title="Diuresi" subtitle="ml/kg/h" onClick={() => setActiveCalc("diuresi")} />
+                  <CalcCard icon="⏱" accent={ACCENTS.calculators} title="Velocità infusione" subtitle="ml/h da volume e tempo" onClick={() => setActiveCalc("mlh")} />
+                  <CalcCard icon="💧" accent={ACCENTS.calculators} title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" onClick={() => setActiveCalc("gtt")} />
+                  <CalcCard icon="⚖" accent={ACCENTS.calculators} title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" onClick={() => setActiveCalc("mgkgmin")} />
+                  <CalcCard icon="🩺" accent={ACCENTS.calculators} title="MAP" subtitle="Pressione arteriosa media" onClick={() => setActiveCalc("map")} />
+                  <CalcCard icon="📏" accent={ACCENTS.calculators} title="BMI" subtitle="Indice di massa corporea" onClick={() => setActiveCalc("bmi")} />
+                  <CalcCard icon="🚽" accent={ACCENTS.calculators} title="Diuresi" subtitle="ml/kg/h" onClick={() => setActiveCalc("diuresi")} />
                 </div>
               ) : (
                 <ToolRenderer id={activeCalc} last={lastByTool[activeCalc] ?? null} onSave={pushHistory} onToast={toast.push} />
@@ -706,22 +768,75 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   );
 }
 
-function CalcCard({ title, subtitle, onClick }: { title: string; subtitle: string; onClick: () => void }) {
+function CalcCard({
+  title,
+  subtitle,
+  onClick,
+  accent,
+  icon,
+}: {
+  title: string;
+  subtitle: string;
+  onClick: () => void;
+  accent: { solid: string; soft: string; border: string };
+  icon: string;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
+      className="nd-press"
       style={{
         textAlign: "left",
-        borderRadius: 16,
+        borderRadius: 18,
         padding: 14,
-        border: "1px solid rgba(255,255,255,0.08)",
-        background: "rgba(255,255,255,0.03)",
+        border: `1px solid ${accent.border}`,
+        background: `linear-gradient(180deg, ${accent.soft}, rgba(255,255,255,0.02))`,
         cursor: "pointer",
-      }}>
-      <div style={{ fontWeight: 850 }}>{title}</div>
-      <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{subtitle}</div>
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <div
+          aria-hidden
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 16,
+            display: "grid",
+            placeItems: "center",
+            background: "rgba(0,0,0,0.16)",
+            border: `1px solid ${accent.border}`,
+            fontSize: 16,
+          }}
+        >
+          {icon}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 950 }}>{title}</div>
+          <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{subtitle}</div>
+        </div>
+      </div>
+      <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18 }}>›</div>
     </button>
+  );
+}
+
+
+function ToolSkeleton({ title }: { title: string }) {
+  return (
+    <div style={{ borderRadius: 18, padding: 16, border: `1px solid ${ACCENTS.interactions.border}`, background: `linear-gradient(180deg, ${ACCENTS.interactions.soft}, rgba(255,255,255,0.02))` }}>
+      <div style={{ fontSize: 14, fontWeight: 950 }}>{title}</div>
+      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+        <div style={{ height: 42, borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)" }} />
+        <div style={{ height: 42, borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }} />
+        <div style={{ height: 42, borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }} />
+      </div>
+      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.65 }}>Caricamento…</div>
+    </div>
   );
 }
 
@@ -1102,8 +1217,14 @@ function StepPick({
               background: "rgba(255,255,255,0.02)",
               cursor: "pointer",
             }}>
-            <div style={{ fontWeight: 900, fontSize: 13 }}>{r.e.name}</div>
-            <div style={{ opacity: 0.75, fontSize: 12, marginTop: 3 }}>{r.label}</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <span aria-hidden style={{ width: 26, height: 26, borderRadius: 12, display: "grid", placeItems: "center", border: `1px solid ${ACCENTS.interactions.border}`, background: "rgba(0,0,0,0.14)", fontSize: 14 }}>💊</span>
+                <div style={{ fontWeight: 950, fontSize: 13, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.e.name}</div>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 900, padding: "3px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", opacity: 0.9 }}>{r.e.group}</span>
+            </div>
+            <div style={{ opacity: 0.72, fontSize: 12, marginTop: 6 }}>{r.label}</div>
           </button>
         ))}
       </div>
