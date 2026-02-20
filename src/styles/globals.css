@@ -148,3 +148,14 @@
 .nd-progress-fill-emerald { @apply bg-emerald-400/60; }
 .nd-progress-fill-indigo { @apply bg-indigo-400/60; }
 
+
+
+/* Quiz – option styling (plain CSS, no @apply to avoid Tailwind class constraints) */
+.nd-quiz-option{display:block;width:100%;text-align:left;padding:12px 12px;border-radius:14px;border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.92);cursor:pointer;font-weight:850;transition:transform 120ms ease,border-color 120ms ease,background 120ms ease;}
+.nd-quiz-option:active{transform:scale(0.99);}
+.nd-quiz-option[disabled]{cursor:not-allowed;opacity:0.85;}
+.nd-quiz-option--active{border-color:rgba(56,189,248,0.55);background:rgba(56,189,248,0.16);}
+.nd-quiz-option--correct{border-color:rgba(34,197,94,0.55);background:rgba(34,197,94,0.14);}
+.nd-quiz-option--wrong{border-color:rgba(239,68,68,0.55);background:rgba(239,68,68,0.14);}
+.nd-quiz-banner{border:1px solid rgba(255,255,255,0.10);background:rgba(255,255,255,0.04);border-radius:16px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.nd-quiz-banner strong{font-weight:950;}
