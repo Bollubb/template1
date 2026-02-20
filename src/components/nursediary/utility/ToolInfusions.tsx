@@ -349,7 +349,6 @@ export default function ToolInfusions({
               {onToggleFav && (
                 <button
                   type="button"
-                  className="nd-press"
                   onClick={onToggleFav}
                   aria-label={isFav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
                   className={`nd-press rounded-full px-3 py-1.5 text-xs font-extrabold border border-white/12 ${isFav ? "bg-amber-300/15" : "bg-white/5"} text-white/90`}>
