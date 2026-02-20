@@ -310,17 +310,6 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Cerca tool o sezioni…"
                   className="nd-input"
-                  style={{
-                    width: "100%",
-                    borderRadius: 14,
-                    padding: "10px 12px",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    background: "rgba(0,0,0,0.25)",
-                    color: "rgba(255,255,255,0.92)",
-                    outline: "none",
-                    fontWeight: 800,
-                    fontSize: 13,
-                  }}
                 />
               </div>
               {query.trim() && (
@@ -374,7 +363,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             )}
           </div>
 
-          <div style={{ display: "grid", gap: 12, paddingTop: 10 }}>
+          <div className="grid gap-3 pt-2 md:grid-cols-2">
             {filteredSections.map((s) => (
               <button
                 key={s.id}
