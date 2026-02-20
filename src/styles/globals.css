@@ -109,18 +109,18 @@
 }
 
 .nd-input {
-  @apply w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white placeholder-white/35;
-  @apply focus:outline-none focus:ring-2 focus:ring-sky-400/35;
+  @apply w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white placeholder-white/30;
+  @apply focus:outline-none focus:ring-2 focus:ring-sky-400/30;
 }
 .nd-select {
   @apply w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-white;
-  @apply focus:outline-none focus:ring-2 focus:ring-sky-400/35;
+  @apply focus:outline-none focus:ring-2 focus:ring-sky-400/30;
 }
 .nd-label { @apply text-xs font-extrabold text-white/70; }
-.nd-help { @apply text-[11px] font-bold text-white/55; }
+.nd-help { @apply text-[11px] font-bold text-white/50; }
 
 .nd-progress {
-  @apply h-2 rounded-full bg-white/8 overflow-hidden;
+  @apply h-2 rounded-full bg-white/10 overflow-hidden;
 }
 .nd-progress-fill {
   @apply h-full rounded-full bg-sky-400/60 transition-[width] duration-200;
