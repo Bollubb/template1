@@ -158,6 +158,16 @@ const SECTION_ICONS: Record<SectionId, string> = {
 };
 
 
+
+function getAccentClass(title: string){
+ const t=title.toLowerCase();
+ if(t.includes("news"))return "nd-accent-emergency nd-glow-emergency nd-primary";
+ if(t.includes("compat"))return "nd-accent-icu nd-glow-icu nd-primary";
+ if(t.includes("glasgow")||t.includes("gcs"))return "nd-accent-neuro nd-glow-neuro";
+ if(t.includes("dose")||t.includes("farm"))return "nd-accent-pharma nd-glow-pharma";
+ return "nd-accent-neutral";
+}
+
 export default function UtilityHub({ onBack }: { onBack: () => void }) {
   const toast = useToast();
   const premium = isPremium();
