@@ -674,7 +674,7 @@ function ToolNEWS2({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }}
+                }
                 />
               {interpretation.band}
             </span>
@@ -868,7 +868,7 @@ function ToolGCS({
                       ? "rgb(217, 119, 6)"
                       : "rgb(22, 163, 74)",
                   boxShadow: "0 0 0 3px rgba(255,255,255,0.06)",
-                }}
+                }
         />
               {band.t}
             </span>
@@ -1067,7 +1067,8 @@ function ToolInfusions({
 
   const Pill = ({ sev, text }: { sev: Sev; text: string }) => (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 999, border: sev === "avoid" ? "1px solid rgba(239,68,68,0.30)" : sev === "caution" ? "1px solid rgba(245,158,11,0.32)" : "1px solid rgba(34,197,94,0.30)", background: sev === "avoid" ? "rgba(239,68,68,0.12)" : sev === "caution" ? "rgba(245,158,11,0.14)" : "rgba(34,197,94,0.12)", color: sev === "avoid" ? "rgb(220,38,38)" : sev === "caution" ? "rgb(217,119,6)" : "rgb(22,163,74)", fontSize: 12, fontWeight: 850, lineHeight: 1 }}>
-      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: sev === "avoid" ? "rgb(220,38,38)" : sev === "caution" ? "rgb(217,119,6)" : "rgb(22,163,74)" }} />
+      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: sev === "avoid" ? "rgb(220,38,38)" : sev === "caution" ? "rgb(217,119,6)" : "rgb(22,163,74)" }
+        />
       {text}
     </span>
   );
@@ -1090,7 +1091,7 @@ function ToolInfusions({
           query={q1}
           setQuery={setQ1}
           results={results1.map((d) => ({ e: d, label: `${d.name} • ${d.class}` }))}
-          onPick={(e) => { setA(e as any); setStep(2); setQ2(""); setB(null); }}
+          onPick={(e) => { setA(e as any); setStep(2); setQ2(""); setB(null); }
         />
       )}
 
@@ -1110,7 +1111,7 @@ function ToolInfusions({
                 Verifica compatibilità
               </button>
             </div>
-          }}
+          }
         />
       )}
 
@@ -1373,7 +1374,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
             setStep(2);
             setQ2("");
             setB(null);
-          }}
+          }
         />
       )}
 
@@ -1407,7 +1408,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                 Verifica interazione
               </button>
             </div>
-          }}
+          }
         />
       )}
 
@@ -1502,7 +1503,7 @@ function StepPick({
           border: "1px solid rgba(255,255,255,0.14)",
           background: "rgba(0,0,0,0.15)",
           outline: "none",
-        }}
+        }
         />
 
       <div style={{ marginTop: 10, display: "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
