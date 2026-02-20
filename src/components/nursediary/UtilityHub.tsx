@@ -308,6 +308,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
         title={upsellContext?.title || "Attiva Boost"}
         subtitle={upsellContext?.subtitle || "Sblocca ricerche illimitate e strumenti avanzati in Utility."}
         bullets={upsellContext?.bullets || ["Ricerche illimitate", "Alternative terapeutiche", "Dettagli clinici avanzati"]}
+      />
     </div>
   );
 }
