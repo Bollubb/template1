@@ -323,21 +323,16 @@ export default function QuizPage(): JSX.Element {
   return (
     <Page title="Quiz" headerOverride={headerOverride}>
       <Section>
-        {!runQuiz && (
+        <div className="mx-auto w-full max-w-[560px]">
+        {!runQuiz && !quizResult && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="nd-h1 flex items-center gap-2">
-                    <span className="nd-badge nd-badge-sky">Quiz</span>
-                    <span className="text-white">Daily • Weekly</span>
-                  </div>
-                  <div className="nd-subtitle">Routine breve per mantenere il ritmo</div>
+              <div>
+                <div className="nd-h1 flex items-center gap-2">
+                  <span className="nd-badge nd-badge-sky">Quiz</span>
+                  <span className="text-white">Daily • Weekly</span>
                 </div>
-                <div className="sm:text-right">
-                  <div className="nd-meta">Reset Daily: {msToHMS(dailyLeft)}</div>
-                  <div className="nd-meta">Reset Weekly: {msToHMS(weeklyLeft)}</div>
-                </div>
+                <div className="nd-subtitle">Routine breve per mantenere il ritmo</div>
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -347,6 +342,8 @@ export default function QuizPage(): JSX.Element {
                   <span className="nd-badge nd-badge-slate">Inizia oggi e crea la streak</span>
                 )}
                 <span className="nd-badge nd-badge-slate">+XP su Daily/Weekly</span>
+                <span className="nd-badge nd-badge-slate">Reset Daily: {msToHMS(dailyLeft)}</span>
+                <span className="nd-badge nd-badge-slate">Reset Weekly: {msToHMS(weeklyLeft)}</span>
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -558,7 +555,8 @@ export default function QuizPage(): JSX.Element {
             </div>
           </div>
         )}
-{!runQuiz && quizResult && (
+
+        {!runQuiz && quizResult && (
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
             <div className="nd-card nd-card-pad">
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
@@ -652,6 +650,7 @@ export default function QuizPage(): JSX.Element {
             )}
           </div>
         )}
+        </div>
       </Section>
 
       <NurseBottomNav active="didattica" onChange={(t) => { void goTab(t); }} />
