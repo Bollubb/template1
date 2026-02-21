@@ -609,6 +609,7 @@ export default function QuizPage(): JSX.Element {
       correct: run.correct,
       total: run.questions.length,
       ms,
+      timeLimitMs: run.timeLimitMs,
       byCategory,
       perfect: run.correct === run.questions.length,
       wrong,
@@ -657,13 +658,51 @@ export default function QuizPage(): JSX.Element {
 
   function pickConcorsoQuestions(total: number) {
     const avoid = new Set<string>();
-    // keep concorso recency separate
+    // keep concorso recency separate (by id)
     try {
       const raw = localStorage.getItem(LS.concorsoSeen) || "[]";
       const arr = JSON.parse(raw);
-      if (Array.isArray(arr)) arr.slice(-250).forEach((id) => avoid.add(String(id)));
+      if (Array.isArray(arr)) arr.slice(-350).forEach((id) => avoid.add(String(id)));
     } catch {}
-    return pickQuestions(QUIZ_BANK_CONCORSO, total, avoid);
+
+    // IMPORTANT: prevent duplicates within the same run (some concorso banks may contain repeated stems).
+    const normalizeStem = (s: string) =>
+      String(s)
+        .toLowerCase()
+        .replace(/\s+/g, " ")
+        .replace(/[“”]/g, '"')
+        .trim();
+
+    const pool = QUIZ_BANK_CONCORSO.filter((q) => !avoid.has(q.id));
+    const src = pool.length >= total ? pool : QUIZ_BANK_CONCORSO;
+
+    // shuffle once, then take unique-by-stem
+    const arr = [...src];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+
+    const seenStem = new Set<string>();
+    const out: QuizQuestion[] = [];
+    for (const q of arr) {
+      const stem = normalizeStem(q.q);
+      if (seenStem.has(stem)) continue;
+      seenStem.add(stem);
+      out.push(q);
+      if (out.length >= total) break;
+    }
+
+    // fallback (should almost never happen): fill remaining even if repeated stems
+    if (out.length < total) {
+      for (const q of arr) {
+        if (out.length >= total) break;
+        if (out.some((x) => x.id === q.id)) continue;
+        out.push(q);
+      }
+    }
+
+    return out.slice(0, total);
   }
 
   function startConcorso(preset: { id: string; title: string; total: number; minutes: number }) {
@@ -759,7 +798,7 @@ function getRunCaps(kind: "daily" | "weekly") {
   const headerOverride = useMemo(
     () => ({
       title: "Quiz",
-      subtitle: "Daily • Weekly • Simulazione Concorso",
+      subtitle: "Daily • Weekly • Simulazione Concorsi",
       showBack: true,
       onBack: () => router.back(),
     }),
@@ -785,7 +824,7 @@ function getRunCaps(kind: "daily" | "weekly") {
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("daily")} style={homeTab === "daily" ? chipStyle("sky") : chipStyle("slate")}>Daily</button>
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("weekly")} style={homeTab === "weekly" ? chipStyle("sky") : chipStyle("slate")}>Weekly</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("concorso")} style={homeTab === "concorso" ? chipStyle("sky") : chipStyle("slate")}>Sim</button>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("concorso")} style={homeTab === "concorso" ? chipStyle("sky") : chipStyle("slate")}>Concorsi</button>
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("sky") : chipStyle("slate")}>Errori</button>
               </div>
 
@@ -906,7 +945,7 @@ function getRunCaps(kind: "daily" | "weekly") {
       <div className="nd-tile" style={tileStyle()}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="text-sm font-extrabold text-white">Simulazione Concorso</div>
+            <div className="text-sm font-extrabold text-white">Simulazione Concorsi</div>
             <div className="nd-help">Timer + punteggio con penalità</div>
           </div>
           <span className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-amber"} style={pillStyle(remaining > 0 ? "slate" : "amber")}>
@@ -1002,7 +1041,7 @@ function getRunCaps(kind: "daily" | "weekly") {
             <div className="nd-card nd-card-pad" style={card()}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontWeight: 950 }}>
-                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "concorso" ? "Simulazione Concorso" : "Ripasso errori"}
+                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "concorso" ? "Simulazione Concorsi" : "Ripasso errori"}
                 </div>
                 <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>
                   {runQuiz.idx + 1}/{runQuiz.questions.length} • {runQuiz.endsAt ? `⏳ ${msToHMS(Math.max(0, runQuiz.endsAt - nowTs))}` : msToHMS(nowTs - runQuiz.startedAt)}
@@ -1126,7 +1165,7 @@ function getRunCaps(kind: "daily" | "weekly") {
                     <div style={{ fontWeight: 950 }}>Sblocca Premium</div>
                     <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>
                   </div>
-                  <div className="mt-2 nd-help">Simulazione Concorso (25) + Ripasso errori + XP bonus.</div>
+                  <div className="mt-2 nd-help">Simulazione Concorsi (25) + Ripasso errori + XP bonus.</div>
                   <div className="mt-3" style={{ display: "flex", gap: 10 }}>
                     <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-primary nd-press">
                       Scopri Premium
@@ -1135,8 +1174,29 @@ function getRunCaps(kind: "daily" | "weekly") {
                 </div>
               )}
 
-              <div style={{ marginTop: 6, opacity: 0.8, fontWeight: 850, fontSize: 13 }}>
-                {quizResult.correct}/{quizResult.total} corrette • {msToHMS(quizResult.ms)}
+              <div style={{ marginTop: 6, opacity: 0.85, fontWeight: 850, fontSize: 13, display: "grid", gap: 6 }}>
+                <div>
+                  {quizResult.correct}/{quizResult.total} corrette • {msToHMS(quizResult.ms)}
+                  {quizResult.timeLimitMs ? <> • Tempo limite {msToHMS(quizResult.timeLimitMs)}</> : null}
+                </div>
+
+                {quizResult.mode === "concorso" ? (
+                  <div style={{ opacity: 0.95 }}>
+                    {(() => {
+                      const wrongN = quizResult.wrong?.length || 0;
+                      const omitted = Math.max(0, quizResult.total - quizResult.correct - wrongN);
+                      const score = quizResult.correct * 1 - wrongN * 0.25;
+                      return (
+                        <span>
+                          <span style={{ fontWeight: 950 }}>Punteggio: {score.toFixed(2)}</span>{" "}
+                          <span style={{ opacity: 0.85 }}>(+1 corretta, −0.25 errata, 0 omessa • Errate {wrongN} • Omesse {omitted})</span>
+                        </span>
+                      );
+                    })()}
+                  </div>
+                ) : null}
+              </div>
+
               {Object.keys(quizResult.byCategory || {}).length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   <div className="nd-subtitle">Categorie da ripassare</div>
@@ -1159,6 +1219,28 @@ function getRunCaps(kind: "daily" | "weekly") {
                   </div>
                 </div>
               )}
+              {quizResult.mode === "concorso" && Object.keys(quizResult.byCategory || {}).length > 0 ? (
+                <div style={{ marginTop: 12 }}>
+                  <div className="nd-subtitle">Breakdown per categoria</div>
+                  <div className="mt-2" style={{ display: "grid", gap: 8 }}>
+                    {Object.entries(quizResult.byCategory)
+                      .map(([k, v]) => ({ k, ...v, rate: v.total ? v.correct / v.total : 0 }))
+                      .sort((a, b) => a.k.localeCompare(b.k))
+                      .map((it) => (
+                        <div key={it.k} style={{ padding: 10, borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                            <div style={{ fontWeight: 900 }}>{it.k}</div>
+                            <div className="nd-meta">{it.correct}/{it.total} • {Math.round(it.rate * 100)}%</div>
+                          </div>
+                          <div className="mt-2 nd-progress">
+                            <div className="nd-progress-fill" style={{ width: `${Math.round(Math.max(0, Math.min(1, it.rate)) * 100)}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ) : null}
+
 
               </div>
               <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
