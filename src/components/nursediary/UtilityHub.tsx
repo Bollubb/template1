@@ -158,27 +158,6 @@ const SECTION_ICONS: Record<SectionId, string> = {
 };
 
 
-
-function getAccentClass(title: string){
- const t=title.toLowerCase();
- if(t.includes("news"))return "nd-accent-emergency nd-glow-emergency nd-primary";
- if(t.includes("compat"))return "nd-accent-icu nd-glow-icu nd-primary";
- if(t.includes("glasgow")||t.includes("gcs"))return "nd-accent-neuro nd-glow-neuro";
- if(t.includes("dose")||t.includes("farm"))return "nd-accent-pharma nd-glow-pharma";
- return "nd-accent-neutral";
-}
-
-function tileClassBySection(id: any){
-  const s = String(id || "");
-  if (s.includes("news")) return "nd-tile-emergency";
-  if (s.includes("infus")) return "nd-tile-icu";
-  if (s.includes("inter")) return "nd-tile-pharma";
-  if (s.includes("scale")) return "nd-tile-warm";
-  if (s.includes("calc")) return "nd-tile-neuro";
-  return "";
-}
-
-
 export default function UtilityHub({ onBack }: { onBack: () => void }) {
   const toast = useToast();
   const premium = isPremium();
@@ -331,6 +310,17 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Cerca tool o sezioni…"
                   className="nd-input"
+                  style={{
+                    width: "100%",
+                    borderRadius: 14,
+                    padding: "10px 12px",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    background: "rgba(0,0,0,0.25)",
+                    color: "rgba(255,255,255,0.92)",
+                    outline: "none",
+                    fontWeight: 800,
+                    fontSize: 13,
+                  }}
                 />
               </div>
               {query.trim() && (
@@ -384,7 +374,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             )}
           </div>
 
-          <div className="grid gap-3 pt-2 md:grid-cols-2">
+          <div style={{ display: "grid", gap: 12, paddingTop: 10 }}>
             {filteredSections.map((s) => (
               <button
                 key={s.id}
@@ -412,7 +402,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   transition: "transform 120ms ease, border-color 120ms ease, background 120ms ease",
                 }}>
                 <div>
-                  <div className="flex items-center gap-2.5">
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <span
                       aria-hidden
                       style={{
@@ -468,7 +458,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   <div style={{ fontSize: 13, opacity: 0.75, marginTop: 4 }}>{s.subtitle}</div>
                 </div>
 
-                <div className="text-lg font-extrabold text-white/50">›</div>
+                <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18 }}>›</div>
               </button>
             ))}
           </div>
@@ -549,13 +539,13 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
           {section === "calculators" && (
             <>
               {!activeCalc ? (
-                <div className="nd-list">
-                  <CalcCard title="Velocità infusione" subtitle="ml/h da volume e tempo" icon="⏱" onClick={() => setActiveCalc("mlh")} />
-                  <CalcCard title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" icon="滴" onClick={() => setActiveCalc("gtt")} />
-                  <CalcCard title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" icon="⚗" onClick={() => setActiveCalc("mgkgmin")} />
-                  <CalcCard title="MAP" subtitle="Pressione arteriosa media" icon="MAP" onClick={() => setActiveCalc("map")} />
-                  <CalcCard title="BMI" subtitle="Indice di massa corporea" icon="BMI" onClick={() => setActiveCalc("bmi")} />
-                  <CalcCard title="Diuresi" subtitle="ml/kg/h" icon="H₂O" onClick={() => setActiveCalc("diuresi")} />
+                <div style={{ display: "grid", gap: 10 }}>
+                  <CalcCard title="Velocità infusione" subtitle="ml/h da volume e tempo" icon="⏱" accentClass="nd-tile-pharma" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("mlh")} />
+                  <CalcCard title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" icon="滴" accentClass="nd-tile-pharma" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("gtt")} />
+                  <CalcCard title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" icon="⚗" accentClass="nd-tile-pharma" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("mgkgmin")} />
+                  <CalcCard title="MAP" subtitle="Pressione arteriosa media" icon="MAP" accentClass="nd-tile-neuro" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("map")} />
+                  <CalcCard title="BMI" subtitle="Indice di massa corporea" icon="BMI" accentClass="nd-tile-warm" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("bmi")} />
+                  <CalcCard title="Diuresi" subtitle="ml/kg/h" icon="H₂O" accentClass="nd-tile-icu" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("diuresi")} />
                 </div>
               ) : (
                 <ToolRenderer id={activeCalc} last={lastByTool[activeCalc] ?? null} onSave={pushHistory} onToast={toast.push} />
@@ -621,17 +611,49 @@ function ToolSkeleton({
 function CalcCard({ title, subtitle, icon, onClick }: { title: string; subtitle: string; icon: string; onClick: () => void }) {
   const a = ACCENTS["calculators"];
   return (
-    <button type="button" onClick={onClick} className="nd-list-item nd-press w-full text-left">
-      <div className="nd-list-left">
-        <span aria-hidden className="nd-icon-bubble" style={{ borderColor: a.border, color: a.solid }}>
+    <button
+      type="button"
+      onClick={onClick}
+      className="nd-press"
+      style={{
+        textAlign: "left",
+        borderRadius: 18,
+        padding: 14,
+        border: `1px solid ${a.border}`,
+        background: `linear-gradient(180deg, ${a.soft}, rgba(255,255,255,0.02))`,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+      }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span
+          aria-hidden
+          style={{
+            minWidth: 34,
+            height: 26,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 8px",
+            borderRadius: 999,
+            border: `1px solid ${a.border}`,
+            background: "rgba(0,0,0,0.18)",
+            color: a.solid,
+            fontSize: 12,
+            fontWeight: 950,
+            letterSpacing: -0.2,
+          }}>
           {icon}
         </span>
-        <div className="nd-list-text">
-          <div className="nd-list-title">{title}</div>
-          <div className="nd-list-sub">{subtitle}</div>
+        <div>
+          <div style={{ fontWeight: 950, color: "rgba(255,255,255,0.92)" }}>{title}</div>
+          <div style={{ fontSize: 13, opacity: 0.75, marginTop: 2 }}>{subtitle}</div>
         </div>
       </div>
-      <span aria-hidden className="nd-chev">›</span>
+
+      <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18, color: a.solid }}>›</div>
     </button>
   );
 }
