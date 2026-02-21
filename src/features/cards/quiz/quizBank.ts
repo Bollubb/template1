@@ -1,4 +1,4 @@
-export type QuizCategory = "antibiotici" | "farmaci" | "procedure" | "emergenza" | "emogas";
+export type QuizCategory = "antibiotici" | "farmaci" | "procedure" | "emergenza" | "emogas" | "norme";
 export type QuizDifficulty = "easy" | "medium" | "hard";
 
 export type QuizQuestion = {
@@ -11,7 +11,7 @@ export type QuizQuestion = {
   explain: string;
 };
 
-// ✅ Banca domande v5 (500)
+// ✅ Banca domande v6 (580)
 // - scenari brevi
 // - 4 opzioni plausibili
 // - spiegazione sintetica (educativa)
@@ -4536,5 +4536,804 @@ export const QUIZ_BANK: QuizQuestion[] = [
     category: "emergenza",
     difficulty: "medium",
     explain: "EP è diagnosi tempo-dipendente: valutare segni, rischio e percorsi diagnostici secondo protocolli.",
+  },
+  {
+    id: "q1501",
+    q: "Quale norma definisce il profilo professionale dell’infermiere in Italia (figura e competenze generali)?",
+    options: ["D.M. 739/1994", "Legge 219/2017", "D.Lgs. 81/2008", "D.P.R. 128/1969"],
+    answer: 0,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Il D.M. 739/1994 individua la figura dell’infermiere e il relativo profilo professionale.",
+  },
+
+  {
+    id: "q1502",
+    q: "Con la Legge 42/1999, cosa viene superato per la professione infermieristica?",
+    options: ["Il mansionario (D.P.R. 225/1974)", "Il consenso informato", "L’obbligo di iscrizione all’Albo", "L’ECM"],
+    answer: 0,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La Legge 42/1999 abroga il mansionario e definisce le professioni sanitarie non più 'ausiliarie'.",
+  },
+
+  {
+    id: "q1503",
+    q: "La Legge 251/2000 disciplina principalmente:",
+    options: ["La privacy dei dati sanitari", "Le professioni sanitarie infermieristiche/tecniche/riabilitazione/prevenzione e ostetrica", "Il rischio clinico e responsabilità sanitaria", "La sicurezza sul lavoro"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La L. 251/2000 riguarda l’assetto delle professioni sanitarie (infermieristiche e altre aree).",
+  },
+
+  {
+    id: "q1504",
+    q: "Il nuovo Codice Deontologico FNOPI è entrato in vigore dal:",
+    options: ["22 marzo 2025", "13 aprile 2019", "1 aprile 2017", "31 gennaio 2018"],
+    answer: 0,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Il Codice Deontologico 2025 è entrato in vigore dal 22 marzo 2025 (FNOPI).",
+  },
+
+  {
+    id: "q1505",
+    q: "Il Codice Deontologico 2025 è composto da:",
+    options: ["4 capi e 20 articoli", "8 capi e 55 articoli", "10 capi e 80 articoli", "2 capi e 10 articoli"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Il testo 2025 è articolato in VIII capi e 55 articoli.",
+  },
+
+  {
+    id: "q1506",
+    q: "La Legge 24/2017 (Gelli-Bianco) riguarda soprattutto:",
+    options: ["Consenso informato e DAT", "Sicurezza delle cure e responsabilità professionale sanitaria", "Formazione ECM", "Profilo infermieristico"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La L. 24/2017 inquadra sicurezza delle cure, gestione del rischio e responsabilità sanitaria.",
+  },
+
+  {
+    id: "q1507",
+    q: "La Legge 219/2017 riguarda:",
+    options: ["Norme su consenso informato e DAT", "Abolizione del mansionario", "Sicurezza sul lavoro", "Istituzione degli Ordini professionali"],
+    answer: 0,
+    category: "norme",
+    difficulty: "easy",
+    explain: "La L. 219/2017 disciplina consenso informato e disposizioni anticipate di trattamento.",
+  },
+
+  {
+    id: "q1508",
+    q: "Nel GDPR (Reg. UE 2016/679) i dati relativi alla salute sono considerati:",
+    options: ["Dati anonimi", "Dati comuni", "Categorie particolari di dati personali", "Dati pubblici"],
+    answer: 2,
+    category: "norme",
+    difficulty: "easy",
+    explain: "I dati sanitari rientrano nelle categorie particolari e richiedono maggior tutela.",
+  },
+
+  {
+    id: "q1509",
+    q: "Nel contesto assistenziale, quale comportamento è più corretto rispetto alla privacy?",
+    options: ["Discutere la diagnosi in corridoio", "Condividere informazioni solo con chi è coinvolto nell’assistenza", "Inviare foto di referti su chat personale", "Lasciare la cartella clinica aperta in reparto"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Il principio è minimizzare la diffusione: solo a chi ha necessità assistenziale/legittimo accesso.",
+  },
+
+  {
+    id: "q1510",
+    q: "Qual è la regola più sicura per la documentazione infermieristica?",
+    options: ["Scrivere a fine turno ‘a memoria’", "Registrare tempestivamente, in modo chiaro e verificabile", "Usare abbreviazioni non standard", "Omettere gli eventi avversi"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "La tracciabilità tutela paziente e professionista: tempestività, chiarezza, oggettività.",
+  },
+
+  {
+    id: "q1511",
+    q: "In caso di errore in cartella/documentazione, la correzione corretta è:",
+    options: ["Cancellare e riscrivere", "Correggere mantenendo traccia (secondo procedura) e firmare/datare", "Nascondere l’errore", "Fare una nuova scheda senza riferimenti"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La regola è non alterare la tracciabilità: si corregge secondo policy mantenendo evidenza della modifica.",
+  },
+
+  {
+    id: "q1512",
+    q: "Secondo il principio di responsabilità professionale, l’infermiere deve:",
+    options: ["Eseguire solo ciò che dice il medico senza valutare", "Agire entro competenze e segnalare condizioni di rischio/criticità", "Rinunciare sempre all’autonomia", "Delegare sempre le decisioni"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Autonomia e responsabilità richiedono valutazione, monitoraggio e comunicazione tempestiva dei rischi.",
+  },
+
+  {
+    id: "q1513",
+    q: "Se un paziente rifiuta una procedura, la condotta più corretta è:",
+    options: ["Procedere comunque", "Informare e registrare il rifiuto secondo procedure, avvisando il team", "Ignorare e rimandare senza dirlo", "Minacciare conseguenze"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Il rifiuto va rispettato e gestito in équipe: informazione, documentazione e comunicazione.",
+  },
+
+  {
+    id: "q1514",
+    q: "Consenso informato: in generale, deve essere:",
+    options: ["Sempre solo scritto", "Un processo informativo comprensibile, documentato in cartella", "Dato dal familiare anche se il paziente è competente", "Non necessario se la procedura è ‘di routine’"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "È un processo: informazione + comprensione + decisione; la forma varia ma va documentato.",
+  },
+
+  {
+    id: "q1515",
+    q: "Le DAT (disposizioni anticipate di trattamento) servono a:",
+    options: ["Sostituire sempre il parere del medico", "Esprimere volontà su trattamenti futuri quando non si potrà decidere", "Evitare ogni terapia in assoluto", "Gestire solo aspetti economici"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Le DAT orientano le scelte quando la persona non è più capace di esprimere il consenso.",
+  },
+
+  {
+    id: "q1516",
+    q: "Se una prescrizione appare potenzialmente pericolosa (dose anomala), l’azione più corretta è:",
+    options: ["Somministrare per non ritardare", "Verificare/contattare il prescrittore e seguire i protocolli di sicurezza", "Chiedere al paziente cosa fare", "Ignorare perché ‘non è compito mio’"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "La sicurezza delle cure include il double-check e la comunicazione di incongruenze.",
+  },
+
+  {
+    id: "q1517",
+    q: "Delegare un’attività a OSS: l’infermiere deve assicurarsi soprattutto che:",
+    options: ["L’OSS abbia tempo", "L’attività sia delegabile e l’OSS sia formato, con supervisione appropriata", "Il paziente non se ne accorga", "Non serva documentare"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La delega richiede valutazione di complessità, competenze, contesto e supervisione.",
+  },
+
+  {
+    id: "q1518",
+    q: "Nel Codice Deontologico, il principio di centralità della persona implica:",
+    options: ["Decisioni standard uguali per tutti", "Rispetto di valori, bisogni, dignità e autodeterminazione", "Priorità solo all’organizzazione", "Evitare il dialogo per risparmiare tempo"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "L’assistenza è personalizzata e rispettosa della dignità e dei diritti della persona.",
+  },
+
+  {
+    id: "q1519",
+    q: "Quale situazione è più a rischio di violazione della riservatezza?",
+    options: ["Parlare col team in stanza chiusa", "Condividere dettagli clinici in ascensore", "Consultare la cartella per assistenza diretta", "Informare il paziente in modo privato"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Luoghi pubblici/semipubblici aumentano il rischio di divulgazione indebita.",
+  },
+
+  {
+    id: "q1520",
+    q: "In Italia, per esercitare legalmente come infermiere è necessario:",
+    options: ["Solo il diploma di scuola superiore", "Titolo abilitante + iscrizione all’Albo/Ordine professionale", "Solo esperienza pratica", "Essere assunti in ospedale"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "L’esercizio professionale richiede titolo abilitante e iscrizione all’Albo (OPI).",
+  },
+
+  {
+    id: "q1521",
+    q: "Cosa significa 'sicurezza delle cure' secondo l’impostazione della Legge 24/2017?",
+    options: ["È un optional organizzativo", "È parte costitutiva del diritto alla salute e si realizza con prevenzione/gestione del rischio", "Riguarda solo la manutenzione degli edifici", "È responsabilità esclusiva del singolo operatore"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La legge inquadra la sicurezza come diritto e come sistema di prevenzione/gestione del rischio.",
+  },
+
+  {
+    id: "q1522",
+    q: "Quale comportamento è più coerente con la pratica basata sulle evidenze (EBN) richiamata anche in ambito deontologico?",
+    options: ["Seguire ‘si è sempre fatto così’", "Integrare evidenze, esperienza clinica e preferenze della persona", "Cambiare pratica ogni giorno senza motivo", "Ignorare linee guida e procedure"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "EBN: evidenze + contesto clinico + valori/preferenze del paziente.",
+  },
+
+  {
+    id: "q1523",
+    q: "Se noti un collega che adotta comportamenti non sicuri per i pazienti, la condotta più corretta è:",
+    options: ["Ignorare per evitare conflitti", "Segnalare secondo le procedure interne/Ordine e promuovere sicurezza", "Pubblicare sui social", "Confrontarsi solo con altri colleghi in modo informale"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La tutela della sicurezza e dell’etica richiede segnalazione responsabile secondo canali appropriati.",
+  },
+
+  {
+    id: "q1524",
+    q: "Quale affermazione è più corretta sulla ‘autonomia’ dell’infermiere dopo L. 42/1999 e norme successive?",
+    options: ["L’infermiere è sempre subordinato e non responsabile", "L’infermiere agisce con autonomia e responsabilità entro competenze e profilo", "L’autonomia vale solo in ambito privato", "L’autonomia elimina il lavoro in équipe"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Autonomia non significa isolamento: è responsabilità professionale dentro competenze e équipe.",
+  },
+
+  {
+    id: "q1525",
+    q: "Quando è più corretto usare un linguaggio rispettoso e non stigmatizzante nella documentazione?",
+    options: ["Solo se il paziente legge la cartella", "Sempre", "Solo in dimissione", "Non serve perché è un documento tecnico"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "La documentazione deve essere professionale e rispettosa: evita etichette/giudizi.",
+  },
+
+  {
+    id: "q1526",
+    q: "Quale pratica riduce il rischio di violazione privacy su dispositivi digitali?",
+    options: ["Usare account personali per dati clinici", "Bloccare lo schermo e usare sistemi autorizzati", "Condividere password tra colleghi", "Salvare foto in galleria personale"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Accessi nominativi e sistemi autorizzati, con protezione dispositivo e credenziali personali.",
+  },
+
+  {
+    id: "q1527",
+    q: "Secondo principi etici e deontologici, l’infermiere deve promuovere l’equità delle cure significa:",
+    options: ["Trattare tutti ‘allo stesso modo’ ignorando bisogni diversi", "Ridurre barriere e garantire accesso appropriato alle cure", "Erogare solo a chi è più collaborante", "Evitare l’assistenza a persone fragili"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Equità = risposte proporzionate ai bisogni, inclusione e accessibilità.",
+  },
+
+  {
+    id: "q1528",
+    q: "In tema di conflitto di interessi (es. collaborazione con aziende), qual è la regola più sicura?",
+    options: ["Nascondere la collaborazione", "Dichiarare eventuali conflitti e tutelare trasparenza e sicurezza assistenziale", "Accettare sempre qualsiasi incentivo", "Promuovere prodotti senza criteri"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Trasparenza e tutela del cittadino: evitare condizionamenti impropri e dichiarare conflitti.",
+  },
+
+  {
+    id: "q1529",
+    q: "Quale è un esempio di informazione ‘minimizzata’ (principio di minimizzazione dei dati)?",
+    options: ["Condividere tutta la storia clinica con chiunque", "Comunicare solo i dati necessari per l’assistenza a chi ne ha bisogno", "Inviare referti completi in chat", "Stampare e lasciare documenti incustoditi"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Minimizzazione: solo ciò che serve, a chi serve, per il tempo necessario.",
+  },
+
+  {
+    id: "q1530",
+    q: "Un’informazione sanitaria può essere comunicata a un familiare quando:",
+    options: ["Sempre, su richiesta", "Solo se autorizzato dal paziente competente o in base a norme/procedure applicabili", "Mai, in nessun caso", "Solo se il familiare insiste"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Il punto chiave è la legittimazione/autorizzazione e la necessità assistenziale nel rispetto della riservatezza.",
+  },
+
+  {
+    id: "q1531",
+    q: "Qual è un principio chiave nella comunicazione con la persona assistita?",
+    options: ["Usare termini tecnici per ‘far capire chi comanda’", "Chiarezza, ascolto, rispetto e adattamento al livello di comprensione", "Evitare domande del paziente", "Parlare sempre solo con i familiari"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Relazione di cura: comunicazione comprensibile e centrata sulla persona.",
+  },
+
+  {
+    id: "q1532",
+    q: "Il D.P.R. 225/1974 è comunemente noto come:",
+    options: ["Testo unico sicurezza lavoro", "Mansionario delle professioni sanitarie (storicamente riferito all’infermiere)", "Legge sul consenso", "Codice deontologico"],
+    answer: 1,
+    category: "norme",
+    difficulty: "hard",
+    explain: "Il D.P.R. 225/1974 è il vecchio 'mansionario', poi superato dalla L. 42/1999.",
+  },
+
+  {
+    id: "q1533",
+    q: "Con la L. 42/1999 la definizione di infermiere come 'professione sanitaria ausiliaria' viene:",
+    options: ["Rafforzata", "Superata: la professione diventa 'professione sanitaria'", "Sostituita da 'volontario sanitario'", "Trasformata in 'professionista amministrativo'"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La legge aggiorna la cornice: non più 'ausiliaria' ma professione sanitaria.",
+  },
+
+  {
+    id: "q1534",
+    q: "In caso di urgenza/emergenza, il consenso può essere:",
+    options: ["Sempre ignorato", "Gestito secondo necessità clinica e norme, documentando il contesto e agendo nel miglior interesse della persona", "Sostituito dal consenso di qualunque collega", "Richiesto solo dopo la procedura"],
+    answer: 1,
+    category: "norme",
+    difficulty: "hard",
+    explain: "In urgenza si agisce per salvaguardare vita/salute secondo protocolli e con adeguata documentazione.",
+  },
+
+  {
+    id: "q1535",
+    q: "Nel sistema italiano, la disciplina e la tutela dell’esercizio professionale infermieristico fanno riferimento anche a:",
+    options: ["Ordini professionali (OPI) e FNOPI", "Solo alle aziende ospedaliere", "Solo ai sindacati", "Solo al Comune"],
+    answer: 0,
+    category: "norme",
+    difficulty: "easy",
+    explain: "OPI/FNOPI regolano l’albo e aspetti deontologici e di tutela della professione.",
+  },
+
+  {
+    id: "q1536",
+    q: "Una registrazione in cartella infermieristica dovrebbe essere:",
+    options: ["Soggettiva e interpretativa", "Oggettiva, completa, datata e firmata secondo procedure", "Scritta in modo ironico per alleggerire", "Solo verbale"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Documentare fatti osservabili, interventi e valutazioni con linguaggio professionale e tracciabile.",
+  },
+
+  {
+    id: "q1537",
+    q: "Quale comportamento è più corretto con le credenziali informatiche di reparto?",
+    options: ["Condividerle per comodità", "Usare credenziali personali e non cederle", "Scriverle su un foglio in vista", "Usare l’account del collega assente"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Le credenziali sono personali: tutela sicurezza, privacy e tracciabilità degli accessi.",
+  },
+
+  {
+    id: "q1538",
+    q: "Quando una comunicazione via messaggistica istantanea è più rischiosa (privacy)?",
+    options: ["Quando si usano sistemi autorizzati aziendali", "Quando si usano chat personali non autorizzate con dati identificativi", "Quando si chiama il centralino", "Quando si scrive in cartella"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Usare canali non autorizzati aumenta rischio di diffusione e perdita di controllo del dato.",
+  },
+
+  {
+    id: "q1539",
+    q: "Quale frase è più coerente con un approccio deontologico in caso di aggressività/violenza in reparto?",
+    options: ["‘È normale, si sopporta’", "Prevenire, segnalare e attivare procedure di sicurezza per operatori e assistiti", "Ignorare e continuare", "Rispondere con aggressività"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La sicurezza degli operatori e la prevenzione della violenza sono temi riconosciuti anche nel Codice 2025.",
+  },
+
+  {
+    id: "q1540",
+    q: "L’ECM (Educazione Continua in Medicina) per le professioni sanitarie serve a:",
+    options: ["Aumentare stipendi automaticamente", "Garantire aggiornamento e mantenimento competenze", "Sostituire la laurea", "Evitare la documentazione"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "La formazione continua sostiene qualità e sicurezza delle cure.",
+  },
+
+  {
+    id: "q1541",
+    q: "In caso di consegne tra turni, quale principio tutela di più la continuità assistenziale?",
+    options: ["Consegne rapide senza dettagli", "Consegne strutturate, pertinenti e verificabili", "Consegne solo via chat", "Consegne solo a fine settimana"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La continuità si basa su comunicazioni chiare, complete e pertinenti.",
+  },
+
+  {
+    id: "q1542",
+    q: "Quale è un esempio di 'pubblicità sanitaria' corretta per un infermiere libero professionista?",
+    options: ["Promettere guarigioni certe", "Comunicare servizi in modo veritiero e trasparente, senza inganno", "Screditare colleghi e strutture", "Nascondere i costi"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Il Codice richiama il rispetto delle norme sulla pubblicità sanitaria e la tutela della sicurezza assistenziale.",
+  },
+
+  {
+    id: "q1543",
+    q: "Quale comportamento riduce il rischio di accessi impropri alle informazioni cliniche?",
+    options: ["Consultare cartelle per curiosità", "Accedere solo se coinvolti nell’assistenza e secondo autorizzazioni", "Fare screenshot per ‘ricordare’", "Usare computer senza logout"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Accesso ‘need to know’: solo per motivi assistenziali/organizzativi legittimi.",
+  },
+
+  {
+    id: "q1544",
+    q: "Se un paziente ti chiede di divulgare informazioni a un familiare, la regola più sicura è:",
+    options: ["Dire tutto senza chiedere nulla", "Chiedere/registrare l’autorizzazione e condividere solo quanto necessario", "Rifiutare sempre", "Mandare un messaggio vocale al familiare"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Autorizzazione e minimizzazione: tutela privacy e volontà della persona.",
+  },
+
+  {
+    id: "q1545",
+    q: "Quale è un esempio di comportamento non etico/professionalmente scorretto in reparto?",
+    options: ["Rispettare procedure", "Denigrare un paziente davanti ad altri", "Usare identificazione corretta", "Chiedere conferma dose"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Comunicazione stigmatizzante e mancanza di rispetto violano dignità e relazione di cura.",
+  },
+
+  {
+    id: "q1546",
+    q: "Nel lavoro in équipe, la comunicazione efficace per la sicurezza include:",
+    options: ["Non segnalare dubbi", "Uso di strumenti/format (es. SBAR) e escalation quando necessario", "Solo messaggi informali", "Solo note personali"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Strumenti strutturati migliorano passaggi di informazioni critiche e riducono errori.",
+  },
+
+  {
+    id: "q1547",
+    q: "Quale delle seguenti è una buona pratica per prevenire conflitti con la privacy quando si studiano casi clinici?",
+    options: ["Usare dati identificativi nei materiali", "Anonimizzare dati e usare solo ciò che serve all’apprendimento", "Condividere foto del paziente", "Pubblicare dettagli sui social"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Didattica sì, ma con anonimizzazione e rispetto riservatezza.",
+  },
+
+  {
+    id: "q1548",
+    q: "Quando un infermiere è chiamato a un ruolo di ‘advocacy’ (tutela) della persona assistita, significa:",
+    options: ["Evitare di parlare con il team", "Promuovere diritti, sicurezza e preferenze della persona nel percorso di cura", "Fare diagnosi mediche", "Sostituirsi sempre ai familiari"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Advocacy: tutela della persona, diritti, sicurezza e comunicazione in équipe.",
+  },
+
+  {
+    id: "q1549",
+    q: "In tema di 'cura dei curanti' (richiamata nel Codice 2025), un esempio coerente è:",
+    options: ["Lavorare sempre senza pause", "Rispettare tempi di recupero e segnalare carichi non sicuri", "Nascondere lo stress", "Accettare turni infiniti"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La sicurezza passa anche dal benessere degli operatori e dalla prevenzione del burnout.",
+  },
+
+  {
+    id: "q1550",
+    q: "La Legge 219/2017 è entrata in vigore il:",
+    options: ["1 aprile 2017", "31 gennaio 2018", "22 marzo 2025", "26 febbraio 1999"],
+    answer: 1,
+    category: "norme",
+    difficulty: "hard",
+    explain: "La L. 219/2017 (consenso informato e DAT) è entrata in vigore il 31/01/2018.",
+  },
+
+  {
+    id: "q1551",
+    q: "La Legge 24/2017 (Gelli-Bianco) è entrata in vigore il:",
+    options: ["1 aprile 2017", "31 gennaio 2018", "22 marzo 2025", "14 settembre 1994"],
+    answer: 0,
+    category: "norme",
+    difficulty: "hard",
+    explain: "La L. 24/2017 è entrata in vigore il 1° aprile 2017.",
+  },
+
+  {
+    id: "q1552",
+    q: "Quale tra queste è una finalità della Legge 24/2017?",
+    options: ["Definire il profilo dell’infermiere", "Promuovere sicurezza delle cure e gestione del rischio", "Abrogare il GDPR", "Istituire le DAT"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Tema centrale: sicurezza delle cure, gestione del rischio e responsabilità.",
+  },
+
+  {
+    id: "q1553",
+    q: "Secondo buone pratiche, quando documenti un evento avverso dovresti:",
+    options: ["Ometterlo per paura", "Descrivere fatti, tempi, interventi e comunicazioni effettuate", "Dare la colpa a un collega", "Scrivere solo ‘ok’"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Documentazione oggettiva e completa è essenziale per sicurezza e qualità.",
+  },
+
+  {
+    id: "q1554",
+    q: "Quale comportamento tutela maggiormente la dignità della persona assistita?",
+    options: ["Parlare di ‘il diabetico nel letto 4’", "Usare nome/cognome o identificativi appropriati e comunicazione rispettosa", "Scherzare su sintomi", "Discutere in corridoio"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Evitare etichette riduttive; linguaggio rispettoso e centrato sulla persona.",
+  },
+
+  {
+    id: "q1555",
+    q: "In generale, la condivisione di una foto di una lesione con dati identificativi su dispositivi personali è:",
+    options: ["Sempre permessa", "Rischiosa e di norma non conforme se fuori da canali/procedure autorizzati", "Obbligatoria", "Consentita se il paziente ‘non si vede’"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Serve base giuridica, minimizzazione e canali autorizzati; meglio evitare device personali.",
+  },
+
+  {
+    id: "q1556",
+    q: "Quale scelta è più coerente con la trasparenza verso la persona assistita in caso di errore (incident disclosure)?",
+    options: ["Nascondere l’evento", "Attivare i percorsi aziendali e comunicare in modo appropriato e documentato", "Aspettare che se ne accorga", "Negare sempre"],
+    answer: 1,
+    category: "norme",
+    difficulty: "hard",
+    explain: "Trasparenza e gestione del rischio: seguire procedure e comunicazione corretta con team e paziente/familiari.",
+  },
+
+  {
+    id: "q1557",
+    q: "Quale tra queste è una misura di sicurezza informatica di base in ambito sanitario?",
+    options: ["Password condivisa", "Logout/lock screen quando lasci la postazione", "Salvare referti su desktop pubblico", "Inviare referti via email personale"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Lock/logout riduce accessi non autorizzati e tutela privacy.",
+  },
+
+  {
+    id: "q1558",
+    q: "Se una persona assistita chiede di leggere la propria documentazione sanitaria, in generale:",
+    options: ["Non ha mai diritto", "Può esercitare diritti di accesso secondo le procedure previste", "Può farlo solo se è premium", "Solo il medico può vedere la cartella"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Esistono diritti di accesso ai dati; si seguono procedure dell’ente e norme privacy.",
+  },
+
+  {
+    id: "q1559",
+    q: "L’obiettivo dell’Ordine professionale (OPI) è principalmente:",
+    options: ["Vendere corsi", "Tutela dell’Albo, deontologia, disciplina e valorizzazione professionale", "Gestire turni ospedalieri", "Fare prescrizioni"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "OPI/FNOPI presidiano Albo e deontologia e tutelano l’utenza e la professione.",
+  },
+
+  {
+    id: "q1560",
+    q: "Quale affermazione è più corretta sul segreto professionale?",
+    options: ["Vale solo fuori dall’ospedale", "Impone riservatezza sulle informazioni apprese per ragioni di lavoro", "Non esiste se il paziente è noto", "Si può violare per curiosità"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "La riservatezza è un dovere professionale: condividere solo se legittimo e necessario.",
+  },
+
+  {
+    id: "q1561",
+    q: "Se un paziente è incapace di intendere/volere, le decisioni assistenziali devono:",
+    options: ["Essere prese senza considerare rappresentanti", "Seguire norme/procedure con coinvolgimento di tutore/amministratore e team", "Essere delegate al primo familiare che arriva", "Essere decise solo dall’infermiere"],
+    answer: 1,
+    category: "norme",
+    difficulty: "hard",
+    explain: "Si seguono i riferimenti giuridici (tutore/amministratore, DAT se presenti) e il team.",
+  },
+
+  {
+    id: "q1562",
+    q: "Quale comportamento è più coerente con il rispetto della diversità culturale e religiosa?",
+    options: ["Imporre sempre la stessa routine", "Ascoltare bisogni/valori e adattare l’assistenza quando possibile e sicuro", "Deridere abitudini", "Evitare di chiedere"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Personalizzazione e rispetto, compatibilmente con sicurezza e percorsi clinici.",
+  },
+
+  {
+    id: "q1563",
+    q: "In tema di consenso, una persona può:",
+    options: ["Revocare il consenso in ogni momento", "Revocare solo a fine ricovero", "Non revocare mai", "Revocare solo per iscritto"],
+    answer: 0,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Il consenso è revocabile; va documentata la scelta e gestita in équipe.",
+  },
+
+  {
+    id: "q1564",
+    q: "Quale affermazione è più corretta sulla comunicazione di dati clinici via telefono?",
+    options: ["È sempre vietata", "Può avvenire con verifica identità/legittimazione e minimo necessario, secondo procedure", "È libera per chiunque chiami", "Basta che sia veloce"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Serve verifica del richiedente e contenuto minimo necessario nel rispetto di policy.",
+  },
+
+  {
+    id: "q1565",
+    q: "Quando utilizzi abbreviazioni in documentazione, la scelta più sicura è:",
+    options: ["Usare qualunque abbreviazione", "Usare abbreviazioni standard riconosciute dall’organizzazione", "Inventare sigle nuove", "Scrivere solo iniziali"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Abbreviazioni non standard aumentano rischi di fraintendimenti ed errori.",
+  },
+
+  {
+    id: "q1566",
+    q: "Nel Codice Deontologico, la ‘competenza’ implica anche:",
+    options: ["Non aggiornarsi mai", "Aggiornamento continuo e consapevolezza dei propri limiti", "Sostituire i protocolli", "Evitare il confronto"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Competenza = formazione, esperienza, aggiornamento e riconoscimento dei limiti.",
+  },
+
+  {
+    id: "q1567",
+    q: "Quale comportamento è più coerente con la prevenzione del rischio clinico?",
+    options: ["Saltare il controllo farmaci", "Segnalare near-miss e criticità tramite i sistemi previsti", "Nascondere gli incidenti", "Non partecipare ai briefing"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "La cultura della sicurezza include segnalazione e apprendimento dagli eventi (anche near-miss).",
+  },
+
+  {
+    id: "q1568",
+    q: "In ambito sanitario, il principio di ‘accountability’ (responsabilizzazione) nel GDPR significa:",
+    options: ["Nessun obbligo documentale", "Dimostrare conformità e adottare misure adeguate di protezione dei dati", "Condividere dati liberamente", "Delegare tutto al paziente"],
+    answer: 1,
+    category: "norme",
+    difficulty: "hard",
+    explain: "Accountability: il titolare deve poter dimostrare di essere conforme e di aver adottato misure.",
+  },
+
+  {
+    id: "q1569",
+    q: "Una comunicazione corretta al paziente deve evitare soprattutto:",
+    options: ["Ascolto attivo", "Promesse irrealistiche e informazioni non verificate", "Spiegazioni con esempi", "Domande per verifica comprensione"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Evitare false rassicurazioni e promesse: comunicare in modo veritiero e comprensibile.",
+  },
+
+  {
+    id: "q1570",
+    q: "Quale è una misura organizzativa per la privacy in reparto?",
+    options: ["Stampare liste pazienti e lasciarle ovunque", "Gestire correttamente schermi, stampanti e documenti (clean desk)", "Scrivere dati su lavagne pubbliche", "Usare post-it con password"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Clean desk/clean screen: riduce accessi impropri e divulgazioni accidentali.",
+  },
+
+  {
+    id: "q1571",
+    q: "Se una persona assistita chiede 'chi ha accesso ai miei dati?', la risposta più corretta è:",
+    options: ["Chiunque lavori in ospedale", "Solo personale autorizzato per fini assistenziali/gestionali nel rispetto delle regole", "Solo gli studenti", "Nessuno"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Accessi regolati: autorizzazioni e tracciamento; principio di necessità.",
+  },
+
+  {
+    id: "q1572",
+    q: "Quale affermazione è più corretta sul rapporto tra linee guida/protocolli e responsabilità?",
+    options: ["Seguire protocolli elimina ogni responsabilità", "Protocolli guidano ma serve giudizio clinico e segnalazione di criticità", "I protocolli non servono", "I protocolli valgono solo in teoria"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Le procedure supportano sicurezza, ma resta il dovere di valutare e agire responsabilmente.",
+  },
+
+  {
+    id: "q1573",
+    q: "Nel caso di richiesta di ‘certificazioni’ (es. prognosi), l’infermiere dovrebbe:",
+    options: ["Rilasciare certificati medici", "Limitarsi a quanto di competenza e indirizzare ai professionisti/uffici competenti", "Inventare un documento", "Rifiutare senza spiegare"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Si opera entro competenze: certificazioni mediche spettano al medico/uffici preposti.",
+  },
+
+  {
+    id: "q1574",
+    q: "Quale esempio rappresenta meglio un conflitto tra etica e organizzazione?",
+    options: ["Documentare correttamente", "Omettere cure essenziali per risparmiare tempo", "Chiedere supporto al coordinatore", "Segnalare carichi non sicuri"],
+    answer: 1,
+    category: "norme",
+    difficulty: "hard",
+    explain: "Tagliare attività essenziali mette a rischio sicurezza e dignità; va gestito e segnalato.",
+  },
+
+  {
+    id: "q1575",
+    q: "Se un paziente chiede informazioni sulle alternative terapeutiche, un approccio coerente col consenso informato è:",
+    options: ["Dire ‘non ti riguarda’", "Favorire che riceva informazioni comprensibili dal team, e documentare quanto emerso", "Ignorare la domanda", "Rispondere con sigle"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Il consenso è un processo informativo: facilitare comunicazione e comprensione.",
+  },
+
+  {
+    id: "q1576",
+    q: "L’uso di linguaggio discriminatorio o offensivo in reparto è:",
+    options: ["Accettabile tra colleghi", "Contrario ai principi deontologici e alla dignità della persona", "Consentito se non sente", "Solo un problema di marketing"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "Rispetto e non discriminazione sono pilastri etici e professionali.",
+  },
+
+  {
+    id: "q1577",
+    q: "Quale scelta è più corretta in caso di dubbio su competenze/atto complesso?",
+    options: ["Fare comunque", "Chiedere supporto/supervisione e attenersi a procedure/competenze", "Delegare a chiunque", "Lasciare il paziente senza assistenza"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Riconoscere limiti e chiedere supporto tutela paziente e professionista.",
+  },
+
+  {
+    id: "q1578",
+    q: "In generale, l’infermiere può rifiutare un atto se:",
+    options: ["È contrario a legge/deontologia o fuori competenze e mette a rischio sicurezza", "È faticoso", "Non gli piace il paziente", "È richiesto dal team"],
+    answer: 0,
+    category: "norme",
+    difficulty: "hard",
+    explain: "Si rifiuta responsabilmente ciò che è illegittimo/non sicuro, attivando i canali corretti.",
+  },
+
+  {
+    id: "q1579",
+    q: "Quando si parla di 'dignità' della persona assistita, un esempio pratico è:",
+    options: ["Lasciare porte/ tende aperte durante igiene", "Garantire privacy e rispetto durante l’assistenza (tende/porte chiuse, spiegare)", "Commentare il corpo del paziente", "Chiamare il paziente con soprannomi"],
+    answer: 1,
+    category: "norme",
+    difficulty: "easy",
+    explain: "La dignità si tutela con privacy, rispetto e comunicazione durante le procedure.",
+  },
+
+  {
+    id: "q1580",
+    q: "Quale affermazione è più corretta sull’uso dei social media da parte di un infermiere?",
+    options: ["È sempre libero pubblicare casi clinici", "Va evitata ogni divulgazione che renda identificabile una persona assistita; seguire policy e deontologia", "Basta oscurare il volto", "Se è per didattica è sempre permesso"],
+    answer: 1,
+    category: "norme",
+    difficulty: "medium",
+    explain: "Anche senza volto, dettagli possono rendere identificabile: priorità a privacy, consenso e canali appropriati.",
   },
 ];
