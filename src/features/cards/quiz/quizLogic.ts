@@ -1,4 +1,6 @@
-export type QuizMode = "daily" | "weekly" | "sim" | "review";
+// NOTE: "concorso" is used by the dedicated "Simulazione Concorso" mode in /pages/quiz.tsx
+// "sim" is kept for backward compatibility with older components.
+export type QuizMode = "daily" | "weekly" | "sim" | "concorso" | "review";
 
 export type QuizHistoryItem = {
   ts: number;
