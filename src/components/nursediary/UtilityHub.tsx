@@ -540,12 +540,12 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             <>
               {!activeCalc ? (
                 <div style={{ display: "grid", gap: 10 }}>
-                  <CalcCard title="Velocità infusione" subtitle="ml/h da volume e tempo" icon="⏱" accentClass="nd-tile-pharma" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("mlh")} />
-                  <CalcCard title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" icon="滴" accentClass="nd-tile-pharma" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("gtt")} />
-                  <CalcCard title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" icon="⚗" accentClass="nd-tile-pharma" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("mgkgmin")} />
-                  <CalcCard title="MAP" subtitle="Pressione arteriosa media" icon="MAP" accentClass="nd-tile-neuro" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("map")} />
-                  <CalcCard title="BMI" subtitle="Indice di massa corporea" icon="BMI" accentClass="nd-tile-warm" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("bmi")} />
-                  <CalcCard title="Diuresi" subtitle="ml/kg/h" icon="H₂O" accentClass="nd-tile-icu" accentClass="nd-tile-neuro" onClick={() => setActiveCalc("diuresi")} />
+                  <CalcCard title="Velocità infusione" subtitle="ml/h da volume e tempo" icon="⏱" onClick={() => setActiveCalc("mlh")} />
+                  <CalcCard title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" icon="滴" onClick={() => setActiveCalc("gtt")} />
+                  <CalcCard title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" icon="⚗" onClick={() => setActiveCalc("mgkgmin")} />
+                  <CalcCard title="MAP" subtitle="Pressione arteriosa media" icon="MAP" onClick={() => setActiveCalc("map")} />
+                  <CalcCard title="BMI" subtitle="Indice di massa corporea" icon="BMI" onClick={() => setActiveCalc("bmi")} />
+                  <CalcCard title="Diuresi" subtitle="ml/kg/h" icon="H₂O" onClick={() => setActiveCalc("diuresi")} />
                 </div>
               ) : (
                 <ToolRenderer id={activeCalc} last={lastByTool[activeCalc] ?? null} onSave={pushHistory} onToast={toast.push} />
