@@ -698,7 +698,8 @@ export default function QuizPage(): JSX.Element {
 
   return (
     <Page title="Quiz" headerOverride={headerOverride}>
-      <Section>
+      <>
+<Section>
         <div className="mx-auto w-full max-w-[560px]">
         {!runQuiz && !quizResult && (
           <div className="grid gap-3">
@@ -1111,8 +1112,8 @@ export default function QuizPage(): JSX.Element {
           setPremiumModalOpen(false);
         }}
       />
-    </Page>
-  );
+      </>
+    </Page>);
 }
 
 function addPills(amount: number) {
