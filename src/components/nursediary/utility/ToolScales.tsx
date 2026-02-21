@@ -44,8 +44,9 @@ export default function ToolScales({
 }) {
   if (!active) {
     return (
-      <div className="grid gap-3">
-        <ScaleCard
+      <div style={{ display: "grid", gap: 10 }}>
+        <div className="nd-grid2">
+          <ScaleCard
           title="NEWS2"
           subtitle="Early warning score"
           badge="CORE"
@@ -62,7 +63,9 @@ export default function ToolScales({
           onClick={() => setActive("gcs")}
         />
 
-        <div className="mt-2 text-[11px] font-bold text-white/60 leading-snug">
+        </div>
+
+        <div style={{ marginTop: 6, opacity: 0.75, fontSize: 12, lineHeight: 1.35 }}>
           Nota: questi strumenti sono di supporto operativo. In caso di dubbio o peggioramento clinico, attiva i percorsi
           locali e confrontati con il medico.
         </div>
@@ -101,26 +104,51 @@ function ScaleCard({
   onClick: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className="nd-card nd-card-pad nd-press w-full text-left flex items-center justify-between gap-3">
+    <button type="button" onClick={onClick} className={`nd-tile-card nd-press ${badge === "CORE" ? "nd-tile-warm" : "nd-tile-neuro"}`}>
       <div>
-        <div className="flex items-center gap-2.5">
-          <div className="text-base font-extrabold">{title}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="nd-tile-title">{title}</div>
           {badge && (
-            <span className="nd-btn-chip">
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 900,
+                padding: "3px 8px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.16)",
+                opacity: 0.95,
+              }}
+            >
               {badge}
             </span>
           )}
         </div>
-        <div className="mt-1 text-sm font-bold text-white/65">{subtitle}</div>
+        <div className="nd-tile-sub">{subtitle}</div>
       </div>
-      <div className="flex items-center gap-2.5">
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <button
           type="button"
-          className={`nd-press rounded-full px-3 py-1.5 text-xs font-extrabold border border-white/12 ${isFav ? "bg-amber-300/15" : "bg-white/5"} text-white/90`}
+          className="nd-press"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onFav();
+          }}
+          aria-label={isFav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+          style={{
+            borderRadius: 999,
+            padding: "6px 10px",
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: isFav ? "rgba(250,204,21,0.14)" : "rgba(255,255,255,0.04)",
+            color: "rgba(255,255,255,0.92)",
+            fontWeight: 950,
+            fontSize: 12,
+            cursor: "pointer",
+          }}
         >
           {isFav ? "★" : "☆"}
         </button>
-        <div className="text-lg font-extrabold text-white/50">›</div>
+        <div style={{ opacity: 0.55, fontWeight: 900, fontSize: 18 }}>›</div>
       </div>
     </button>
   );
@@ -140,7 +168,7 @@ function ScaleShell({
   onSave: () => void;
 }) {
   return (
-    <div className="nd-fade-in nd-card nd-card-pad">
+    <div className="nd-fade-in" style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <div>
           <div style={{ fontWeight: 950, fontSize: 15 }}>{title}</div>
@@ -267,7 +295,7 @@ function ToolNEWS2({
         onToast("Salvato", "success");
       }}
     >
-      <div className="grid gap-3">
+      <div style={{ display: "grid", gap: 10 }}>
         <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.02)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
             <div>
@@ -465,7 +493,7 @@ function ToolGCS({
         onToast("Salvato", "success");
       }}
     >
-      <div className="grid gap-3">
+      <div style={{ display: "grid", gap: 10 }}>
         <SelectPills
           label="Apertura occhi (E)"
           value={String(eye)}
