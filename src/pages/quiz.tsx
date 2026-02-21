@@ -7,6 +7,7 @@ import NurseBottomNav from "../components/nursediary/NurseBottomNav";
 import PremiumUpsellModal from "@/components/nursediary/PremiumUpsellModal";
 
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
+import { QUIZ_BANK_CONCORSO } from "@/features/cards/quiz/quizBankConcorso";
 import {
   calcDailyReward,
   calcWeeklyReward,
@@ -476,7 +477,7 @@ export default function QuizPage(): JSX.Element {
         const avoid = new Set(getRecentSeenIds(140));
         if (mode === "daily") return pickQuestions(QUIZ_BANK, 10, avoid);
         if (mode === "weekly") return pickQuestions(QUIZ_BANK, 25, avoid);
-        if (mode === "sim") return pickQuestions(QUIZ_BANK, 25, avoid);
+        if (mode === "sim") return pickQuestions(QUIZ_BANK_CONCORSO, 50, avoid);
         // review
         const picked = pickMistakeReviewQuestions(QUIZ_BANK, 10);
         return picked.length ? picked : pickQuestions(QUIZ_BANK, 10, avoid);
@@ -691,7 +692,7 @@ export default function QuizPage(): JSX.Element {
   const headerOverride = useMemo(
     () => ({
       title: "Quiz",
-      subtitle: "Daily • Weekly • Simulazione",
+      subtitle: "Daily • Weekly • Simulazione Concorso",
       showBack: true,
       onBack: () => router.back(),
     }),
@@ -706,6 +707,7 @@ export default function QuizPage(): JSX.Element {
         {!runQuiz && !quizResult && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad" style={card()}>
+              <>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="nd-badge nd-badge-sky" style={chipStyle("sky")}>Quiz</span>
@@ -828,8 +830,8 @@ export default function QuizPage(): JSX.Element {
     <div className="nd-tile" style={tileStyle()}>
       <div className="flex items-center justify-between gap-2">
         <div>
-          <div className="text-sm font-extrabold text-white">Simulazione</div>
-          <div className="nd-help">25 domande • risultato finale</div>
+          <div className="text-sm font-extrabold text-white">Simulazione Concorso</div>
+          <div className="nd-help">50 domande • timer & punteggio concorso</div>
         </div>
         <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Sempre disponibile</span>
       </div>
@@ -841,7 +843,7 @@ export default function QuizPage(): JSX.Element {
       className="nd-btn nd-btn-ghost nd-press"
       style={btnStyle("ghost")}
     >
-      Avvia simulazione (25)
+      Avvia Simulazione Concorso
     </button>
   </div>
 )}
@@ -881,6 +883,7 @@ export default function QuizPage(): JSX.Element {
                   )}
                 </div>
               )}
+              </>
             </div>
           </div>
         )}
@@ -888,9 +891,10 @@ export default function QuizPage(): JSX.Element {
         {runQuiz && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad" style={card()}>
+              <>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontWeight: 950 }}>
-                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "sim" ? "Simulazione" : "Ripasso errori"}
+                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "sim" ? "Simulazione Concorso" : "Ripasso errori"}
                 </div>
                 <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>
                   {runQuiz.idx + 1}/{runQuiz.questions.length} • {msToHMS(nowTs - runQuiz.startedAt)}
@@ -1001,6 +1005,7 @@ export default function QuizPage(): JSX.Element {
         {!runQuiz && quizResult && (
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
             <div className="nd-card nd-card-pad" style={card()}>
+              <>
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
               {lastReward && (
                 <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
