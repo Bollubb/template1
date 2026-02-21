@@ -44,7 +44,95 @@ type QuizResult = {
 const LS = {
   premium: "nd_premium",
   favs: "nd_quiz_favs",
+  lastHomeTab: "nd_quiz_home_tab",
+  seen: "nd_quiz_seen_v1",
+  dailyRunsPrefix: "nd_quiz_daily_runs_",
+  dailyUnlocksPrefix: "nd_quiz_daily_unlocks_",
+  weeklyRunsPrefix: "nd_quiz_weekly_runs_",
+  weeklyUnlocksPrefix: "nd_quiz_weekly_unlocks_",
 };
+
+type HomeTab = "daily" | "weekly" | "sim" | "review";
+
+function dayKey(ts = Date.now()) {
+  const d = new Date(ts);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+function isoWeekKey(ts = Date.now()) {
+  // ISO week (YYYY-Www)
+  const d = new Date(ts);
+  const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = tmp.getUTCDay() || 7;
+  tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((tmp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  return `${tmp.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+function readInt(key: string, fallback = 0) {
+  try {
+    const v = localStorage.getItem(key);
+    const n = v ? Number(v) : fallback;
+    return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeInt(key: string, v: number) {
+  try {
+    localStorage.setItem(key, String(Math.max(0, Math.floor(v))));
+  } catch {}
+}
+
+type SeenItem = { id: string; ts: number };
+
+function getRecentSeenIds(max = 140): string[] {
+  try {
+    const raw = localStorage.getItem(LS.seen);
+    if (!raw) return [];
+    const v = JSON.parse(raw);
+    if (!Array.isArray(v)) return [];
+    const items = v
+      .filter((x): x is SeenItem => x && typeof x.id === "string" && typeof x.ts === "number")
+      .sort((a, b) => b.ts - a.ts)
+      .slice(0, max);
+    return items.map((x) => x.id);
+  } catch {
+    return [];
+  }
+}
+
+function pushSeen(ids: string[]) {
+  try {
+    const raw = localStorage.getItem(LS.seen);
+    const prev = raw ? JSON.parse(raw) : [];
+    const now = Date.now();
+    const next: SeenItem[] = [
+      ...(Array.isArray(prev) ? prev.filter((x: any) => x && typeof x.id === "string" && typeof x.ts === "number") : []),
+      ...ids.map((id) => ({ id, ts: now })),
+    ];
+    // keep last ~600
+    next.sort((a, b) => b.ts - a.ts);
+    localStorage.setItem(LS.seen, JSON.stringify(next.slice(0, 600)));
+  } catch {}
+}
+
+function pickQuestions(bank: QuizQuestion[], count: number, avoidIds: Set<string>) {
+  const pool = bank.filter((q) => !avoidIds.has(q.id));
+  const src = pool.length >= count ? pool : bank;
+  // Fisher-Yates shuffle copy
+  const arr = [...src];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr.slice(0, count);
+}
 
 function clamp01(x: number) {
   return Math.max(0, Math.min(1, x));
@@ -221,6 +309,9 @@ export default function QuizPage(): JSX.Element {
   const [premium, setPremium] = useState(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
 
+  const [homeTab, setHomeTab] = useState<HomeTab>("daily");
+  const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly"; remaining: number }>(null);
+
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [reveal, setReveal] = useState<null | { isCorrect: boolean; correctIdx: number; chosen: number }>(null);
@@ -239,10 +330,18 @@ export default function QuizPage(): JSX.Element {
     try {
       setPremium(localStorage.getItem(LS.premium) === "1");
       setFavs(getFavs());
+      const savedTab = (localStorage.getItem(LS.lastHomeTab) || "daily") as HomeTab;
+      if (savedTab === "daily" || savedTab === "weekly" || savedTab === "sim" || savedTab === "review") setHomeTab(savedTab);
     } catch {}
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS.lastHomeTab, homeTab);
+    } catch {}
+  }, [homeTab]);
 
   useEffect(() => {
     if (!runQuiz) return;
@@ -287,11 +386,13 @@ export default function QuizPage(): JSX.Element {
     const questions =
       opts?.questions ??
       (() => {
-        if (mode === "daily") return QUIZ_BANK.slice(0, 10);
-        if (mode === "weekly") return QUIZ_BANK.slice(10, 25);
-        if (mode === "sim") return QUIZ_BANK.slice(0, 25);
+        const avoid = new Set(getRecentSeenIds(140));
+        if (mode === "daily") return pickQuestions(QUIZ_BANK, 10, avoid);
+        if (mode === "weekly") return pickQuestions(QUIZ_BANK, 25, avoid);
+        if (mode === "sim") return pickQuestions(QUIZ_BANK, 25, avoid);
         // review
-        return pickMistakeReviewQuestions(QUIZ_BANK, 10);
+        const picked = pickMistakeReviewQuestions(QUIZ_BANK, 10);
+        return picked.length ? picked : pickQuestions(QUIZ_BANK, 10, avoid);
       })();
 
     setQuizResult(null);
@@ -316,16 +417,32 @@ export default function QuizPage(): JSX.Element {
 
     const ms = Date.now() - run.startedAt;
 
-    // mark done for daily/weekly
+    // mark done + rewards ONLY on first run per reset
     if (run.mode === "daily") {
-      const nextStreak = daily.status === "done" ? daily.streak : daily.streak + 1;
-      setDailyState({ ...daily, status: "done", streak: nextStreak });
-      try { localStorage.setItem("nd_quiz_streak", String(nextStreak)); } catch {}
-      addXp(calcDailyReward(run.correct, run.questions.length, run.correct === run.questions.length, nextStreak));
+      if (daily.status !== "done") {
+        const nextStreak = daily.streak + 1;
+        setDailyState({ ...daily, status: "done", streak: nextStreak });
+        try {
+          localStorage.setItem("nd_quiz_streak", String(nextStreak));
+        } catch {}
+        addXp(calcDailyReward(run.correct, run.questions.length, run.correct === run.questions.length, nextStreak));
+      }
+      // increment daily runs
+      const dk = dayKey();
+      const rk = `${LS.dailyRunsPrefix}${dk}`;
+      writeInt(rk, readInt(rk, 0) + 1);
     } else if (run.mode === "weekly") {
-      setWeeklyState({ ...weekly, status: "done" });
-      addXp(calcWeeklyReward(run.correct, run.questions.length, run.correct === run.questions.length));
+      if (weekly.status !== "done") {
+        setWeeklyState({ ...weekly, status: "done" });
+        addXp(calcWeeklyReward(run.correct, run.questions.length, run.correct === run.questions.length));
+      }
+      const wk = isoWeekKey();
+      const rk = `${LS.weeklyRunsPrefix}${wk}`;
+      writeInt(rk, readInt(rk, 0) + 1);
     }
+
+    // store seen ids to reduce repeats
+    pushSeen(run.questions.map((q) => q.id));
 // mistakes log
     wrong.forEach((w) => recordMistake(w.q.id));
 
@@ -363,6 +480,50 @@ export default function QuizPage(): JSX.Element {
       perfect: run.correct === run.questions.length,
       wrong,
     });
+  }
+
+  // --- Ads / unlock scaffolding (no SDK yet) ---
+  async function unlockViaAd(kind: "daily" | "weekly") {
+    // TODO: replace with real rewarded ad flow.
+    // For now we "simulate" success so UI/logic is ready.
+    await new Promise((r) => setTimeout(r, 350));
+    const key = kind === "daily" ? `${LS.dailyUnlocksPrefix}${dayKey()}` : `${LS.weeklyUnlocksPrefix}${isoWeekKey()}`;
+    writeInt(key, readInt(key, 0) + 1);
+    return true;
+  }
+
+  function getRunCaps(kind: "daily" | "weekly") {
+    if (kind === "daily") {
+      const dk = dayKey();
+      const used = readInt(`${LS.dailyRunsPrefix}${dk}`, 0);
+      const unlocks = readInt(`${LS.dailyUnlocksPrefix}${dk}`, 0);
+      const free = 1;
+      const max = 3;
+      const allowed = premium ? max : Math.min(max, free + unlocks);
+      return { used, free, max, unlocks, allowed };
+    }
+    const wk = isoWeekKey();
+    const used = readInt(`${LS.weeklyRunsPrefix}${wk}`, 0);
+    const unlocks = readInt(`${LS.weeklyUnlocksPrefix}${wk}`, 0);
+    const free = 1;
+    const max = 2;
+    const allowed = premium ? max : Math.min(max, free + unlocks);
+    return { used, free, max, unlocks, allowed };
+  }
+
+  async function handleStart(kind: "daily" | "weekly") {
+    const caps = getRunCaps(kind);
+    const remaining = Math.max(0, caps.allowed - caps.used);
+    if (remaining > 0) {
+      start(kind);
+      return;
+    }
+    if (premium) {
+      // premium but reached cap: no start
+      return;
+    }
+    // show unlock modal
+    setUnlockModal({ kind, remaining });
   }
 
   function confirmAnswer() {
@@ -417,150 +578,158 @@ export default function QuizPage(): JSX.Element {
         {!runQuiz && !quizResult && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad" style={card()}>
-              <div>
-                <div className="nd-h1 flex items-center gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
                   <span className="nd-badge nd-badge-sky" style={chipStyle("sky")}>Quiz</span>
-                  <span className="text-white">Daily • Weekly</span>
+                  {streak > 0 && <span className="nd-badge nd-badge-amber" style={chipStyle("amber")}>🔥 {streak}</span>}
                 </div>
-                <div className="nd-subtitle">Routine breve per mantenere il ritmo</div>
+                {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                {streak > 0 ? (
-                  <span className="nd-badge nd-badge-amber" style={chipStyle("amber")}>🔥 Streak {streak}g</span>
-                ) : (
-                  <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Inizia oggi e crea la streak</span>
-                )}
-                <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>+XP su Daily/Weekly</span>
-                <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Reset Daily: {msToHMS(dailyLeft)}</span>
-                <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Reset Weekly: {msToHMS(weeklyLeft)}</span>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("daily")} style={homeTab === "daily" ? chipStyle("sky") : chipStyle("slate")}>Daily</button>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("weekly")} style={homeTab === "weekly" ? chipStyle("sky") : chipStyle("slate")}>Weekly</button>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("sim")} style={homeTab === "sim" ? chipStyle("sky") : chipStyle("slate")}>Sim</button>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("sky") : chipStyle("slate")}>Errori</button>
               </div>
 
-              <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                <div className="nd-tile" style={tileStyle()}>
+              {/* Daily */}
+              {homeTab === "daily" && (() => {
+                const caps = getRunCaps("daily");
+                const remaining = Math.max(0, caps.allowed - caps.used);
+                return (
+                  <div className="mt-3 nd-tile" style={tileStyle()}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-extrabold text-white">Daily</div>
+                        <div className="nd-help">Reset: {msToHMS(dailyLeft)}</div>
+                      </div>
+                      <span className={daily.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(daily.status === "done" ? "green" : "slate")}>
+                        {daily.status === "done" ? "XP preso" : "XP attivo"}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
+                      <span>Disponibili</span>
+                      <span>{Math.min(caps.max, remaining)}/{caps.max}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleStart("daily")}
+                      disabled={premium ? caps.used >= caps.max : remaining <= 0}
+                      className="mt-3 nd-btn nd-btn-emerald nd-press disabled:opacity-60 disabled:cursor-not-allowed"
+                      style={btnStyle("emerald", premium ? caps.used >= caps.max : remaining <= 0)}
+                    >
+                      {premium ? (caps.used >= caps.max ? "Limite giornaliero" : "Avvia Daily") : (remaining > 0 ? "Avvia Daily" : "Sblocca")}
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* Weekly */}
+              {homeTab === "weekly" && (() => {
+                const caps = getRunCaps("weekly");
+                const remaining = Math.max(0, caps.allowed - caps.used);
+                return (
+                  <div className="mt-3 nd-tile" style={tileStyle()}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-extrabold text-white">Weekly</div>
+                        <div className="nd-help">Reset: {msToHMS(weeklyLeft)}</div>
+                      </div>
+                      <span className={weekly.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(weekly.status === "done" ? "green" : "slate")}>
+                        {weekly.status === "done" ? "XP preso" : "XP attivo"}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
+                      <span>Disponibili</span>
+                      <span>{Math.min(caps.max, remaining)}/{caps.max}</span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void handleStart("weekly")}
+                      disabled={premium ? caps.used >= caps.max : remaining <= 0}
+                      className="mt-3 nd-btn nd-btn-indigo nd-press disabled:opacity-60 disabled:cursor-not-allowed"
+                      style={btnStyle("indigo", premium ? caps.used >= caps.max : remaining <= 0)}
+                    >
+                      {premium ? (caps.used >= caps.max ? "Limite settimanale" : "Avvia Weekly") : (remaining > 0 ? "Avvia Weekly" : "Sblocca")}
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* Sim */}
+              {homeTab === "sim" && (
+                <div className="mt-3 nd-tile" style={tileStyle()}>
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <div className="text-sm font-extrabold text-white">Daily</div>
-                      <div className="nd-help">Sessione rapida</div>
+                      <div className="text-sm font-extrabold text-white">Simulazione</div>
+                      <div className="nd-help">25 domande</div>
                     </div>
-                    <span className={daily.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(daily.status === "done" ? "green" : "slate")}>
-                      {daily.status === "done" ? "Completato" : "Disponibile"}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
-                    <span>Progress</span>
-                    <span>{Math.round(dailyProgress * 100)}%</span>
-                  </div>
-                  <div className="mt-1.5 nd-progress">
-                    <div className="nd-progress-fill nd-progress-fill-emerald" style={progressFillStyle(dailyProgress, "emerald")} />
+                    {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => start("daily")}
-                    disabled={daily.status === "done"}
-                    className="mt-3 nd-btn nd-btn-emerald nd-press disabled:opacity-60 disabled:cursor-not-allowed" style={btnStyle("emerald", daily.status === "done")}
+                    onClick={() => {
+                      if (!premium) {
+                        setPremiumModalOpen(true);
+                        return;
+                      }
+                      start("sim");
+                    }}
+                    className="mt-3 nd-btn nd-btn-sky nd-press"
+                    style={btnStyle("sky")}
                   >
-                    {daily.status === "done" ? "Daily completato ✅" : "Avvia Daily"}
+                    Avvia (25)
                   </button>
-                </div>
 
-                <div className="nd-tile" style={tileStyle()}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-extrabold text-white">Weekly</div>
-                      <div className="nd-help">Più lunga, più reward</div>
+                  {!premium && (
+                    <div className="mt-2 nd-help">
+                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
+                        Sblocca Premium
+                      </button>
                     </div>
-                    <span className={weekly.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(weekly.status === "done" ? "green" : "slate")}>
-                      {weekly.status === "done" ? "Completato" : "Disponibile"}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
-                    <span>Progress</span>
-                    <span>{Math.round(weeklyProgress * 100)}%</span>
-                  </div>
-                  <div className="mt-1.5 nd-progress">
-                    <div className="nd-progress-fill nd-progress-fill-indigo" style={progressFillStyle(weeklyProgress, "indigo")} />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => start("weekly")}
-                    disabled={weekly.status === "done"}
-                    className="mt-3 nd-btn nd-btn-indigo nd-press disabled:opacity-60 disabled:cursor-not-allowed" style={btnStyle("indigo", weekly.status === "done")}
-                  >
-                    {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="nd-card nd-card-pad" style={card()}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="nd-badge nd-badge-sky" style={chipStyle("sky")}>Simulazione</span>
-                    <div className="text-sm font-extrabold text-white">Esame</div>
-                  </div>
-                  <div className="nd-subtitle">25 domande • risultato finale</div>
-                </div>
-                {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (!premium) {
-                    setPremiumModalOpen(true);
-                    return;
-                  }
-                  start("sim");
-                }}
-                className="mt-3 nd-btn nd-btn-sky nd-press" style={btnStyle("sky")}
-              >
-                Avvia simulazione (25)
-              </button>
-
-              {!premium && (
-                <div className="mt-2 nd-help">
-                  Sblocca simulazione + ripasso errori.
-                  <button type="button" onClick={() => setPremiumModalOpen(true)} className="ml-2 nd-btn-chip nd-press" style={miniChipBtn()}>Vedi Premium</button>
+                  )}
                 </div>
               )}
-            </div>
 
-            <div className="nd-card nd-card-pad" style={card()}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="nd-badge nd-badge-amber" style={chipStyle("amber")}>Ripasso</span>
-                    <div className="text-sm font-extrabold text-white">Errori</div>
+              {/* Review */}
+              {homeTab === "review" && (
+                <div className="mt-3 nd-tile" style={tileStyle()}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-extrabold text-white">Ripasso errori</div>
+                      <div className="nd-help">10 domande</div>
+                    </div>
+                    {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
                   </div>
-                  <div className="nd-subtitle">10 domande dalle risposte sbagliate</div>
-                </div>
-                {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
-              </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  if (!premium) {
-                    setPremiumModalOpen(true);
-                    return;
-                  }
-                  start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
-                }}
-                className="mt-3 nd-btn nd-btn-ghost nd-press" style={btnStyle("ghost")}
-              >
-                Avvia ripasso (10)
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!premium) {
+                        setPremiumModalOpen(true);
+                        return;
+                      }
+                      start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
+                    }}
+                    className="mt-3 nd-btn nd-btn-ghost nd-press"
+                    style={btnStyle("ghost")}
+                  >
+                    Avvia (10)
+                  </button>
 
-              {!premium && (
-                <div className="mt-2 nd-help">
-                  Perfetto per convertire gli errori in punti forti.
-                  <button type="button" onClick={() => setPremiumModalOpen(true)} className="ml-2 nd-btn-chip nd-press" style={miniChipBtn()}>Vedi Premium</button>
+                  {!premium && (
+                    <div className="mt-2 nd-help">
+                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
+                        Sblocca Premium
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -742,6 +911,78 @@ export default function QuizPage(): JSX.Element {
         )}
         </div>
       </Section>
+
+      {/* Unlock modal (rewarded ad / premium) */}
+      {unlockModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            padding: 12,
+            zIndex: 50,
+          }}
+          onClick={() => setUnlockModal(null)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 560,
+              ...card(),
+              padding: 14,
+              borderRadius: 18,
+              marginBottom: 64,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ fontWeight: 950, fontSize: 15 }}>Sblocca {unlockModal.kind === "daily" ? "Daily" : "Weekly"}</div>
+              <button type="button" onClick={() => setUnlockModal(null)} style={miniChipBtn()}>
+                ✕
+              </button>
+            </div>
+            <div className="nd-help" style={{ marginTop: 8 }}>
+              Gratis: 1 {unlockModal.kind === "daily" ? "al giorno" : "a settimana"}. Extra con pubblicità o Premium.
+            </div>
+
+            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+              <button
+                type="button"
+                onClick={async () => {
+                  const ok = await unlockViaAd(unlockModal.kind);
+                  if (ok) {
+                    setUnlockModal(null);
+                    // start immediately after unlock
+                    await new Promise((r) => setTimeout(r, 50));
+                    start(unlockModal.kind);
+                  }
+                }}
+                className="nd-btn nd-btn-sky nd-press"
+                style={btnStyle("sky")}
+              >
+                Guarda pubblicità
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setUnlockModal(null);
+                  setPremiumModalOpen(true);
+                }}
+                className="nd-btn nd-btn-ghost nd-press"
+                style={btnStyle("ghost")}
+              >
+                Passa a Premium
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <NurseBottomNav active="didattica" onChange={(t) => { void goTab(t); }} />
 
