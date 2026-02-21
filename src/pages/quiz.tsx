@@ -651,7 +651,7 @@ export default function QuizPage(): JSX.Element {
             <div className="nd-card nd-card-pad" style={card()}>
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
               {!premium && (
-                <div style={{ marginTop: 10 }} className="nd-card nd-card-pad" style={card()}>
+                <div className="nd-card nd-card-pad" style={{ ...card(), marginTop: 10 }}>
                   <div className="flex items-center justify-between gap-2">
                     <div style={{ fontWeight: 950 }}>Sblocca Premium</div>
                     <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>
