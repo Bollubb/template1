@@ -189,7 +189,8 @@ function pickQuestionsUniqueByStem(bank: QuizQuestion[], count: number, avoidIds
   const out: QuizQuestion[] = [];
   const seen = new Set<string>();
   for (const q of arr) {
-    const stem = normStem(q.question);
+    // Our QuizQuestion uses `q` as the stem, but keep a safe fallback for legacy shapes.
+    const stem = normStem(((q as any).q ?? (q as any).question ?? "") as string);
     if (seen.has(stem)) continue;
     seen.add(stem);
     out.push(q);
