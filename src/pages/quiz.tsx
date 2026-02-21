@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 
 import Page from "../layouts/Page";
@@ -7,6 +7,7 @@ import NurseBottomNav from "../components/nursediary/NurseBottomNav";
 import PremiumUpsellModal from "@/components/nursediary/PremiumUpsellModal";
 
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
+import { QUIZ_BANK_CONCORSO } from "@/features/cards/quiz/quizBankConcorso";
 import {
   calcDailyReward,
   calcWeeklyReward,
@@ -23,13 +24,18 @@ import { addXp } from "@/features/progress/xp";
 import { recordMistake, pickMistakeReviewQuestions } from "@/features/cards/quiz/quizMistakes";
 
 type QuizRun = {
-  mode: "daily" | "weekly" | "sim" | "review";
+  mode: "daily" | "weekly" | "sim" | "concorso" | "review";
   idx: number;
   correct: number;
   questions: QuizQuestion[];
   answers: number[]; // chosen option index, -1 if none
   startedAt: number;
+  // concorsi
+  timeLimitMs?: number;
+  presetId?: "asl" | "regione" | "mega" | "mese";
+  scoring?: { correct: number; wrong: number; omit: number };
 };
+
 
 type QuizResult = {
   mode: QuizRun["mode"];
@@ -40,7 +46,14 @@ type QuizResult = {
   byCategory: Record<string, { correct: number; total: number }>;
   perfect: boolean;
   wrong: { q: QuizQuestion; chosen: number }[];
+  // concorsi
+  wrongCount?: number;
+  omittedCount?: number;
+  score?: number;
+  scoring?: { correct: number; wrong: number; omit: number };
+  presetLabel?: string;
 };
+
 
 const LS = {
   premium: "nd_premium",
@@ -51,9 +64,11 @@ const LS = {
   dailyUnlocksPrefix: "nd_quiz_daily_unlocks_",
   weeklyRunsPrefix: "nd_quiz_weekly_runs_",
   weeklyUnlocksPrefix: "nd_quiz_weekly_unlocks_",
+  concorsoRunsPrefix: "nd_quiz_concorso_runs_",
+  concorsoUnlocksPrefix: "nd_quiz_concorso_unlocks_",
 };
 
-type HomeTab = "daily" | "weekly" | "sim" | "review";
+type HomeTab = "daily" | "weekly" | "concorso" | "review";
 
 function dayKey(ts = Date.now()) {
   const d = new Date(ts);
@@ -147,6 +162,51 @@ function msToHMS(ms: number) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return hh > 0 ? `${hh}:${pad(mm)}:${pad(ss)}` : `${mm}:${pad(ss)}`;
 }
+const CONCORSO_PRESETS = [
+  { id: "asl" as const, label: "Concorso ASL/AO", n: 40, min: 35, pass: 24 },
+  { id: "regione" as const, label: "Concorso Regione", n: 50, min: 45, pass: 30 },
+  { id: "mega" as const, label: "Mega concorso", n: 60, min: 55, pass: 36 },
+  { id: "mese" as const, label: "Concorso del mese", n: 50, min: 45, pass: 30 },
+];
+
+function normStem(s: string) {
+  return s
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[“”"'’]/g, "")
+    .replace(/[^a-z0-9àèéìòù\s\-\?]/gi, "")
+    .trim();
+}
+
+function pickQuestionsUniqueByStem(bank: QuizQuestion[], count: number, avoidIds: Set<string>) {
+  const pool = bank.filter((q) => !avoidIds.has(q.id));
+  const src = pool.length >= count ? pool : bank;
+  const arr = [...src];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  const out: QuizQuestion[] = [];
+  const seen = new Set<string>();
+  for (const q of arr) {
+    const stem = normStem(q.question);
+    if (seen.has(stem)) continue;
+    seen.add(stem);
+    out.push(q);
+    if (out.length >= count) break;
+  }
+  // fallback (should be rare)
+  if (out.length < count) {
+    for (const q of arr) {
+      if (out.length >= count) break;
+      if (out.some((x) => x.id === q.id)) continue;
+      out.push(q);
+    }
+  }
+  return out.slice(0, count);
+}
+
+
 
 function card(): React.CSSProperties {
   return {
@@ -394,10 +454,10 @@ export default function QuizPage(): JSX.Element {
   const [weeklyLeft, setWeeklyLeft] = useState(0);
   const [premium, setPremium] = useState(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
-  const [premiumContextUnlock, setPremiumContextUnlock] = useState<null | "daily" | "weekly">(null);
+  const [premiumContextUnlock, setPremiumContextUnlock] = useState<null | "daily" | "weekly" | "concorso">(null);
 
   const [homeTab, setHomeTab] = useState<HomeTab>("daily");
-  const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly"; remaining: number }>(null);
+  const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly" | "concorso"; remaining: number }>(null);
 
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
@@ -405,6 +465,9 @@ export default function QuizPage(): JSX.Element {
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [lastReward, setLastReward] = useState<{ xp: number; pills: number } | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
+
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const timerDoneRef = useRef(false);
 
   const [favs, setFavs] = useState<string[]>([]);
 
@@ -423,7 +486,31 @@ export default function QuizPage(): JSX.Element {
     } catch {}
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [])
+// AUTO_FINISH_CONCORSO: timer + auto finish when time is up (only Concorsi)
+useEffect(() => {
+  timerDoneRef.current = false;
+  if (!runQuiz || runQuiz.mode !== "concorso" || !runQuiz.timeLimitMs) {
+    setRemainingMs(null);
+    return;
+  }
+  const tick = () => {
+    const left = Math.max(0, runQuiz.timeLimitMs! - (Date.now() - runQuiz.startedAt));
+    setRemainingMs(left);
+    if (left === 0 && !timerDoneRef.current) {
+      timerDoneRef.current = true;
+      const r = runQuiz;
+      setRunQuiz(null);
+      setReveal(null);
+      setSelected(null);
+      finish(r);
+    }
+  };
+  tick();
+  const id = window.setInterval(tick, 250);
+  return () => window.clearInterval(id);
+}, [runQuiz?.mode, runQuiz?.startedAt, runQuiz?.timeLimitMs]);
+;
 
   useEffect(() => {
     try {
@@ -470,7 +557,7 @@ export default function QuizPage(): JSX.Element {
     persistFavs(next);
   }
 
-  function start(mode: QuizRun["mode"], opts?: { questions?: QuizQuestion[] }) {
+  function start(mode: QuizRun["mode"], opts?: { questions?: QuizQuestion[]; timeLimitMs?: number; presetId?: QuizRun["presetId"] }) {
     const questions =
       opts?.questions ??
       (() => {
@@ -478,23 +565,32 @@ export default function QuizPage(): JSX.Element {
         if (mode === "daily") return pickQuestions(QUIZ_BANK, 10, avoid);
         if (mode === "weekly") return pickQuestions(QUIZ_BANK, 25, avoid);
         if (mode === "sim") return pickQuestions(QUIZ_BANK, 25, avoid);
-        // review
+        if (mode === "concorso") {
+          const preset = CONCORSO_PRESETS.find((p) => p.id === (opts?.presetId ?? "asl")) ?? CONCORSO_PRESETS[0];
+          return pickQuestionsUniqueByStem(QUIZ_BANK_CONCORSO, preset.n, avoid);
+        }
         const picked = pickMistakeReviewQuestions(QUIZ_BANK, 10);
         return picked.length ? picked : pickQuestions(QUIZ_BANK, 10, avoid);
       })();
+
 
     setQuizResult(null);
     setLastReward(null);
     setSelected(null);
     setReveal(null);
-    setRunQuiz({
-      mode,
-      idx: 0,
-      correct: 0,
-      questions,
-      answers: Array.from({ length: questions.length }, () => -1),
-      startedAt: Date.now(),
-    });
+const scoring = mode === "concorso" ? { correct: 1, wrong: -0.25, omit: 0 } : undefined;
+setRunQuiz({
+  mode,
+  idx: 0,
+  correct: 0,
+  questions,
+  answers: Array.from({ length: questions.length }, () => -1),
+  startedAt: Date.now(),
+  timeLimitMs: opts?.timeLimitMs,
+  presetId: opts?.presetId,
+  scoring,
+});
+
   }
 
   function finish(run: QuizRun) {
@@ -505,6 +601,11 @@ export default function QuizPage(): JSX.Element {
     });
 
     const ms = Date.now() - run.startedAt;
+
+    const correctCount = run.questions.reduce((acc, q, i) => acc + (run.answers[i] === q.answer ? 1 : 0), 0);
+    const omittedCount = run.answers.reduce((acc, a) => acc + (a === -1 ? 1 : 0), 0);
+    const wrongCount = Math.max(0, run.questions.length - correctCount - omittedCount);
+    const score = run.mode === "concorso" ? Number((correctCount * (run.scoring?.correct ?? 1) + wrongCount * (run.scoring?.wrong ?? -0.25) + omittedCount * (run.scoring?.omit ?? 0)).toFixed(2)) : undefined;
 
     // mark done + rewards ONLY on first run per reset
     if (run.mode === "daily") {
@@ -523,7 +624,7 @@ export default function QuizPage(): JSX.Element {
         } catch {}
       }
 
-      const baseXp = calcDailyReward(run.correct, run.questions.length, run.correct === run.questions.length, streakForReward);
+      const baseXp = calcDailyReward(correctCount, run.questions.length, correctCount === run.questions.length, streakForReward);
       const mult = usedBefore === 0 ? 1 : 0.6; // extra daily runs still reward, but a bit less
       const xpEarn = Math.max(5, Math.round(baseXp * mult));
             // Derive pills from XP locally to avoid relying on a missing helper in some builds.
@@ -542,7 +643,7 @@ export default function QuizPage(): JSX.Element {
 
       if (weekly.status !== "done") setWeeklyState({ ...weekly, status: "done" });
 
-      const baseXp = calcWeeklyReward(run.correct, run.questions.length, run.correct === run.questions.length);
+      const baseXp = calcWeeklyReward(correctCount, run.questions.length, correctCount === run.questions.length);
       const mult = usedBefore === 0 ? 1 : 0.7; // extra weekly run rewards, slightly reduced
       const xpEarn = Math.max(10, Math.round(baseXp * mult));
       const pillsEarn = Math.max(1, Math.floor(xpEarn / 18));
@@ -552,13 +653,29 @@ export default function QuizPage(): JSX.Element {
       setLastReward({ xp: xpEarn, pills: pillsEarn });
 
       writeInt(rk, usedBefore + 1);
+    } else if (run.mode === "concorso") {
+      const wk = isoWeekKey();
+      const rk = `${LS.concorsoRunsPrefix}${wk}`;
+      const usedBefore = readInt(rk, 0);
+
+      const perfect = correctCount === run.questions.length;
+      const baseXp = 45 + correctCount * 4 + (perfect ? 20 : 0);
+      const mult = usedBefore === 0 ? 1 : 0.75;
+      const xpEarn = Math.max(15, Math.round(baseXp * mult));
+      const pillsEarn = Math.max(1, Math.floor(xpEarn / 18));
+
+      addXp(xpEarn);
+      addPills(pillsEarn);
+      setLastReward({ xp: xpEarn, pills: pillsEarn });
+
+      writeInt(rk, usedBefore + 1);
     } else {
       // sim / review
-      const perfect = run.correct === run.questions.length;
+      const perfect = correctCount === run.questions.length;
       const baseXp =
         run.mode === "sim"
-          ? 35 + run.correct * 4 + (perfect ? 20 : 0)
-          : 22 + run.correct * 3 + (perfect ? 12 : 0);
+          ? 35 + correctCount * 4 + (perfect ? 20 : 0)
+          : 22 + correctCount * 3 + (perfect ? 12 : 0);
 
       const xpEarn = Math.max(5, Math.round(baseXp));
       const pillsEarn = Math.max(1, Math.floor(xpEarn / 18));
@@ -604,32 +721,39 @@ export default function QuizPage(): JSX.Element {
       total: run.questions.length,
       ms,
       byCategory,
-      perfect: run.correct === run.questions.length,
+      perfect: correctCount === run.questions.length,
       wrong,
     });
   }
 
   // --- Ads / unlock scaffolding (no SDK yet) ---
-  async function unlockViaAd(kind: "daily" | "weekly") {
+  async function unlockViaAd(kind: "daily" | "weekly" | "concorso") {
     // TODO: replace with real rewarded ad flow.
     // For now we "simulate" success so UI/logic is ready.
     await new Promise((r) => setTimeout(r, 350));
-    const key = kind === "daily" ? `${LS.dailyUnlocksPrefix}${dayKey()}` : `${LS.weeklyUnlocksPrefix}${isoWeekKey()}`;
+    const key = kind === "daily"
+      ? `${LS.dailyUnlocksPrefix}${dayKey()}`
+      : kind === "weekly"
+      ? `${LS.weeklyUnlocksPrefix}${isoWeekKey()}`
+      : `${LS.concorsoUnlocksPrefix}${isoWeekKey()}`;
     writeInt(key, readInt(key, 0) + 1);
     return true;
   }
 
-  function getRunCaps(kind: "daily" | "weekly") {
-    if (kind === "daily") {
-      const dk = dayKey();
-      const used = readInt(`${LS.dailyRunsPrefix}${dk}`, 0);
-      const unlocks = readInt(`${LS.dailyUnlocksPrefix}${dk}`, 0);
-      const free = 1;
-      const max = 3;
-      const allowed = premium ? max : Math.min(max, free + unlocks);
-      return { used, free, max, unlocks, allowed };
-    }
-    const wk = isoWeekKey();
+  function getRunCaps(kind: "daily" | "weekly" | "concorso") {
+  if (kind === "daily") {
+    const dk = dayKey();
+    const used = readInt(`${LS.dailyRunsPrefix}${dk}`, 0);
+    const unlocks = readInt(`${LS.dailyUnlocksPrefix}${dk}`, 0);
+    const free = 1;
+    const max = 3;
+    const allowed = premium ? max : Math.min(max, free + unlocks);
+    return { used, free, max, unlocks, allowed };
+  }
+
+  const wk = isoWeekKey();
+
+  if (kind === "weekly") {
     const used = readInt(`${LS.weeklyRunsPrefix}${wk}`, 0);
     const unlocks = readInt(`${LS.weeklyUnlocksPrefix}${wk}`, 0);
     const free = 1;
@@ -638,7 +762,16 @@ export default function QuizPage(): JSX.Element {
     return { used, free, max, unlocks, allowed };
   }
 
-  async function handleStart(kind: "daily" | "weekly") {
+  // concorso
+  const used = readInt(`${LS.concorsoRunsPrefix}${wk}`, 0);
+  const unlocks = readInt(`${LS.concorsoUnlocksPrefix}${wk}`, 0);
+  const free = 1;
+  const max = 4; // 1 free + up to 3 extra (ads/premium)
+  const allowed = premium ? max : Math.min(max, free + unlocks);
+  return { used, free, max, unlocks, allowed };
+}
+
+async function handleStart(kind: "daily" | "weekly") {
     const caps = getRunCaps(kind);
     const remaining = Math.max(0, caps.allowed - caps.used);
     if (remaining > 0) {
@@ -692,7 +825,7 @@ export default function QuizPage(): JSX.Element {
   const headerOverride = useMemo(
     () => ({
       title: "Quiz",
-      subtitle: "Daily • Weekly • Simulazione",
+      subtitle: "Daily • Weekly • Concorsi",
       showBack: true,
       onBack: () => router.back(),
     }),
@@ -718,7 +851,7 @@ export default function QuizPage(): JSX.Element {
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("daily")} style={homeTab === "daily" ? chipStyle("sky") : chipStyle("slate")}>Daily</button>
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("weekly")} style={homeTab === "weekly" ? chipStyle("sky") : chipStyle("slate")}>Weekly</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("sim")} style={homeTab === "sim" ? chipStyle("sky") : chipStyle("slate")}>Sim</button>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("concorso")} style={homeTab === "concorso" ? chipStyle("sky") : chipStyle("slate")}>Concorsi</button>
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("sky") : chipStyle("slate")}>Errori</button>
               </div>
 
@@ -823,31 +956,63 @@ export default function QuizPage(): JSX.Element {
   );
 })()}
 
-{/* Sim */}
-{homeTab === "sim" && (
-  <div className="mt-3 grid gap-2">
-    <div className="nd-tile" style={tileStyle()}>
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-extrabold text-white">Simulazione</div>
-          <div className="nd-help">25 domande • risultato finale</div>
+{/* Simulazione Concorsi */}
+{homeTab === "concorso" && (() => {
+  const caps = getRunCaps("concorso");
+  const remaining = Math.max(0, caps.allowed - caps.used);
+  return (
+    <div className="mt-3 grid gap-2">
+      <div className="nd-tile" style={tileStyle()}>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-extrabold text-white">Simulazione Concorsi</div>
+            <div className="nd-help">Timer • scoring con penalità • banca dedicata</div>
+          </div>
+          <span
+            className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
+            style={pillStyle(remaining > 0 ? "slate" : "green")}
+          >
+            {`Rimanenti ${remaining}/${caps.max}`}
+          </span>
         </div>
-        <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Sempre disponibile</span>
+        <div className="mt-2 nd-help">1 gratuita a settimana • extra con pubblicità o Premium</div>
       </div>
-    </div>
 
-    <button
-      type="button"
-      onClick={() => start("sim")}
-      className="nd-btn nd-btn-ghost nd-press"
-      style={btnStyle("ghost")}
-    >
-      Avvia simulazione (25)
-    </button>
-  </div>
-)}
+      <div className="grid gap-2">
+        {CONCORSO_PRESETS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => handleStartConcorso(p.id)}
+            className="nd-btn nd-btn-ghost nd-press"
+            style={btnStyle("ghost")}
+          >
+            {p.label} • {p.n} domande • {p.min} min
+          </button>
+        ))}
+      </div>
+
+      {!premium && remaining === 0 && (
+        <div className="nd-help">
+          <button
+            type="button"
+            onClick={() => {
+              setPremiumContextUnlock("concorso");
+              setPremiumModalOpen(true);
+            }}
+            className="nd-btn-chip nd-press"
+            style={miniChipBtn()}
+          >
+            Sblocca con pubblicità / Premium
+          </button>
+        </div>
+      )}
+    </div>
+  );
+})()}
 
 {/* Review */}
+
               {homeTab === "review" && (
                 <div className="mt-3 nd-tile" style={tileStyle()}>
                   <div className="flex items-center justify-between gap-2">
@@ -891,10 +1056,10 @@ export default function QuizPage(): JSX.Element {
             <div className="nd-card nd-card-pad" style={card()}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontWeight: 950 }}>
-                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "sim" ? "Simulazione" : "Ripasso errori"}
+                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "concorso" ? "Simulazione Concorsi" : runQuiz.mode === "sim" ? "Simulazione" : "Ripasso errori"}
                 </div>
                 <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>
-                  {runQuiz.idx + 1}/{runQuiz.questions.length} • {msToHMS(nowTs - runQuiz.startedAt)}
+                  {runQuiz.idx + 1}/{runQuiz.questions.length} • {runQuiz.mode === "concorso" && runQuiz.timeLimitMs ? msToHMS(remainingMs ?? (runQuiz.timeLimitMs - (nowTs - runQuiz.startedAt))) : msToHMS(nowTs - runQuiz.startedAt)}
                 </div>
               </div>
 
@@ -908,6 +1073,18 @@ export default function QuizPage(): JSX.Element {
                   </div>
                 )}
               </div>
+{runQuiz.mode === "concorso" && (
+  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 900, fontSize: 12, opacity: 0.92 }}>
+    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Scoring: +1 / −0.25 / 0</span>
+    <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>
+      Punteggio: {(() => {
+        const wrongNow = runQuiz.answers.filter((a, i) => a !== -1 && a !== runQuiz.questions[i].answer).length;
+        const correctNow = runQuiz.answers.filter((a, i) => a !== -1 && a === runQuiz.questions[i].answer).length;
+        return (correctNow * 1 + wrongNow * -0.25).toFixed(2);
+      })()}
+    </span>
+  </div>
+)}
 
               <div style={{ marginTop: 10, fontWeight: 900, fontSize: 15 }}>{runQuiz.questions[runQuiz.idx].q}</div>
 
@@ -994,6 +1171,18 @@ export default function QuizPage(): JSX.Element {
                   </button>
                 )}
               </div>
+{runQuiz.mode === "concorso" && (
+  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 900, fontSize: 12, opacity: 0.92 }}>
+    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Scoring: +1 / −0.25 / 0</span>
+    <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>
+      Punteggio: {(() => {
+        const wrongNow = runQuiz.answers.filter((a, i) => a !== -1 && a !== runQuiz.questions[i].answer).length;
+        const correctNow = runQuiz.answers.filter((a, i) => a !== -1 && a === runQuiz.questions[i].answer).length;
+        return (correctNow * 1 + wrongNow * -0.25).toFixed(2);
+      })()}
+    </span>
+  </div>
+)}
 
             </div>
           </div>
@@ -1015,7 +1204,7 @@ export default function QuizPage(): JSX.Element {
                     <div style={{ fontWeight: 950 }}>Sblocca Premium</div>
                     <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>
                   </div>
-                  <div className="mt-2 nd-help">Simulazione (25) + Ripasso errori + XP bonus.</div>
+                  <div className="mt-2 nd-help">Simulazione Concorsi + Ripasso errori + XP bonus.</div>
                   <div className="mt-3" style={{ display: "flex", gap: 10 }}>
                     <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-primary nd-press">
                       Scopri Premium
@@ -1026,6 +1215,22 @@ export default function QuizPage(): JSX.Element {
 
               <div style={{ marginTop: 6, opacity: 0.8, fontWeight: 850, fontSize: 13 }}>
                 {quizResult.correct}/{quizResult.total} corrette • {msToHMS(quizResult.ms)}
+                {quizResult.mode === "concorso" && (
+                  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>{quizResult.presetLabel ?? "Simulazione Concorsi"}</span>
+                    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Score: {(quizResult.score ?? 0).toFixed(2)}</span>
+                    <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Errori: {quizResult.wrongCount ?? 0}</span>
+                    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Omesse: {quizResult.omittedCount ?? 0}</span>
+                    {typeof quizResult.passMark === "number" && (
+                      <span className={quizResult.correct >= quizResult.passMark ? "nd-pill nd-pill-green" : "nd-pill nd-pill-amber"} style={pillStyle(quizResult.correct >= quizResult.passMark ? "green" : "amber")}>
+                        {quizResult.correct >= quizResult.passMark ? "IDONEO" : "NON IDONEO"} • soglia {quizResult.passMark}
+                      </span>
+                    )}
+                    {quizResult.timeLimitMs && (
+                      <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Timer: {msToHMS(quizResult.timeLimitMs)}</span>
+                    )}
+                  </div>
+                )}
               {Object.keys(quizResult.byCategory || {}).length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   <div className="nd-subtitle">Categorie da ripassare</div>
@@ -1059,6 +1264,7 @@ export default function QuizPage(): JSX.Element {
                   onClick={() => {
                     if (quizResult.mode === "daily") start("daily");
                     else if (quizResult.mode === "weekly") start("weekly");
+                    else if (quizResult.mode === "concorso") start("concorso", { presetId: "asl", timeLimitMs: (CONCORSO_PRESETS[0].min * 60 * 1000) });
                     else if (quizResult.mode === "sim") start("sim");
                     else start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
                   }}
@@ -1131,7 +1337,7 @@ export default function QuizPage(): JSX.Element {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-              <div style={{ fontWeight: 950, fontSize: 15 }}>Sblocca {unlockModal.kind === "daily" ? "Daily" : "Weekly"}</div>
+              <div style={{ fontWeight: 950, fontSize: 15 }}>Sblocca {unlockModal.kind === "daily" ? "Daily" : unlockModal.kind === "weekly" ? "Weekly" : "Concorsi"}</div>
               <button type="button" onClick={() => setUnlockModal(null)} style={miniChipBtn()}>
                 ✕
               </button>
@@ -1149,7 +1355,8 @@ export default function QuizPage(): JSX.Element {
                     setUnlockModal(null);
                     // start immediately after unlock
                     await new Promise((r) => setTimeout(r, 50));
-                    start(unlockModal.kind);
+                    if (unlockModal.kind === "concorso") start("concorso", { presetId: "asl", timeLimitMs: CONCORSO_PRESETS[0].min * 60 * 1000 });
+                    else start(unlockModal.kind);
                   }
                 }}
                 className="nd-btn nd-btn-sky nd-press"
@@ -1187,7 +1394,10 @@ export default function QuizPage(): JSX.Element {
                 setPremiumContextUnlock(null);
                 setPremiumModalOpen(false);
                 const ok = await unlockViaAd(k);
-                if (ok) start(k);
+                if (ok) {
+                  if (k === "concorso") start("concorso", { presetId: "asl", timeLimitMs: CONCORSO_PRESETS[0].min * 60 * 1000 });
+                  else start(k);
+                }
               }
             : undefined
         }
