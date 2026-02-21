@@ -525,7 +525,9 @@ export default function QuizPage(): JSX.Element {
       const baseXp = calcDailyReward(run.correct, run.questions.length, run.correct === run.questions.length, streakForReward);
       const mult = usedBefore === 0 ? 1 : 0.6; // extra daily runs still reward, but a bit less
       const xpEarn = Math.max(5, Math.round(baseXp * mult));
-      const pillsEarn = calcPillsFromXp(xpEarn);
+            // Derive pills from XP locally to avoid relying on a missing helper in some builds.
+      // ~1 pill every 18 XP, minimum 1 when xp>0
+      const pillsEarn = Math.max(1, Math.floor(xpEarn / 18));
 
       addXp(xpEarn);
       addPills(pillsEarn);
@@ -542,7 +544,7 @@ export default function QuizPage(): JSX.Element {
       const baseXp = calcWeeklyReward(run.correct, run.questions.length, run.correct === run.questions.length);
       const mult = usedBefore === 0 ? 1 : 0.7; // extra weekly run rewards, slightly reduced
       const xpEarn = Math.max(10, Math.round(baseXp * mult));
-      const pillsEarn = calcPillsFromXp(xpEarn);
+      const pillsEarn = Math.max(1, Math.floor(xpEarn / 18));
 
       addXp(xpEarn);
       addPills(pillsEarn);
@@ -558,7 +560,7 @@ export default function QuizPage(): JSX.Element {
           : 22 + run.correct * 3 + (perfect ? 12 : 0);
 
       const xpEarn = Math.max(5, Math.round(baseXp));
-      const pillsEarn = calcPillsFromXp(xpEarn);
+      const pillsEarn = Math.max(1, Math.floor(xpEarn / 18));
 
       addXp(xpEarn);
       addPills(pillsEarn);
@@ -719,128 +721,89 @@ export default function QuizPage(): JSX.Element {
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("sky") : chipStyle("slate")}>Errori</button>
               </div>
 
-{/* Home tabs */}
-{homeTab === "daily" && (
-  <div className="mt-3 grid gap-3">
-    {(() => {
-      const caps = getRunCaps("daily");
-      const remaining = Math.max(0, caps.allowed - caps.used);
-      return (
-        <div className="nd-tile" style={tileStyle()}>
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <div className="text-sm font-extrabold text-white">Daily</div>
-              <div className="nd-help">Reset: {msToHMS(dailyLeft)}</div>
+              {/* Daily */}
+              {homeTab === "daily" && (() => {
+                const caps = getRunCaps("daily");
+                const remaining = Math.max(0, caps.allowed - caps.used);
+                return (
+                  <div className="mt-3 nd-tile" style={tileStyle()}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-sm font-extrabold text-white">Daily</div>
+                        <div className="nd-help">Reset: {msToHMS(dailyLeft)}</div>
+                      </div>
+                      <span className={remaining === 0 ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(remaining === 0 ? "green" : "slate")}>
+                        {`Rimanenti ${Math.max(0, remaining)}/${caps.max}`}
+                      </span>
+                    </div>
+
+                    {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!premium) {
+                        setPremiumModalOpen(true);
+                        return;
+                      }
+                      start("sim");
+                    }}
+                    className="mt-3 nd-btn nd-btn-sky nd-press"
+                    style={btnStyle("sky")}
+                  >
+                    Avvia (25)
+                  </button>
+
+                  {!premium && (
+                    <div className="mt-2 nd-help">
+                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
+                        Sblocca Premium
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Review */}
+              {homeTab === "review" && (
+                <div className="mt-3 nd-tile" style={tileStyle()}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-extrabold text-white">Ripasso errori</div>
+                      <div className="nd-help">10 domande</div>
+                    </div>
+                    {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!premium) {
+                        setPremiumModalOpen(true);
+                        return;
+                      }
+                      start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
+                    }}
+                    className="mt-3 nd-btn nd-btn-ghost nd-press"
+                    style={btnStyle("ghost")}
+                  >
+                    Avvia (10)
+                  </button>
+
+                  {!premium && (
+                    <div className="mt-2 nd-help">
+                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
+                        Sblocca Premium
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>
-              {`Rimanenti ${remaining}/${caps.max}`}
-            </span>
           </div>
+        )}
 
-          {!premium && (
-            <div className="mt-2 nd-help">
-              1 tentativo gratis • gli extra si sbloccano con pubblicità o Premium.
-            </div>
-          )}
-        </div>
-      );
-    })()}
-
-    <button type="button" onClick={() => handleStart("daily")} className="nd-btn nd-btn-sky nd-press" style={btnStyle("sky")}>
-      Avvia Daily (10)
-    </button>
-  </div>
-)}
-
-{homeTab === "weekly" && (
-  <div className="mt-3 grid gap-3">
-    {(() => {
-      const caps = getRunCaps("weekly");
-      const remaining = Math.max(0, caps.allowed - caps.used);
-      return (
-        <div className="nd-tile" style={tileStyle()}>
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <div className="text-sm font-extrabold text-white">Weekly</div>
-              <div className="nd-help">Reset: {msToHMS(weeklyLeft)}</div>
-            </div>
-            <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>
-              {`Rimanenti ${remaining}/${caps.max}`}
-            </span>
-          </div>
-
-          {!premium && (
-            <div className="mt-2 nd-help">
-              1 tentativo gratis • il secondo si sblocca con pubblicità o Premium.
-            </div>
-          )}
-        </div>
-      );
-    })()}
-
-    <button type="button" onClick={() => handleStart("weekly")} className="nd-btn nd-btn-sky nd-press" style={btnStyle("sky")}>
-      Avvia Weekly (25)
-    </button>
-  </div>
-)}
-
-{homeTab === "sim" && (
-  <div className="mt-3 grid gap-3">
-    <div className="nd-tile" style={tileStyle()}>
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-extrabold text-white">Simulazione</div>
-          <div className="nd-help">25 domande • risultato finale</div>
-        </div>
-        {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
-      </div>
-    </div>
-
-    <button
-      type="button"
-      onClick={() => {
-        if (!premium) {
-          setPremiumModalOpen(true);
-          return;
-        }
-        start("sim");
-      }}
-      className="nd-btn nd-btn-ghost nd-press"
-      style={btnStyle("ghost")}
-    >
-      Avvia Simulazione (25)
-    </button>
-  </div>
-)}
-
-{homeTab === "review" && (
-  <div className="mt-3 grid gap-3">
-    <div className="nd-tile" style={tileStyle()}>
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-extrabold text-white">Ripasso errori</div>
-          <div className="nd-help">10 domande dalle risposte sbagliate</div>
-        </div>
-        {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
-      </div>
-    </div>
-
-    <button
-      type="button"
-      onClick={() => {
-        if (!premium) {
-          setPremiumModalOpen(true);
-          return;
-        }
-        start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
-      }}
-      className="nd-btn nd-btn-ghost nd-press"
-      style={btnStyle("ghost")}
-    >
-      Avvia Ripasso (10)
-    </button>
-  </div>
-)}
         {runQuiz && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad" style={card()}>
@@ -1166,9 +1129,4 @@ function addPills(amount: number) {
   } catch {}
 }
 
-function calcPillsFromXp(xp: number) {
-  // Simple, predictable: ~1 pill every 18 XP, minimum 1 when xp>0
-  const p = Math.floor(xp / 18);
-  return Math.max(1, p);
-}
-
+// (pills-from-xp helper intentionally inlined where used)
