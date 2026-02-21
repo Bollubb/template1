@@ -24,12 +24,15 @@ import { addXp } from "@/features/progress/xp";
 import { recordMistake, pickMistakeReviewQuestions } from "@/features/cards/quiz/quizMistakes";
 
 type QuizRun = {
-  mode: "daily" | "weekly" | "sim" | "review";
+  mode: "daily" | "weekly" | "concorso" | "review";
   idx: number;
   correct: number;
   questions: QuizQuestion[];
   answers: number[]; // chosen option index, -1 if none
   startedAt: number;
+  // optional timer (used by concorso presets)
+  timeLimitMs?: number;
+  endsAt?: number;
 };
 
 type QuizResult = {
@@ -51,9 +54,12 @@ const LS = {
   dailyUnlocksPrefix: "nd_quiz_daily_unlocks_",
   weeklyRunsPrefix: "nd_quiz_weekly_runs_",
   weeklyUnlocksPrefix: "nd_quiz_weekly_unlocks_",
+  concorsoRunsPrefix: "nd_quiz_concorso_runs_",
+  concorsoUnlocksPrefix: "nd_quiz_concorso_unlocks_",
+  concorsoSeen: "nd_quiz_concorso_seen_v1",
 };
 
-type HomeTab = "daily" | "weekly" | "sim" | "review";
+type HomeTab = "daily" | "weekly" | "concorso" | "review";
 
 function dayKey(ts = Date.now()) {
   const d = new Date(ts);
@@ -394,7 +400,7 @@ export default function QuizPage(): JSX.Element {
   const [weeklyLeft, setWeeklyLeft] = useState(0);
   const [premium, setPremium] = useState(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
-  const [premiumContextUnlock, setPremiumContextUnlock] = useState<null | "daily" | "weekly">(null);
+  const [premiumContextUnlock, setPremiumContextUnlock] = useState<null | "daily" | "weekly" | "concorso">(null);
 
   const [homeTab, setHomeTab] = useState<HomeTab>("daily");
   const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly"; remaining: number }>(null);
@@ -419,7 +425,7 @@ export default function QuizPage(): JSX.Element {
       setPremium(localStorage.getItem(LS.premium) === "1");
       setFavs(getFavs());
       const savedTab = (localStorage.getItem(LS.lastHomeTab) || "daily") as HomeTab;
-      if (savedTab === "daily" || savedTab === "weekly" || savedTab === "sim" || savedTab === "review") setHomeTab(savedTab);
+      if (savedTab === "daily" || savedTab === "weekly" || savedTab === "concorso" || savedTab === "review") setHomeTab(savedTab);
     } catch {}
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
@@ -477,7 +483,7 @@ export default function QuizPage(): JSX.Element {
         const avoid = new Set(getRecentSeenIds(140));
         if (mode === "daily") return pickQuestions(QUIZ_BANK, 10, avoid);
         if (mode === "weekly") return pickQuestions(QUIZ_BANK, 25, avoid);
-        if (mode === "sim") return pickQuestions(QUIZ_BANK_CONCORSO, 50, avoid);
+        if (mode === "concorso") return pickQuestions(QUIZ_BANK_CONCORSO, 40, avoid);
         // review
         const picked = pickMistakeReviewQuestions(QUIZ_BANK, 10);
         return picked.length ? picked : pickQuestions(QUIZ_BANK, 10, avoid);
@@ -553,10 +559,10 @@ export default function QuizPage(): JSX.Element {
 
       writeInt(rk, usedBefore + 1);
     } else {
-      // sim / review
+      // concorso / review
       const perfect = run.correct === run.questions.length;
       const baseXp =
-        run.mode === "sim"
+        run.mode === "concorso"
           ? 35 + run.correct * 4 + (perfect ? 20 : 0)
           : 22 + run.correct * 3 + (perfect ? 12 : 0);
 
@@ -609,6 +615,17 @@ export default function QuizPage(): JSX.Element {
     });
   }
 
+
+  // --- AUTO-FINISH CONCORSO TIMER ---
+  useEffect(() => {
+    if (!runQuiz?.endsAt) return;
+    if (nowTs >= runQuiz.endsAt) {
+      // finish immediately when timer expires
+      finish(runQuiz);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nowTs, runQuiz?.endsAt]);
+
   // --- Ads / unlock scaffolding (no SDK yet) ---
   async function unlockViaAd(kind: "daily" | "weekly") {
     // TODO: replace with real rewarded ad flow.
@@ -619,7 +636,57 @@ export default function QuizPage(): JSX.Element {
     return true;
   }
 
-  function getRunCaps(kind: "daily" | "weekly") {
+  
+  function getConcorsoCaps() {
+    const wk = isoWeekKey();
+    const used = readInt(`${LS.concorsoRunsPrefix}${wk}`, 0);
+    const unlocks = readInt(`${LS.concorsoUnlocksPrefix}${wk}`, 0);
+    const free = 1;
+    const max = 4; // 1 free + up to 3 unlocks
+    const allowed = premium ? 999 : Math.min(max, free + unlocks);
+    return { used, free, max, unlocks, allowed, wk };
+  }
+
+  async function unlockConcorsoViaAd() {
+    await new Promise((r) => setTimeout(r, 350));
+    const wk = isoWeekKey();
+    const key = `${LS.concorsoUnlocksPrefix}${wk}`;
+    writeInt(key, readInt(key, 0) + 1);
+    return true;
+  }
+
+  function pickConcorsoQuestions(total: number) {
+    const avoid = new Set<string>();
+    // keep concorso recency separate
+    try {
+      const raw = localStorage.getItem(LS.concorsoSeen) || "[]";
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) arr.slice(-250).forEach((id) => avoid.add(String(id)));
+    } catch {}
+    return pickQuestions(QUIZ_BANK_CONCORSO, total, avoid);
+  }
+
+  function startConcorso(preset: { id: string; title: string; total: number; minutes: number }) {
+    const questions = pickConcorsoQuestions(preset.total);
+    setQuizResult(null);
+    setLastReward(null);
+    setSelected(null);
+    setReveal(null);
+    const startedAt = Date.now();
+    const timeLimitMs = preset.minutes * 60 * 1000;
+    setRunQuiz({
+      mode: "concorso",
+      idx: 0,
+      correct: 0,
+      questions,
+      answers: Array.from({ length: questions.length }, () => -1),
+      startedAt,
+      timeLimitMs,
+      endsAt: startedAt + timeLimitMs,
+    });
+  }
+
+function getRunCaps(kind: "daily" | "weekly") {
     if (kind === "daily") {
       const dk = dayKey();
       const used = readInt(`${LS.dailyRunsPrefix}${dk}`, 0);
@@ -707,7 +774,6 @@ export default function QuizPage(): JSX.Element {
         {!runQuiz && !quizResult && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad" style={card()}>
-              <>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="nd-badge nd-badge-sky" style={chipStyle("sky")}>Quiz</span>
@@ -719,7 +785,7 @@ export default function QuizPage(): JSX.Element {
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("daily")} style={homeTab === "daily" ? chipStyle("sky") : chipStyle("slate")}>Daily</button>
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("weekly")} style={homeTab === "weekly" ? chipStyle("sky") : chipStyle("slate")}>Weekly</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("sim")} style={homeTab === "sim" ? chipStyle("sky") : chipStyle("slate")}>Sim</button>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("concorso")} style={homeTab === "concorso" ? chipStyle("sky") : chipStyle("slate")}>Sim</button>
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("sky") : chipStyle("slate")}>Errori</button>
               </div>
 
@@ -824,29 +890,73 @@ export default function QuizPage(): JSX.Element {
   );
 })()}
 
-{/* Sim */}
-{homeTab === "sim" && (
-  <div className="mt-3 grid gap-2">
-    <div className="nd-tile" style={tileStyle()}>
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <div className="text-sm font-extrabold text-white">Simulazione Concorso</div>
-          <div className="nd-help">50 domande • timer & punteggio concorso</div>
-        </div>
-        <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Sempre disponibile</span>
-      </div>
-    </div>
+{/* Concorso */}
+{homeTab === "concorso" && (() => {
+  const caps = getConcorsoCaps();
+  const remaining = Math.max(0, caps.allowed - caps.used);
+  const presets = [
+    { id: "asl", title: "Concorso ASL/AO", total: 40, minutes: 35 },
+    { id: "reg", title: "Concorso Regione", total: 50, minutes: 45 },
+    { id: "mega", title: "Mega concorso", total: 60, minutes: 55 },
+    { id: "month", title: "Concorso del mese", total: 50, minutes: 45 },
+  ];
 
-    <button
-      type="button"
-      onClick={() => start("sim")}
-      className="nd-btn nd-btn-ghost nd-press"
-      style={btnStyle("ghost")}
-    >
-      Avvia Simulazione Concorso
-    </button>
-  </div>
-)}
+  return (
+    <div className="mt-3 grid gap-2">
+      <div className="nd-tile" style={tileStyle()}>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-extrabold text-white">Simulazione Concorso</div>
+            <div className="nd-help">Timer + punteggio con penalità</div>
+          </div>
+          <span className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-amber"} style={pillStyle(remaining > 0 ? "slate" : "amber")}>
+            {`Rimanenti ${remaining}/${premium ? "∞" : caps.max}`}
+          </span>
+        </div>
+        <div className="mt-2 nd-help">1 gratuita/sett. • extra con pubblicità o Premium</div>
+      </div>
+
+      <div className="grid gap-2">
+        {presets.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={async () => {
+              if (remaining <= 0 && !premium) {
+                setPremiumContextUnlock("concorso");
+                setPremiumModalOpen(true);
+                return;
+              }
+              // register run consumption
+              writeInt(`${LS.concorsoRunsPrefix}${caps.wk}`, caps.used + 1);
+              startConcorso(p);
+            }}
+            className="nd-btn nd-btn-ghost nd-press"
+            style={btnStyle("ghost")}
+          >
+            {p.title} • {p.total} domande • {p.minutes} min
+          </button>
+        ))}
+      </div>
+
+      {!premium && remaining === 0 && (
+        <div className="nd-help">
+          <button
+            type="button"
+            onClick={() => {
+              setPremiumContextUnlock("concorso");
+              setPremiumModalOpen(true);
+            }}
+            className="nd-btn-chip nd-press"
+            style={miniChipBtn()}
+          >
+            Sblocca con pubblicità / Premium
+          </button>
+        </div>
+      )}
+    </div>
+  );
+})()}
 
 {/* Review */}
               {homeTab === "review" && (
@@ -883,7 +993,6 @@ export default function QuizPage(): JSX.Element {
                   )}
                 </div>
               )}
-              </>
             </div>
           </div>
         )}
@@ -891,13 +1000,12 @@ export default function QuizPage(): JSX.Element {
         {runQuiz && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad" style={card()}>
-              <>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontWeight: 950 }}>
-                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "sim" ? "Simulazione Concorso" : "Ripasso errori"}
+                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "concorso" ? "Simulazione Concorso" : "Ripasso errori"}
                 </div>
                 <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>
-                  {runQuiz.idx + 1}/{runQuiz.questions.length} • {msToHMS(nowTs - runQuiz.startedAt)}
+                  {runQuiz.idx + 1}/{runQuiz.questions.length} • {runQuiz.endsAt ? `⏳ ${msToHMS(Math.max(0, runQuiz.endsAt - nowTs))}` : msToHMS(nowTs - runQuiz.startedAt)}
                 </div>
               </div>
 
@@ -1005,7 +1113,6 @@ export default function QuizPage(): JSX.Element {
         {!runQuiz && quizResult && (
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
             <div className="nd-card nd-card-pad" style={card()}>
-              <>
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
               {lastReward && (
                 <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1019,7 +1126,7 @@ export default function QuizPage(): JSX.Element {
                     <div style={{ fontWeight: 950 }}>Sblocca Premium</div>
                     <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>
                   </div>
-                  <div className="mt-2 nd-help">Simulazione (25) + Ripasso errori + XP bonus.</div>
+                  <div className="mt-2 nd-help">Simulazione Concorso (25) + Ripasso errori + XP bonus.</div>
                   <div className="mt-3" style={{ display: "flex", gap: 10 }}>
                     <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-primary nd-press">
                       Scopri Premium
@@ -1063,7 +1170,7 @@ export default function QuizPage(): JSX.Element {
                   onClick={() => {
                     if (quizResult.mode === "daily") start("daily");
                     else if (quizResult.mode === "weekly") start("weekly");
-                    else if (quizResult.mode === "sim") start("sim");
+                    else if (quizResult.mode === "concorso") setHomeTab("concorso");
                     else start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
                   }}
                   className="nd-btn-primary nd-press"
@@ -1190,6 +1297,11 @@ export default function QuizPage(): JSX.Element {
                 const k = premiumContextUnlock;
                 setPremiumContextUnlock(null);
                 setPremiumModalOpen(false);
+                if (k === "concorso") {
+                  await unlockConcorsoViaAd();
+                  setHomeTab("concorso");
+                  return;
+                }
                 const ok = await unlockViaAd(k);
                 if (ok) start(k);
               }
