@@ -287,10 +287,58 @@ function optionBtnStyle(opts: { active: boolean; correct: boolean; wrong: boolea
 }
 
 
+
+function optionLetterStyle(opts: { idx: number; active: boolean; correct: boolean; wrong: boolean; disabled: boolean }): React.CSSProperties {
+  // base palette by index to make A/B/C/D more visible
+  const palettes = [
+    { bg: "rgba(56,189,248,0.16)", bd: "rgba(56,189,248,0.35)", fg: "rgba(240,252,255,0.96)" }, // A - sky
+    { bg: "rgba(167,139,250,0.16)", bd: "rgba(167,139,250,0.35)", fg: "rgba(250,245,255,0.96)" }, // B - violet
+    { bg: "rgba(251,191,36,0.16)", bd: "rgba(251,191,36,0.38)", fg: "rgba(255,251,235,0.96)" }, // C - amber
+    { bg: "rgba(34,197,94,0.14)", bd: "rgba(34,197,94,0.34)", fg: "rgba(240,253,244,0.96)" }, // D - green
+  ];
+  const p = palettes[Math.max(0, Math.min(3, opts.idx))];
+
+  let background = p.bg;
+  let borderColor = p.bd;
+  let color = p.fg;
+
+  if (opts.active && !opts.disabled) {
+    background = "rgba(56,189,248,0.22)";
+    borderColor = "rgba(56,189,248,0.55)";
+    color = "rgba(240,252,255,0.98)";
+  }
+  if (opts.correct) {
+    background = "rgba(34,197,94,0.22)";
+    borderColor = "rgba(34,197,94,0.60)";
+    color = "rgba(240,253,244,0.98)";
+  }
+  if (opts.wrong) {
+    background = "rgba(239,68,68,0.20)";
+    borderColor = "rgba(239,68,68,0.60)";
+    color = "rgba(254,242,242,0.98)";
+  }
+
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    border: `1px solid ${borderColor}`,
+    background,
+    color,
+    fontWeight: 950,
+    fontSize: 12,
+    flex: "0 0 auto",
+    boxShadow: opts.active && !opts.disabled ? "0 0 0 3px rgba(56,189,248,0.10)" : "none",
+  };
+}
+
 function tileStyle(): React.CSSProperties {
   return {
     border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.03)",
+    background: "linear-gradient(180deg, rgba(56,189,248,0.08), rgba(255,255,255,0.02))",
     borderRadius: 18,
     padding: 14,
   };
@@ -345,6 +393,7 @@ export default function QuizPage(): JSX.Element {
   const [weeklyLeft, setWeeklyLeft] = useState(0);
   const [premium, setPremium] = useState(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
+  const [premiumContextUnlock, setPremiumContextUnlock] = useState<null | "daily" | "weekly">(null);
 
   const [homeTab, setHomeTab] = useState<HomeTab>("daily");
   const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly"; remaining: number }>(null);
@@ -353,6 +402,7 @@ export default function QuizPage(): JSX.Element {
   const [selected, setSelected] = useState<number | null>(null);
   const [reveal, setReveal] = useState<null | { isCorrect: boolean; correctIdx: number; chosen: number }>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const [lastReward, setLastReward] = useState<{ xp: number; pills: number } | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
 
   const [favs, setFavs] = useState<string[]>([]);
@@ -433,6 +483,7 @@ export default function QuizPage(): JSX.Element {
       })();
 
     setQuizResult(null);
+    setLastReward(null);
     setSelected(null);
     setReveal(null);
     setRunQuiz({
@@ -456,29 +507,65 @@ export default function QuizPage(): JSX.Element {
 
     // mark done + rewards ONLY on first run per reset
     if (run.mode === "daily") {
+      const dk = dayKey();
+      const rk = `${LS.dailyRunsPrefix}${dk}`;
+      const usedBefore = readInt(rk, 0);
+
+      // streak counts only on the first completion of the day
+      let streakForReward = daily.streak;
       if (daily.status !== "done") {
         const nextStreak = daily.streak + 1;
+        streakForReward = nextStreak;
         setDailyState({ ...daily, status: "done", streak: nextStreak });
         try {
           localStorage.setItem("nd_quiz_streak", String(nextStreak));
         } catch {}
-        addXp(calcDailyReward(run.correct, run.questions.length, run.correct === run.questions.length, nextStreak));
       }
-      // increment daily runs
-      const dk = dayKey();
-      const rk = `${LS.dailyRunsPrefix}${dk}`;
-      writeInt(rk, readInt(rk, 0) + 1);
+
+      const baseXp = calcDailyReward(run.correct, run.questions.length, run.correct === run.questions.length, streakForReward);
+      const mult = usedBefore === 0 ? 1 : 0.6; // extra daily runs still reward, but a bit less
+      const xpEarn = Math.max(5, Math.round(baseXp * mult));
+      const pillsEarn = calcPillsFromXp(xpEarn);
+
+      addXp(xpEarn);
+      addPills(pillsEarn);
+      setLastReward({ xp: xpEarn, pills: pillsEarn });
+
+      writeInt(rk, usedBefore + 1);
     } else if (run.mode === "weekly") {
-      if (weekly.status !== "done") {
-        setWeeklyState({ ...weekly, status: "done" });
-        addXp(calcWeeklyReward(run.correct, run.questions.length, run.correct === run.questions.length));
-      }
       const wk = isoWeekKey();
       const rk = `${LS.weeklyRunsPrefix}${wk}`;
-      writeInt(rk, readInt(rk, 0) + 1);
+      const usedBefore = readInt(rk, 0);
+
+      if (weekly.status !== "done") setWeeklyState({ ...weekly, status: "done" });
+
+      const baseXp = calcWeeklyReward(run.correct, run.questions.length, run.correct === run.questions.length);
+      const mult = usedBefore === 0 ? 1 : 0.7; // extra weekly run rewards, slightly reduced
+      const xpEarn = Math.max(10, Math.round(baseXp * mult));
+      const pillsEarn = calcPillsFromXp(xpEarn);
+
+      addXp(xpEarn);
+      addPills(pillsEarn);
+      setLastReward({ xp: xpEarn, pills: pillsEarn });
+
+      writeInt(rk, usedBefore + 1);
+    } else {
+      // sim / review
+      const perfect = run.correct === run.questions.length;
+      const baseXp =
+        run.mode === "sim"
+          ? 35 + run.correct * 4 + (perfect ? 20 : 0)
+          : 22 + run.correct * 3 + (perfect ? 12 : 0);
+
+      const xpEarn = Math.max(5, Math.round(baseXp));
+      const pillsEarn = calcPillsFromXp(xpEarn);
+
+      addXp(xpEarn);
+      addPills(pillsEarn);
+      setLastReward({ xp: xpEarn, pills: pillsEarn });
     }
 
-    // store seen ids to reduce repeats
+// store seen ids to reduce repeats
     pushSeen(run.questions.map((q) => q.id));
 // mistakes log
     wrong.forEach((w) => recordMistake(w.q.id));
@@ -559,9 +646,10 @@ export default function QuizPage(): JSX.Element {
       // premium but reached cap: no start
       return;
     }
-    // show unlock modal
-    setUnlockModal({ kind, remaining });
-  }
+    // show Premium summary (with optional rewarded unlock)
+    setPremiumContextUnlock(kind);
+    setPremiumModalOpen(true);
+    return;}
 
   function confirmAnswer() {
     if (!runQuiz) return;
@@ -641,85 +729,11 @@ export default function QuizPage(): JSX.Element {
                         <div className="text-sm font-extrabold text-white">Daily</div>
                         <div className="nd-help">Reset: {msToHMS(dailyLeft)}</div>
                       </div>
-                      <span className={daily.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(daily.status === "done" ? "green" : "slate")}>
-                        {daily.status === "done" ? "XP preso" : "XP attivo"}
+                      <span className={remaining === 0 ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(remaining === 0 ? "green" : "slate")}>
+                        {`Rimanenti ${Math.max(0, remaining)}/${caps.max}`}
                       </span>
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
-                      <span>Disponibili</span>
-                      <span>{Math.min(caps.max, remaining)}/{caps.max}</span>
-                    
-                    {!premium && (
-                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 850, opacity: 0.78 }}>
-                        Oggi: <span style={{ opacity: 0.95 }}>1 quiz gratuito</span> • +2 con <span style={{ opacity: 0.95 }}>pubblicità</span>
-                      </div>
-                    )}
-
-</div>
-
-                    <button
-                      type="button"
-                      onClick={() => void handleStart("daily")}
-                      disabled={premium ? caps.used >= caps.max : remaining <= 0}
-                      className="mt-3 nd-btn nd-btn-emerald nd-press disabled:opacity-60 disabled:cursor-not-allowed"
-                      style={btnStyle("emerald", premium ? caps.used >= caps.max : remaining <= 0)}
-                    >
-                      {premium ? (caps.used >= caps.max ? "Limite giornaliero" : "Avvia Daily") : (remaining > 0 ? "Avvia Daily" : "Sblocca")}
-                    </button>
-                  </div>
-                );
-              })()}
-
-              {/* Weekly */}
-              {homeTab === "weekly" && (() => {
-                const caps = getRunCaps("weekly");
-                const remaining = Math.max(0, caps.allowed - caps.used);
-                return (
-                  <div className="mt-3 nd-tile" style={tileStyle()}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-sm font-extrabold text-white">Weekly</div>
-                        <div className="nd-help">Reset: {msToHMS(weeklyLeft)}</div>
-                      </div>
-                      <span className={weekly.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(weekly.status === "done" ? "green" : "slate")}>
-                        {weekly.status === "done" ? "XP preso" : "XP attivo"}
-                      </span>
-                    </div>
-
-                    <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
-                      <span>Disponibili</span>
-                      <span>{Math.min(caps.max, remaining)}/{caps.max}</span>
-                    
-                    {!premium && (
-                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 850, opacity: 0.78 }}>
-                        Settimana: <span style={{ opacity: 0.95 }}>1 quiz gratuito</span> • +1 con <span style={{ opacity: 0.95 }}>pubblicità</span>
-                      </div>
-                    )}
-
-</div>
-
-                    <button
-                      type="button"
-                      onClick={() => void handleStart("weekly")}
-                      disabled={premium ? caps.used >= caps.max : remaining <= 0}
-                      className="mt-3 nd-btn nd-btn-indigo nd-press disabled:opacity-60 disabled:cursor-not-allowed"
-                      style={btnStyle("indigo", premium ? caps.used >= caps.max : remaining <= 0)}
-                    >
-                      {premium ? (caps.used >= caps.max ? "Limite settimanale" : "Avvia Weekly") : (remaining > 0 ? "Avvia Weekly" : "Sblocca")}
-                    </button>
-                  </div>
-                );
-              })()}
-
-              {/* Sim */}
-              {homeTab === "sim" && (
-                <div className="mt-3 nd-tile" style={tileStyle()}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-extrabold text-white">Simulazione</div>
-                      <div className="nd-help">25 domande</div>
-                    </div>
                     {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
                   </div>
 
@@ -904,6 +918,12 @@ export default function QuizPage(): JSX.Element {
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
             <div className="nd-card nd-card-pad" style={card()}>
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
+              {lastReward && (
+                <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>+{lastReward.xp} XP</span>
+                  <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>+{lastReward.pills} pillole</span>
+                </div>
+              )}
               {!premium && (
                 <div className="nd-card nd-card-pad" style={{ ...card(), marginTop: 10 }}>
                   <div className="flex items-center justify-between gap-2">
@@ -1071,7 +1091,44 @@ export default function QuizPage(): JSX.Element {
 
       <NurseBottomNav active="didattica" onChange={(t) => { void goTab(t); }} />
 
-      <PremiumUpsellModal open={premiumModalOpen} onClose={() => setPremiumModalOpen(false)} context="quiz" />
+      <PremiumUpsellModal
+        open={premiumModalOpen}
+        context="quiz"
+        secondaryCta={premiumContextUnlock ? "Guarda pubblicità" : undefined}
+        onSecondary={
+          premiumContextUnlock
+            ? async () => {
+                const k = premiumContextUnlock;
+                setPremiumContextUnlock(null);
+                setPremiumModalOpen(false);
+                const ok = await unlockViaAd(k);
+                if (ok) start(k);
+              }
+            : undefined
+        }
+        onClose={() => {
+          setPremiumContextUnlock(null);
+          setPremiumModalOpen(false);
+        }}
+      />
     </Page>
   );
 }
+
+function addPills(amount: number) {
+  try {
+    if (typeof window === "undefined") return;
+    const key = "nd_pills";
+    const cur = Number(localStorage.getItem(key) || "0");
+    const next = (Number.isFinite(cur) ? cur : 0) + amount;
+    localStorage.setItem(key, String(Math.max(0, Math.floor(next))));
+    window.dispatchEvent(new StorageEvent("storage", { key }));
+  } catch {}
+}
+
+function calcPillsFromXp(xp: number) {
+  // Simple, predictable: ~1 pill every 18 XP, minimum 1 when xp>0
+  const p = Math.floor(xp / 18);
+  return Math.max(1, p);
+}
+
