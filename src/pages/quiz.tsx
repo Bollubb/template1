@@ -721,51 +721,132 @@ export default function QuizPage(): JSX.Element {
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("sky") : chipStyle("slate")}>Errori</button>
               </div>
 
-              {/* Daily */}
-              {homeTab === "daily" && (() => {
-                const caps = getRunCaps("daily");
-                const remaining = Math.max(0, caps.allowed - caps.used);
-                return (
-                  <div className="mt-3 nd-tile" style={tileStyle()}>
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <div className="text-sm font-extrabold text-white">Daily</div>
-                        <div className="nd-help">Reset: {msToHMS(dailyLeft)}</div>
-                      </div>
-                      <span className={remaining === 0 ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(remaining === 0 ? "green" : "slate")}>
-                        {`Rimanenti ${Math.max(0, remaining)}/${caps.max}`}
-                      </span>
-                    </div>
+              
+{/* Daily */}
+{homeTab === "daily" && (() => {
+  const caps = getRunCaps("daily");
+  const remaining = Math.max(0, caps.allowed - caps.used);
+  return (
+    <div className="mt-3 grid gap-2">
+      <div className="nd-tile" style={tileStyle()}>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-extrabold text-white">Daily</div>
+            <div className="nd-help">Reset: {msToHMS(dailyLeft)}</div>
+          </div>
+          <span
+            className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
+            style={pillStyle(remaining > 0 ? "slate" : "green")}
+          >
+            {`Rimanenti ${remaining}/${caps.max}`}
+          </span>
+        </div>
+        <div className="mt-2 nd-help">1 gratuito • altri con pubblicità o Premium</div>
+      </div>
 
-                    {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
-                  </div>
+      <button
+        type="button"
+        onClick={() => handleStart("daily")}
+        className="nd-btn nd-btn-sky nd-press"
+        style={btnStyle("sky")}
+      >
+        Avvia Daily
+      </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!premium) {
-                        setPremiumModalOpen(true);
-                        return;
-                      }
-                      start("sim");
-                    }}
-                    className="mt-3 nd-btn nd-btn-sky nd-press"
-                    style={btnStyle("sky")}
-                  >
-                    Avvia (25)
-                  </button>
+      {!premium && remaining === 0 && (
+        <div className="nd-help">
+          <button
+            type="button"
+            onClick={() => {
+              setPremiumContextUnlock("daily");
+              setPremiumModalOpen(true);
+            }}
+            className="nd-btn-chip nd-press"
+            style={miniChipBtn()}
+          >
+            Sblocca con pubblicità / Premium
+          </button>
+        </div>
+      )}
+    </div>
+  );
+})()}
 
-                  {!premium && (
-                    <div className="mt-2 nd-help">
-                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
-                        Sblocca Premium
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+{/* Weekly */}
+{homeTab === "weekly" && (() => {
+  const caps = getRunCaps("weekly");
+  const remaining = Math.max(0, caps.allowed - caps.used);
+  return (
+    <div className="mt-3 grid gap-2">
+      <div className="nd-tile" style={tileStyle()}>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-extrabold text-white">Weekly</div>
+            <div className="nd-help">Reset: {msToHMS(weeklyLeft)}</div>
+          </div>
+          <span
+            className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
+            style={pillStyle(remaining > 0 ? "slate" : "green")}
+          >
+            {`Rimanenti ${remaining}/${caps.max}`}
+          </span>
+        </div>
+        <div className="mt-2 nd-help">1 gratuito • extra con pubblicità o Premium</div>
+      </div>
 
-              {/* Review */}
+      <button
+        type="button"
+        onClick={() => handleStart("weekly")}
+        className="nd-btn nd-btn-sky nd-press"
+        style={btnStyle("sky")}
+      >
+        Avvia Weekly (25)
+      </button>
+
+      {!premium && remaining === 0 && (
+        <div className="nd-help">
+          <button
+            type="button"
+            onClick={() => {
+              setPremiumContextUnlock("weekly");
+              setPremiumModalOpen(true);
+            }}
+            className="nd-btn-chip nd-press"
+            style={miniChipBtn()}
+          >
+            Sblocca con pubblicità / Premium
+          </button>
+        </div>
+      )}
+    </div>
+  );
+})()}
+
+{/* Sim */}
+{homeTab === "sim" && (
+  <div className="mt-3 grid gap-2">
+    <div className="nd-tile" style={tileStyle()}>
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-extrabold text-white">Simulazione</div>
+          <div className="nd-help">25 domande • risultato finale</div>
+        </div>
+        <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Sempre disponibile</span>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => start("sim")}
+      className="nd-btn nd-btn-ghost nd-press"
+      style={btnStyle("ghost")}
+    >
+      Avvia simulazione (25)
+    </button>
+  </div>
+)}
+
+{/* Review */}
               {homeTab === "review" && (
                 <div className="mt-3 nd-tile" style={tileStyle()}>
                   <div className="flex items-center justify-between gap-2">
