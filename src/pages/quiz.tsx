@@ -93,6 +93,96 @@ function ghostBtn(disabled?: boolean): React.CSSProperties {
   };
 }
 
+type ChipVariant = "sky" | "amber" | "slate" | "green";
+type BtnVariant = "emerald" | "indigo" | "sky" | "ghost";
+
+function chipStyle(v: ChipVariant): React.CSSProperties {
+  const common: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "6px 10px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 900,
+    letterSpacing: 0.2,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.92)",
+    whiteSpace: "nowrap",
+  };
+
+  if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.35)", background: "rgba(56,189,248,0.16)" };
+  if (v === "amber") return { ...common, border: "1px solid rgba(251,191,36,0.35)", background: "rgba(251,191,36,0.14)" };
+  if (v === "green") return { ...common, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(52,211,153,0.14)" };
+  return { ...common, border: "1px solid rgba(148,163,184,0.25)", background: "rgba(148,163,184,0.08)" };
+}
+
+function pillStyle(v: ChipVariant): React.CSSProperties {
+  return {
+    ...chipStyle(v),
+    padding: "5px 10px",
+    fontSize: 11,
+    fontWeight: 950,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  };
+}
+
+function btnStyle(v: BtnVariant, disabled?: boolean): React.CSSProperties {
+  const common: React.CSSProperties = {
+    width: "100%",
+    padding: "12px 12px",
+    borderRadius: 14,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.92)",
+    cursor: disabled ? "not-allowed" : "pointer",
+    fontWeight: 950,
+  };
+
+  if (v === "emerald") return { ...common, border: "1px solid rgba(52,211,153,0.35)", background: disabled ? "rgba(255,255,255,0.06)" : "rgba(52,211,153,0.18)" };
+  if (v === "indigo") return { ...common, border: "1px solid rgba(129,140,248,0.35)", background: disabled ? "rgba(255,255,255,0.06)" : "rgba(129,140,248,0.16)" };
+  if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.35)", background: disabled ? "rgba(255,255,255,0.06)" : "rgba(56,189,248,0.18)" };
+  return common;
+}
+
+function miniChipBtn(): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "6px 10px",
+    borderRadius: 999,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "rgba(255,255,255,0.06)",
+    color: "rgba(255,255,255,0.92)",
+    fontWeight: 900,
+    fontSize: 12,
+    cursor: "pointer",
+  };
+}
+
+function tileStyle(): React.CSSProperties {
+  return {
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(255,255,255,0.03)",
+    borderRadius: 18,
+    padding: 14,
+  };
+}
+
+function progressWrapStyle(): React.CSSProperties {
+  return { height: 8, borderRadius: 999, background: "rgba(255,255,255,0.10)", overflow: "hidden" };
+}
+
+function progressFillStyle(widthPct: number, v: "emerald" | "indigo" | "sky" = "sky"): React.CSSProperties {
+  const bg =
+    v === "emerald" ? "rgba(52,211,153,0.70)" :
+    v === "indigo" ? "rgba(129,140,248,0.70)" :
+    "rgba(56,189,248,0.70)";
+  return { height: "100%", width: `${Math.round(clamp01(widthPct) * 100)}%`, background: bg, borderRadius: 999, transition: "width 220ms ease" };
+}
+
 function bar(p: number): React.CSSProperties {
   return {
     height: 6,
@@ -326,10 +416,10 @@ export default function QuizPage(): JSX.Element {
         <div className="mx-auto w-full max-w-[560px]">
         {!runQuiz && !quizResult && (
           <div className="grid gap-3">
-            <div className="nd-card nd-card-pad">
+            <div className="nd-card nd-card-pad" style={card()}>
               <div>
                 <div className="nd-h1 flex items-center gap-2">
-                  <span className="nd-badge nd-badge-sky">Quiz</span>
+                  <span className="nd-badge nd-badge-sky" style={chipStyle("sky")}>Quiz</span>
                   <span className="text-white">Daily • Weekly</span>
                 </div>
                 <div className="nd-subtitle">Routine breve per mantenere il ritmo</div>
@@ -337,23 +427,23 @@ export default function QuizPage(): JSX.Element {
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {streak > 0 ? (
-                  <span className="nd-badge nd-badge-amber">🔥 Streak {streak}g</span>
+                  <span className="nd-badge nd-badge-amber" style={chipStyle("amber")}>🔥 Streak {streak}g</span>
                 ) : (
-                  <span className="nd-badge nd-badge-slate">Inizia oggi e crea la streak</span>
+                  <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Inizia oggi e crea la streak</span>
                 )}
-                <span className="nd-badge nd-badge-slate">+XP su Daily/Weekly</span>
-                <span className="nd-badge nd-badge-slate">Reset Daily: {msToHMS(dailyLeft)}</span>
-                <span className="nd-badge nd-badge-slate">Reset Weekly: {msToHMS(weeklyLeft)}</span>
+                <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>+XP su Daily/Weekly</span>
+                <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Reset Daily: {msToHMS(dailyLeft)}</span>
+                <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Reset Weekly: {msToHMS(weeklyLeft)}</span>
               </div>
 
               <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                <div className="nd-tile">
+                <div className="nd-tile" style={tileStyle()}>
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="text-sm font-extrabold text-white">Daily</div>
                       <div className="nd-help">Sessione rapida</div>
                     </div>
-                    <span className={daily.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"}>
+                    <span className={daily.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(daily.status === "done" ? "green" : "slate")}>
                       {daily.status === "done" ? "Completato" : "Disponibile"}
                     </span>
                   </div>
@@ -363,26 +453,26 @@ export default function QuizPage(): JSX.Element {
                     <span>{Math.round(dailyProgress * 100)}%</span>
                   </div>
                   <div className="mt-1.5 nd-progress">
-                    <div className="nd-progress-fill nd-progress-fill-emerald" style={{ width: `${Math.round(clamp01(dailyProgress) * 100)}%` }} />
+                    <div className="nd-progress-fill nd-progress-fill-emerald" style={progressFillStyle(dailyProgress, "emerald")} />
                   </div>
 
                   <button
                     type="button"
                     onClick={() => start("daily")}
                     disabled={daily.status === "done"}
-                    className="mt-3 nd-btn nd-btn-emerald nd-press disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="mt-3 nd-btn nd-btn-emerald nd-press disabled:opacity-60 disabled:cursor-not-allowed" style={btnStyle("emerald", daily.status === "done")}
                   >
                     {daily.status === "done" ? "Daily completato ✅" : "Avvia Daily"}
                   </button>
                 </div>
 
-                <div className="nd-tile">
+                <div className="nd-tile" style={tileStyle()}>
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="text-sm font-extrabold text-white">Weekly</div>
                       <div className="nd-help">Più lunga, più reward</div>
                     </div>
-                    <span className={weekly.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"}>
+                    <span className={weekly.status === "done" ? "nd-pill nd-pill-green" : "nd-pill nd-pill-slate"} style={pillStyle(weekly.status === "done" ? "green" : "slate")}>
                       {weekly.status === "done" ? "Completato" : "Disponibile"}
                     </span>
                   </div>
@@ -392,14 +482,14 @@ export default function QuizPage(): JSX.Element {
                     <span>{Math.round(weeklyProgress * 100)}%</span>
                   </div>
                   <div className="mt-1.5 nd-progress">
-                    <div className="nd-progress-fill nd-progress-fill-indigo" style={{ width: `${Math.round(clamp01(weeklyProgress) * 100)}%` }} />
+                    <div className="nd-progress-fill nd-progress-fill-indigo" style={progressFillStyle(weeklyProgress, "indigo")} />
                   </div>
 
                   <button
                     type="button"
                     onClick={() => start("weekly")}
                     disabled={weekly.status === "done"}
-                    className="mt-3 nd-btn nd-btn-indigo nd-press disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="mt-3 nd-btn nd-btn-indigo nd-press disabled:opacity-60 disabled:cursor-not-allowed" style={btnStyle("indigo", weekly.status === "done")}
                   >
                     {weekly.status === "done" ? "Weekly completato ✅" : "Avvia Weekly"}
                   </button>
@@ -407,16 +497,16 @@ export default function QuizPage(): JSX.Element {
               </div>
             </div>
 
-            <div className="nd-card nd-card-pad">
+            <div className="nd-card nd-card-pad" style={card()}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="nd-badge nd-badge-sky">Simulazione</span>
+                    <span className="nd-badge nd-badge-sky" style={chipStyle("sky")}>Simulazione</span>
                     <div className="text-sm font-extrabold text-white">Esame</div>
                   </div>
                   <div className="nd-subtitle">25 domande • risultato finale</div>
                 </div>
-                {!premium && <span className="nd-pill nd-pill-amber">Premium</span>}
+                {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
               </div>
 
               <button
@@ -428,7 +518,7 @@ export default function QuizPage(): JSX.Element {
                   }
                   start("sim");
                 }}
-                className="mt-3 nd-btn nd-btn-sky nd-press"
+                className="mt-3 nd-btn nd-btn-sky nd-press" style={btnStyle("sky")}
               >
                 Avvia simulazione (25)
               </button>
@@ -436,21 +526,21 @@ export default function QuizPage(): JSX.Element {
               {!premium && (
                 <div className="mt-2 nd-help">
                   Sblocca simulazione + ripasso errori.
-                  <button type="button" onClick={() => setPremiumModalOpen(true)} className="ml-2 nd-btn-chip nd-press">Vedi Premium</button>
+                  <button type="button" onClick={() => setPremiumModalOpen(true)} className="ml-2 nd-btn-chip nd-press" style={miniChipBtn()}>Vedi Premium</button>
                 </div>
               )}
             </div>
 
-            <div className="nd-card nd-card-pad">
+            <div className="nd-card nd-card-pad" style={card()}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="nd-badge nd-badge-amber">Ripasso</span>
+                    <span className="nd-badge nd-badge-amber" style={chipStyle("amber")}>Ripasso</span>
                     <div className="text-sm font-extrabold text-white">Errori</div>
                   </div>
                   <div className="nd-subtitle">10 domande dalle risposte sbagliate</div>
                 </div>
-                {!premium && <span className="nd-pill nd-pill-amber">Premium</span>}
+                {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
               </div>
 
               <button
@@ -462,7 +552,7 @@ export default function QuizPage(): JSX.Element {
                   }
                   start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
                 }}
-                className="mt-3 nd-btn nd-btn-ghost nd-press"
+                className="mt-3 nd-btn nd-btn-ghost nd-press" style={btnStyle("ghost")}
               >
                 Avvia ripasso (10)
               </button>
@@ -470,7 +560,7 @@ export default function QuizPage(): JSX.Element {
               {!premium && (
                 <div className="mt-2 nd-help">
                   Perfetto per convertire gli errori in punti forti.
-                  <button type="button" onClick={() => setPremiumModalOpen(true)} className="ml-2 nd-btn-chip nd-press">Vedi Premium</button>
+                  <button type="button" onClick={() => setPremiumModalOpen(true)} className="ml-2 nd-btn-chip nd-press" style={miniChipBtn()}>Vedi Premium</button>
                 </div>
               )}
             </div>
@@ -479,7 +569,7 @@ export default function QuizPage(): JSX.Element {
 
         {runQuiz && (
           <div className="grid gap-3">
-            <div className="nd-card nd-card-pad">
+            <div className="nd-card nd-card-pad" style={card()}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontWeight: 950 }}>
                   {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "sim" ? "Simulazione" : "Ripasso errori"}
@@ -490,8 +580,8 @@ export default function QuizPage(): JSX.Element {
               </div>
 
               <div style={{ marginTop: 10 }}>
-                <div className="nd-progress">
-                  <div className="nd-progress-fill" style={{ width: `${Math.round(((runQuiz.idx + (reveal ? 1 : 0)) / runQuiz.questions.length) * 100)}%` }} />
+                <div className="nd-progress" style={progressWrapStyle()}>
+                  <div className="nd-progress-fill" style={progressFillStyle(((runQuiz.idx + (reveal ? 1 : 0)) / runQuiz.questions.length), "sky")} />
                 </div>
                 {reveal && (
                   <div className={`nd-quiz-feedback ${reveal.isCorrect ? "ok" : "bad"}`} style={{ marginTop: 10 }}>
@@ -558,13 +648,13 @@ export default function QuizPage(): JSX.Element {
 
         {!runQuiz && quizResult && (
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
-            <div className="nd-card nd-card-pad">
+            <div className="nd-card nd-card-pad" style={card()}>
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
               {!premium && (
-                <div style={{ marginTop: 10 }} className="nd-card nd-card-pad">
+                <div style={{ marginTop: 10 }} className="nd-card nd-card-pad" style={card()}>
                   <div className="flex items-center justify-between gap-2">
                     <div style={{ fontWeight: 950 }}>Sblocca Premium</div>
-                    <span className="nd-pill nd-pill-amber">Premium</span>
+                    <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>
                   </div>
                   <div className="mt-2 nd-help">Simulazione (25) + Ripasso errori + XP bonus.</div>
                   <div className="mt-3" style={{ display: "flex", gap: 10 }}>
@@ -621,7 +711,7 @@ export default function QuizPage(): JSX.Element {
             </div>
 
             {quizResult.wrong.length > 0 && (
-              <div className="nd-card nd-card-pad">
+              <div className="nd-card nd-card-pad" style={card()}>
                 <div style={{ fontWeight: 950 }}>Errori da rivedere</div>
                 <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                   {quizResult.wrong.slice(0, 12).map((w, idx) => {
