@@ -250,6 +250,43 @@ function miniChipBtn(): React.CSSProperties {
   };
 }
 
+function optionBtnStyle(opts: { active: boolean; correct: boolean; wrong: boolean; disabled: boolean }): React.CSSProperties {
+  const baseBg = "rgba(255,255,255,0.04)";
+  const baseBorder = "1px solid rgba(255,255,255,0.10)";
+
+  let background = baseBg;
+  let border = baseBorder;
+
+  if (opts.active && !opts.disabled) {
+    background = "rgba(56,189,248,0.16)";
+    border = "1px solid rgba(56,189,248,0.38)";
+  }
+  if (opts.correct) {
+    background = "rgba(34,197,94,0.16)";
+    border = "1px solid rgba(34,197,94,0.40)";
+  }
+  if (opts.wrong) {
+    background = "rgba(239,68,68,0.14)";
+    border = "1px solid rgba(239,68,68,0.40)";
+  }
+
+  return {
+    width: "100%",
+    textAlign: "left",
+    padding: "12px 12px",
+    borderRadius: 14,
+    border,
+    background,
+    color: "rgba(255,255,255,0.92)",
+    cursor: opts.disabled ? "not-allowed" : "pointer",
+    fontWeight: 850,
+    lineHeight: 1.25,
+    boxShadow: opts.active && !opts.disabled ? "0 0 0 3px rgba(56,189,248,0.10)" : "none",
+    transition: "transform 120ms ease, background 120ms ease, border-color 120ms ease",
+  };
+}
+
+
 function tileStyle(): React.CSSProperties {
   return {
     border: "1px solid rgba(255,255,255,0.10)",
@@ -612,7 +649,14 @@ export default function QuizPage(): JSX.Element {
                     <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
                       <span>Disponibili</span>
                       <span>{Math.min(caps.max, remaining)}/{caps.max}</span>
-                    </div>
+                    
+                    {!premium && (
+                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 850, opacity: 0.78 }}>
+                        Oggi: <span style={{ opacity: 0.95 }}>1 quiz gratuito</span> • +2 con <span style={{ opacity: 0.95 }}>pubblicità</span>
+                      </div>
+                    )}
+
+</div>
 
                     <button
                       type="button"
@@ -646,7 +690,14 @@ export default function QuizPage(): JSX.Element {
                     <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
                       <span>Disponibili</span>
                       <span>{Math.min(caps.max, remaining)}/{caps.max}</span>
-                    </div>
+                    
+                    {!premium && (
+                      <div style={{ marginTop: 8, fontSize: 12, fontWeight: 850, opacity: 0.78 }}>
+                        Settimana: <span style={{ opacity: 0.95 }}>1 quiz gratuito</span> • +1 con <span style={{ opacity: 0.95 }}>pubblicità</span>
+                      </div>
+                    )}
+
+</div>
 
                     <button
                       type="button"
@@ -761,6 +812,13 @@ export default function QuizPage(): JSX.Element {
 
               <div style={{ marginTop: 10, fontWeight: 900, fontSize: 15 }}>{runQuiz.questions[runQuiz.idx].q}</div>
 
+              {!reveal && (
+                <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.72 }}>
+                  Tocca una risposta e poi premi <span style={{ opacity: 0.95 }}>“Conferma”</span>.
+                </div>
+              )}
+
+
               <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                 {runQuiz.questions[runQuiz.idx].options.map((opt, i) => {
                   const active = selected === i;
@@ -773,15 +831,41 @@ export default function QuizPage(): JSX.Element {
                     (correct ? " nd-quiz-option--correct" : "") +
                     (wrong ? " nd-quiz-option--wrong" : "");
 
+                  const letter = String.fromCharCode(65 + i);
+                  const style = optionBtnStyle({ active: active && !reveal, correct, wrong, disabled: !!reveal });
+
                   return (
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setSelected(i)}
+                      onClick={() => {
+                        setSelected(i);
+                      }}
                       disabled={!!reveal}
                       className={cls}
+                      style={style}
+                      aria-pressed={active}
                     >
-                      {opt}
+                      <span style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 26,
+                            height: 26,
+                            borderRadius: 10,
+                            border: "1px solid rgba(255,255,255,0.16)",
+                            background: "rgba(255,255,255,0.06)",
+                            fontWeight: 950,
+                            fontSize: 12,
+                            flex: "0 0 auto",
+                          }}
+                        >
+                          {letter}
+                        </span>
+                        <span style={{ flex: 1, paddingTop: 2 }}>{opt}</span>
+                      </span>
                     </button>
                   );
                 })}
@@ -796,16 +880,17 @@ export default function QuizPage(): JSX.Element {
                     setSelected(null);
                   }}
                   className="nd-btn-ghost nd-press"
+                  style={ghostBtn()}
                 >
                   Esci
                 </button>
 
                 {!reveal ? (
-                  <button type="button" onClick={confirmAnswer} disabled={selected === null} className="nd-btn-primary nd-press">
+                  <button type="button" onClick={confirmAnswer} disabled={selected === null} className="nd-btn-primary nd-press" style={primaryBtn(selected === null)}>
                     Conferma
                   </button>
                 ) : (
-                  <button type="button" onClick={goNext} className="nd-btn-primary nd-press">
+                  <button type="button" onClick={goNext} className="nd-btn-primary nd-press" style={primaryBtn(false)}>
                     Avanti
                   </button>
                 )}
