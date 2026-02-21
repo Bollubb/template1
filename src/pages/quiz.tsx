@@ -323,10 +323,10 @@ export default function QuizPage(): JSX.Element {
   return (
     <Page title="Quiz" headerOverride={headerOverride}>
       <Section>
-                {!runQuiz && (
+        {!runQuiz && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="nd-h1 flex items-center gap-2">
                     <span className="nd-badge nd-badge-sky">Quiz</span>
@@ -334,7 +334,7 @@ export default function QuizPage(): JSX.Element {
                   </div>
                   <div className="nd-subtitle">Routine breve per mantenere il ritmo</div>
                 </div>
-                <div className="text-right">
+                <div className="sm:text-right">
                   <div className="nd-meta">Reset Daily: {msToHMS(dailyLeft)}</div>
                   <div className="nd-meta">Reset Weekly: {msToHMS(weeklyLeft)}</div>
                 </div>
@@ -349,7 +349,7 @@ export default function QuizPage(): JSX.Element {
                 <span className="nd-badge nd-badge-slate">+XP su Daily/Weekly</span>
               </div>
 
-              <div className="mt-3 grid grid-cols-2 gap-2.5">
+              <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                 <div className="nd-tile">
                   <div className="flex items-center justify-between gap-2">
                     <div>
