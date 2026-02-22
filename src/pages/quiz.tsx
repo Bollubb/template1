@@ -1028,11 +1028,35 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                 {!premium && <span className="nd-pill nd-pill--sm">Premium</span>}
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("daily")} style={homeTab === "daily" ? chipStyle("sky") : chipStyle("slate")}>Daily</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("weekly")} style={homeTab === "weekly" ? chipStyle("amber") : chipStyle("slate")}>Weekly</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("concorso")} style={homeTab === "concorso" ? chipStyle("violet") : chipStyle("slate")}>Concorsi</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("green") : chipStyle("slate")}>Errori</button>
+              <div className="mt-3 nd-seg">
+                <button
+                  type="button"
+                  className={`nd-seg-btn nd-seg-btn--sky nd-press ${homeTab === "daily" ? "is-active" : ""}`}
+                  onClick={() => setHomeTab("daily")}
+                >
+                  Daily
+                </button>
+                <button
+                  type="button"
+                  className={`nd-seg-btn nd-seg-btn--amber nd-press ${homeTab === "weekly" ? "is-active" : ""}`}
+                  onClick={() => setHomeTab("weekly")}
+                >
+                  Weekly
+                </button>
+                <button
+                  type="button"
+                  className={`nd-seg-btn nd-seg-btn--violet nd-press ${homeTab === "concorso" ? "is-active" : ""}`}
+                  onClick={() => setHomeTab("concorso")}
+                >
+                  Concorsi
+                </button>
+                <button
+                  type="button"
+                  className={`nd-seg-btn nd-seg-btn--green nd-press ${homeTab === "review" ? "is-active" : ""}`}
+                  onClick={() => setHomeTab("review")}
+                >
+                  Errori
+                </button>
               </div>
 
               
