@@ -207,7 +207,10 @@ function shuffleQuestionOptions(q: QuizQuestion): QuizQuestion {
     [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
   }
   const options = idxs.map((i) => q.options[i]);
-  const answer = idxs.indexOf(q.answer);
+  // `answer` can be null for some question types.
+  // When shuffling, remap the original correct index to the new index.
+  const remapped = q.answer == null ? null : idxs.indexOf(q.answer);
+  const answer = remapped == null || remapped < 0 ? null : remapped;
   return { ...q, options, answer };
 }
 
