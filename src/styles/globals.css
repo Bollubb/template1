@@ -2,6 +2,144 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =====================
+   NurseDiary – Premium UI tokens
+   (single source of truth for contrast/readability)
+   ===================== */
+:root{
+  --nd-bg0: #020617; /* slate-950 */
+  --nd-bg1: #050b1a;
+  --nd-surface: rgba(10,14,25,0.78);
+  --nd-surface2: rgba(10,14,25,0.62);
+  --nd-surface3: rgba(255,255,255,0.05);
+  --nd-border: rgba(255,255,255,0.12);
+  --nd-border2: rgba(255,255,255,0.09);
+  --nd-text: rgba(255,255,255,0.94);
+  --nd-muted: rgba(255,255,255,0.72);
+  --nd-faint: rgba(255,255,255,0.58);
+
+  --nd-accent: rgba(56,189,248,0.95);
+  --nd-accent-soft: rgba(56,189,248,0.20);
+  --nd-warm: rgba(245,158,11,0.92);
+  --nd-violet: rgba(167,139,250,0.92);
+  --nd-green: rgba(34,197,94,0.92);
+}
+
+/* App backdrop: darker + more readable text by default */
+.nd-app{
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: var(--nd-text);
+  background-color: var(--nd-bg0);
+  /* Background image + gradients (kept, but darker for legibility) */
+  background-image:
+    radial-gradient(90% 70% at 18% 10%, rgba(56,189,248,0.12), transparent 60%),
+    radial-gradient(70% 60% at 85% 20%, rgba(167,139,250,0.10), transparent 60%),
+    linear-gradient(180deg, rgba(2,6,23,0.92), rgba(2,6,23,0.55) 55%, rgba(2,6,23,0.94)),
+    url('/background-main.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center top;
+}
+
+/* Sticky header: premium glass with stronger contrast */
+.nd-header{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  background: linear-gradient(180deg, rgba(7,12,24,0.92) 0%, rgba(7,12,24,0.96) 55%, rgba(7,12,24,0.985) 100%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.nd-surface{
+  border: 1px solid var(--nd-border);
+  background: linear-gradient(180deg, var(--nd-surface), var(--nd-surface2));
+  box-shadow: 0 16px 44px rgba(0,0,0,0.44);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.nd-divider{ border-top: 1px solid rgba(255,255,255,0.10); }
+.nd-muted{ color: var(--nd-muted); }
+.nd-faint{ color: var(--nd-faint); }
+
+/* Cards / tiles / buttons (many screens already use these classNames) */
+.nd-card{ border-radius: 20px; }
+.nd-card-pad{ padding: 14px; }
+.nd-card.nd-surface{ overflow: hidden; }
+
+.nd-tile{
+  border-radius: 18px;
+  border: 1px solid var(--nd-border2);
+  background: rgba(255,255,255,0.04);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.34);
+}
+
+.nd-help{
+  font-size: 12px;
+  font-weight: 850;
+  color: var(--nd-muted);
+}
+
+.nd-badge{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(10,12,18,0.68);
+  color: var(--nd-text);
+  font-weight: 950;
+  font-size: 12px;
+  line-height: 1.1;
+  letter-spacing: -0.15px;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35);
+}
+
+.nd-btn{
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: var(--nd-text);
+  font-weight: 950;
+  letter-spacing: -0.2px;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.40);
+}
+.nd-btn:disabled{ opacity: 0.55; cursor: not-allowed; }
+.nd-btn-sky{
+  border-color: rgba(56,189,248,0.28);
+  background: linear-gradient(180deg, rgba(56,189,248,0.22), rgba(56,189,248,0.10));
+}
+.nd-btn-ghost{
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.10);
+}
+
+.nd-btn-chip{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(10,12,18,0.64);
+  color: var(--nd-text);
+  font-weight: 950;
+  font-size: 12px;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.34);
+}
+
 /* NurseDiary – micro-interazioni (tactile UI) */
 .nd-press {
   transition: transform 140ms ease, filter 140ms ease, opacity 140ms ease;
