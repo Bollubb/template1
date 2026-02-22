@@ -727,7 +727,13 @@ setRunQuiz({
       return acc + (chosen === -1 ? 1 : 0);
     }, 0);
 
-    const omittedKeyedCount = run.answers.filter((a, idx) => run.questions[idx].answer !== null && run.questions[idx].answer !== undefined && run.questions[idx].answer >= 0 && a === -1).length;
+    const omittedKeyedCount = run.answers.reduce((acc, a, idx) => {
+      const q = run.questions[idx];
+      if (!q) return acc;
+      const ans = q.answer;
+      const hasKey = ans !== null && ans !== undefined && ans >= 0;
+      return hasKey && a === -1 ? acc + 1 : acc;
+    }, 0);
     const wrongCount = Math.max(0, keyedTotal - correctCount - omittedKeyedCount);
     const score =
       run.mode === "concorso"
@@ -1480,11 +1486,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                           </button>
                         </div>
                         <div style={{ marginTop: 6, fontWeight: 800, opacity: 0.85 }}>La tua: {w.q.options[w.chosen] ?? "(non risposta)"}</div>
-                        <div style={{ marginTop: 4, fontWeight: 900 }}>Corretta: {(() => {
-                          const ans = w.q.answer;
-                          if (ans === null || ans === undefined || ans < 0) return "(senza chiave)";
-                          return w.q.options[ans] ?? "(?)";
-                        })()}</div>
+                        <div style={{ marginTop: 4, fontWeight: 900 }}>Corretta: {w.q.options[w.q.answer]}</div>
                         <div style={{ marginTop: 6, opacity: 0.82, fontWeight: 800, fontSize: 13 }}>💡 {w.q.explain}</div>
                       </div>
                     );
