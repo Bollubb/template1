@@ -197,6 +197,20 @@ function shuffleIds(ids: string[]) {
   return arr;
 }
 
+// Randomizza l'ordine delle opzioni e rimappa l'indice della risposta corretta.
+// Serve a evitare che la risposta giusta cada troppo spesso su "A" (o sempre nello stesso punto).
+function shuffleQuestionOptions(q: QuizQuestion): QuizQuestion {
+  if (!q.options || q.options.length <= 1) return q;
+  const idxs = q.options.map((_, i) => i);
+  for (let i = idxs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+  }
+  const options = idxs.map((i) => q.options[i]);
+  const answer = idxs.indexOf(q.answer);
+  return { ...q, options, answer };
+}
+
 function readDeckIds(): string[] {
   try {
     const raw = localStorage.getItem(LS.concorsoDeck);
@@ -674,23 +688,26 @@ useEffect(() => {
         return picked.length ? picked : pickQuestions(QUIZ_BANK, 10, avoid);
       })();
 
+    // Shuffle opzioni per evitare bias (es. risposta corretta troppo spesso "A").
+    const shuffledQuestions = questions.map(shuffleQuestionOptions);
+
 
     setQuizResult(null);
     setLastReward(null);
     setSelected(null);
     setReveal(null);
-const scoring = mode === "concorso" ? { correct: 1, wrong: -0.25, omit: 0 } : undefined;
-setRunQuiz({
-  mode,
-  idx: 0,
-  correct: 0,
-  questions,
-  answers: Array.from({ length: questions.length }, () => -1),
-  startedAt: Date.now(),
-  timeLimitMs: opts?.timeLimitMs,
-  presetId: opts?.presetId,
-  scoring,
-});
+    const scoring = mode === "concorso" ? { correct: 1, wrong: -0.25, omit: 0 } : undefined;
+    setRunQuiz({
+      mode,
+      idx: 0,
+      correct: 0,
+      questions: shuffledQuestions,
+      answers: Array.from({ length: shuffledQuestions.length }, () => -1),
+      startedAt: Date.now(),
+      timeLimitMs: opts?.timeLimitMs,
+      presetId: opts?.presetId,
+      scoring,
+    });
 
   }
 
@@ -1136,7 +1153,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
         className="nd-btn nd-btn-sky nd-press"
         style={btnStyle("sky")}
       >
-        Avvia Weekly (25)
+        Avvia Weekly
       </button>
 
       {!premium && remaining === 0 && (
@@ -1246,7 +1263,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                     className="mt-3 nd-btn nd-btn-ghost nd-press"
                     style={btnStyle("ghost")}
                   >
-                    Avvia (10)
+        Avvia
                   </button>
 
                   {!premium && (
