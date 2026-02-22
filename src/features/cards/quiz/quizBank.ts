@@ -5,7 +5,7 @@ export type QuizQuestion = {
   id: string;
   q: string;
   options: string[];
-  answer: number;
+  answer: number | null;
   category: QuizCategory;
   difficulty: QuizDifficulty;
   explain: string;
