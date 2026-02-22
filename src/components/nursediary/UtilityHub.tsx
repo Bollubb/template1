@@ -296,6 +296,8 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
       {!section && (
         <div>
           <div className="nd-sticky-header">
+            {/* Contenitore per l'header Utility: rende il blocco superiore coerente/premium */}
+            <div className="nd-surface" style={{ padding: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                 <div style={{ fontSize: 18, fontWeight: 950, letterSpacing: -0.2 }}>Utility</div>
@@ -372,6 +374,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 })}
               </div>
             )}
+            </div>
           </div>
 
           <div style={{ display: "grid", gap: 12, paddingTop: 10 }}>
