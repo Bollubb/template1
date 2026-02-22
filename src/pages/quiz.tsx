@@ -562,7 +562,7 @@ export default function QuizPage(): JSX.Element {
 
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
-  const [reveal, setReveal] = useState<null | { isCorrect: boolean; correctIdx: number; chosen: number }>(null);
+  const [reveal, setReveal] = useState<null | { isCorrect: boolean | null; correctIdx: number | null; chosen: number }>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [lastReward, setLastReward] = useState<{ xp: number; pills: number } | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
@@ -705,15 +705,39 @@ setRunQuiz({
     const wrong: { q: QuizQuestion; chosen: number }[] = [];
     run.questions.forEach((q, i) => {
       const chosen = run.answers[i];
+      const hasKey = q.answer !== null && q.answer !== undefined && q.answer >= 0;
+      if (!hasKey) return;
       if (chosen !== q.answer) wrong.push({ q, chosen });
     });
 
     const ms = Date.now() - run.startedAt;
 
-    const correctCount = run.questions.reduce((acc, q, i) => acc + (run.answers[i] === q.answer ? 1 : 0), 0);
-    const omittedCount = run.answers.reduce((acc, a) => acc + (a === -1 ? 1 : 0), 0);
-    const wrongCount = Math.max(0, run.questions.length - correctCount - omittedCount);
-    const score = run.mode === "concorso" ? Number((correctCount * (run.scoring?.correct ?? 1) + wrongCount * (run.scoring?.wrong ?? -0.25) + omittedCount * (run.scoring?.omit ?? 0)).toFixed(2)) : undefined;
+    const keyedTotal = run.questions.reduce((acc, q) => acc + (q.answer !== null && q.answer !== undefined && q.answer >= 0 ? 1 : 0), 0);
+
+    const correctCount = run.questions.reduce((acc, q, i) => {
+      const hasKey = q.answer !== null && q.answer !== undefined && q.answer >= 0;
+      return acc + (hasKey && run.answers[i] === q.answer ? 1 : 0);
+    }, 0);
+
+    const omittedCount = run.questions.reduce((acc, q, i) => {
+      const hasKey = q.answer !== null && q.answer !== undefined && q.answer >= 0;
+      const chosen = run.answers[i];
+      // In concorso, -1 = "Non rispondere". If the question has no key, it is always treated as omitted (non valutata).
+      if (!hasKey) return acc + 1;
+      return acc + (chosen === -1 ? 1 : 0);
+    }, 0);
+
+    const omittedKeyedCount = run.answers.filter((a, idx) => run.questions[idx].answer !== null && run.questions[idx].answer !== undefined && run.questions[idx].answer >= 0 && a === -1).length;
+    const wrongCount = Math.max(0, keyedTotal - correctCount - omittedKeyedCount);
+    const score =
+      run.mode === "concorso"
+        ? Number(
+            (correctCount * (run.scoring?.correct ?? 1) +
+              wrongCount * (run.scoring?.wrong ?? -0.25) +
+              // omit only applies to keyed questions; unkeyed are already excluded
+              omittedKeyedCount * (run.scoring?.omit ?? 0)).toFixed(2)
+          )
+        : undefined;
 
     // mark done + rewards ONLY on first run per reset
     if (run.mode === "daily") {
@@ -766,7 +790,8 @@ setRunQuiz({
       const rk = `${LS.concorsoRunsPrefix}${wk}`;
       const usedBefore = readInt(rk, 0);
 
-      const perfect = correctCount === run.questions.length;
+      const totalForPerfect = keyedTotal || run.questions.length;
+      const perfect = correctCount === totalForPerfect;
       const baseXp = 45 + correctCount * 4 + (perfect ? 20 : 0);
       const mult = usedBefore === 0 ? 1 : 0.75;
       const xpEarn = Math.max(15, Math.round(baseXp * mult));
@@ -779,7 +804,8 @@ setRunQuiz({
       writeInt(rk, usedBefore + 1);
     } else {
       // sim / review
-      const perfect = correctCount === run.questions.length;
+      const totalForPerfect = keyedTotal || run.questions.length;
+      const perfect = correctCount === totalForPerfect;
       const baseXp =
         run.mode === "sim"
           ? 35 + correctCount * 4 + (perfect ? 20 : 0)
@@ -802,6 +828,8 @@ setRunQuiz({
 
     try {
       run.questions.forEach((q, i) => {
+        const hasKey = q.answer !== null && q.answer !== undefined && q.answer >= 0;
+        if (!hasKey) return;
         const cat = String((q as any).category || "other");
         const bucket = (byCategory as any)[cat] || { correct: 0, total: 0 };
         bucket.total += 1;
@@ -814,7 +842,7 @@ setRunQuiz({
         ts: Date.now(),
         mode: run.mode,
         correct: run.correct,
-        total: run.questions.length,
+        total: keyedTotal || run.questions.length,
         byCategory,
       };
       pushHistory(item);
@@ -927,12 +955,13 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
     const answers = [...runQuiz.answers];
     answers[runQuiz.idx] = selected;
 
-    const isCorrect = selected === q.answer;
+    const hasKey = q.answer !== null && q.answer !== undefined && q.answer >= 0;
+    const isCorrect = hasKey ? selected === q.answer : null;
     const correct = runQuiz.correct + (isCorrect ? 1 : 0);
 
     // stay on same question, reveal feedback first
     setRunQuiz({ ...runQuiz, answers, correct });
-    setReveal({ isCorrect, correctIdx: q.answer, chosen: selected });
+    setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected });
   }
 
   // Concorso: opzione "Non rispondere" (omessa = 0 punti) e passa subito alla prossima domanda.
@@ -1227,8 +1256,13 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                   <div className="nd-progress-fill" style={progressFillStyle(((runQuiz.idx + (reveal ? 1 : 0)) / runQuiz.questions.length), "sky")} />
                 </div>
                 {reveal && (
-                  <div className={`nd-quiz-feedback ${reveal.isCorrect ? "ok" : "bad"}`} style={{ marginTop: 10 }}>
-                    {reveal.isCorrect ? "✅ Corretto!" : "❌ Non proprio."} <span style={{ opacity: 0.82 }}>Risposta corretta: {runQuiz.questions[runQuiz.idx].options[reveal.correctIdx]}</span>
+                  <div className={`nd-quiz-feedback ${reveal.isCorrect === null ? "" : reveal.isCorrect ? "ok" : "bad"}`} style={{ marginTop: 10 }}>
+                    {reveal.isCorrect === null ? "📌 Quiz senza chiave (studio)" : reveal.isCorrect ? "✅ Corretto!" : "❌ Non proprio."}
+                    {reveal.correctIdx === null ? null : (
+                      <span style={{ opacity: 0.82 }}>
+                        Risposta corretta: {runQuiz.questions[runQuiz.idx].options[reveal.correctIdx]}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
@@ -1254,7 +1288,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
               <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
                 {runQuiz.questions[runQuiz.idx].options.map((opt, i) => {
                   const active = selected === i;
-                  const correct = reveal ? i === reveal.correctIdx : false;
+                  const correct = reveal && reveal.correctIdx !== null ? i === reveal.correctIdx : false;
                   const wrong = reveal ? i === reveal.chosen && !reveal.isCorrect : false;
 
                   const cls =
