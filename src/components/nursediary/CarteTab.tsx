@@ -327,10 +327,10 @@ export function CarteTab({
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <div className="nd-pill nd-pill-amber" style={pillBox()} aria-label="Pillole disponibili">
+            <div className="nd-pill nd-pill--sm" style={pillBox()} aria-label="Pillole disponibili">
               💊 {pills}
             </div>
-            <div className="nd-pill nd-pill-green" style={pillBox()} aria-label="Bustine gratis disponibili">
+            <div className="nd-pill nd-pill--sm" style={pillBox()} aria-label="Bustine gratis disponibili">
               🎁 {freePacks}
             </div>
           </div>

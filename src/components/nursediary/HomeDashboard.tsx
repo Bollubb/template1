@@ -287,7 +287,7 @@ const claimMilestone = (milestoneLevel: number) => {
             <div style={tipCard()}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontWeight: 950, fontSize: 12, opacity: 0.92 }}>Tip del giorno</div>
-                <span className="nd-pill nd-pill-slate" style={{ fontSize: 11 }}>
+                <span className="nd-pill nd-pill--sm">
                   📌
                 </span>
               </div>
