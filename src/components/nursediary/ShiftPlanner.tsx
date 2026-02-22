@@ -66,17 +66,18 @@ function pillStyle(code: ShiftCode): React.CSSProperties {
     borderRadius: 999,
     fontSize: 11,
     fontWeight: 950,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(255,255,255,0.06)",
-    color: "rgba(255,255,255,0.9)",
+    border: "1px solid rgba(255,255,255,0.16)",
+    background: "linear-gradient(180deg, rgba(12,14,18,0.92), rgba(8,10,14,0.86))",
+    color: "rgba(255,255,255,0.94)",
     lineHeight: 1.1,
   };
 
-  if (code === "M") return { ...base, background: "rgba(56,189,248,0.18)" }; // morning
-  if (code === "P") return { ...base, background: "rgba(250,204,21,0.18)" }; // afternoon
-  if (code === "N") return { ...base, background: "rgba(167,139,250,0.20)" }; // night
-  if (code === "R") return { ...base, background: "rgba(34,197,94,0.16)" }; // rest
-  if (code === "F") return { ...base, background: "rgba(248,113,113,0.18)" }; // ferie
+  // Keep a charcoal base (readable on the app background) + subtle accent outline.
+  if (code === "M") return { ...base, boxShadow: "0 0 0 1px rgba(56,189,248,0.28), 0 10px 22px rgba(0,0,0,0.28)" }; // morning
+  if (code === "P") return { ...base, boxShadow: "0 0 0 1px rgba(250,204,21,0.26), 0 10px 22px rgba(0,0,0,0.28)" }; // afternoon
+  if (code === "N") return { ...base, boxShadow: "0 0 0 1px rgba(167,139,250,0.28), 0 10px 22px rgba(0,0,0,0.28)" }; // night
+  if (code === "R") return { ...base, boxShadow: "0 0 0 1px rgba(34,197,94,0.26), 0 10px 22px rgba(0,0,0,0.28)" }; // rest
+  if (code === "F") return { ...base, boxShadow: "0 0 0 1px rgba(248,113,113,0.26), 0 10px 22px rgba(0,0,0,0.28)" }; // ferie
   return base;
 }
 
@@ -103,8 +104,9 @@ function shiftLabelStyle(code: ShiftCode): React.CSSProperties {
     fontWeight: 950,
     lineHeight: 1,
     color: shiftTextColor(code),
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(10,12,16,0.66)",
+    border: "1px solid rgba(255,255,255,0.14)",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
   };
 }
 
@@ -297,17 +299,6 @@ useEffect(() => {
       </div>
 
       <div style={{ marginTop: 10, fontWeight: 950, textTransform: "capitalize", opacity: 0.92 }}>{monthLabel(viewMonth)}</div>
-
-
-<div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-  <span style={{ opacity: 0.7, fontSize: 12, fontWeight: 850 }}>Legenda:</span>
-  {(["M", "P", "N", "R", "F"] as ShiftCode[]).map((c) => (
-    <span key={c} style={pillStyle(c)}>
-      {c} • {codeLong(c)}
-    </span>
-  ))}
-</div>
-
 
       <div style={{ marginTop: 10, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 6 }}>
