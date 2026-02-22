@@ -1,4 +1,4 @@
-export type QuizCategory = "antibiotici" | "farmaci" | "procedure" | "emergenza" | "emogas" | "norme";
+export type QuizCategory = "antibiotici" | "farmaci" | "procedure" | "emergenza" | "emogas" | "norme" | "resp";
 export type QuizDifficulty = "easy" | "medium" | "hard";
 
 export type QuizQuestion = {
