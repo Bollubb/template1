@@ -42,35 +42,8 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
         <meta name="theme-color" content="#020617" />
       </Head>
 
-      
-        <div
-          style={{
-            minHeight: "100vh",
-            overflowX: "hidden",
-            color: "rgba(255,255,255,0.92)",
-            backgroundColor: "rgb(2,6,23)",
-                        // Premium background image (public/background-main.png) + subtle gradients
-            backgroundImage:
-              "linear-gradient(180deg, rgba(2,6,23,0.82), rgba(2,6,23,0.30) 55%, rgba(2,6,23,0.92)), linear-gradient(135deg, rgba(56,189,248,0.06), rgba(34,197,94,0.04) 35%, rgba(2,6,23,0) 75%), url('/background-main.png')",
-            backgroundRepeat: "no-repeat",
-            backgroundSize: "cover",
-          }}
-        >
-          <header
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 50,
-              padding: "10px 14px",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
-              background: "linear-gradient(180deg, rgba(7,12,24,0.88) 0%, rgba(7,12,24,0.94) 55%, rgba(7,12,24,0.98) 100%)",
-        backgroundImage: "url(/background-main.png)",
-        backgroundSize: "cover",
-        backgroundPosition: "center top",
-        backgroundAttachment: "fixed",
-              backdropFilter: "blur(12px)",
-            }}
-          >
+        <div className="nd-app">
+          <header className="nd-header">
             <div
               style={{
                 display: "flex",
@@ -90,17 +63,20 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                     setMenuOpen((v) => !v);
                   }}
                   aria-label="Apri menu"
+                  className="nd-press"
                   style={{
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    background: "rgba(255,255,255,0.04)",
-                    color: "rgba(255,255,255,0.92)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "rgba(10,12,18,0.62)",
+                    color: "rgba(255,255,255,0.94)",
                     padding: "8px 10px",
                     borderRadius: 14,
                     cursor: "pointer",
-                    boxShadow: "0 10px 28px rgba(0,0,0,0.30)",
+                    boxShadow: "0 14px 34px rgba(0,0,0,0.42)",
+                    backdropFilter: "blur(10px)",
+                    WebkitBackdropFilter: "blur(10px)",
                   }}
                 >
                   {headerOverride?.showBack && headerOverride.onBack ? (
@@ -145,15 +121,14 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
 
                 {menuOpen && (
                   <div
+                    className="nd-surface"
                     style={{
                       position: "absolute",
                       left: 0,
                       top: "calc(100% + 10px)",
                       width: 298,
                       borderRadius: 18,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(2,6,23,0.92)",
-                      boxShadow: "0 18px 50px rgba(0,0,0,0.55)",
+                      boxShadow: "0 20px 54px rgba(0,0,0,0.62)",
                       overflow: "hidden",
                     }}
                   >
@@ -173,6 +148,7 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                             router.push(it.href as QuickRoute);
                             setMenuOpen(false);
                           }}
+                          className="nd-press"
                           style={{
                             width: "100%",
                             display: "flex",
@@ -181,7 +157,7 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                             padding: "10px 10px",
                             borderRadius: 14,
                             border: "1px solid rgba(255,255,255,0.08)",
-                            background: "rgba(255,255,255,0.04)",
+                            background: "rgba(255,255,255,0.05)",
                             color: "rgba(255,255,255,0.92)",
                             cursor: "pointer",
                             textAlign: "left",
