@@ -346,24 +346,14 @@ type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet";
 type BtnVariant = "emerald" | "indigo" | "sky" | "ghost";
 
 function chipStyle(v: ChipVariant): React.CSSProperties {
-  // Background is handled by global CSS (.nd-pill / .nd-chip) to keep it distinct from the app background.
-  const common: React.CSSProperties = {
+  // IMPORTANT: do NOT override background/border here.
+  // The app uses global styles (.nd-pill / .nd-chip + variant classes) for a darker, readable chip.
+  return {
     display: "inline-flex",
     alignItems: "center",
     gap: 6,
-    padding: "6px 10px",
-    borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "transparent",
-    color: "rgba(255,255,255,0.92)",
     whiteSpace: "nowrap",
   };
-
-  if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.30)" };
-  if (v === "amber") return { ...common, border: "1px solid rgba(251,191,36,0.30)" };
-  if (v === "green") return { ...common, border: "1px solid rgba(52,211,153,0.30)" };
-  if (v === "violet") return { ...common, border: "1px solid rgba(167,139,250,0.30)" };
-  return { ...common, border: "1px solid rgba(148,163,184,0.22)" };
 }
 
 function pillStyle(v: ChipVariant): React.CSSProperties {
