@@ -46,7 +46,7 @@ function monthLabel(d: Date) {
   return d.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
 }
 
-function card(): React.CSSProperties {
+function card(isMobile: boolean): React.CSSProperties {
   return {
     padding: 14,
     borderRadius: isMobile ? "22px 22px 0 0" : 18,
@@ -274,7 +274,7 @@ useEffect(() => {
   };
 
   return (
-    <div style={card()}>
+    <div style={card(isMobile)}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div>
           <div style={{ fontWeight: 950, fontSize: 16 }}>Organizzatore turni</div>
