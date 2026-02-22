@@ -702,12 +702,11 @@ setRunQuiz({
       writeInt(rk, usedBefore + 1);
     } else {
       // sim / review
-      // sim / concorso / review
+      const perfect = correctCount === run.questions.length;
       const baseXp =
-      const baseXp =
-        run.mode === "concorso"
-          ? 55 + correctCount * 5 + (perfect ? 25 : 0)
-          : run.mode === "sim" ? 35 + correctCount * 4 + (perfect ? 20 : 0) : 22 + correctCount * 3 + (perfect ? 12 : 0);
+        run.mode === "sim"
+          ? 35 + correctCount * 4 + (perfect ? 20 : 0)
+          : 22 + correctCount * 3 + (perfect ? 12 : 0);
       const xpEarn = Math.max(5, Math.round(baseXp));
       const pillsEarn = Math.max(1, Math.floor(xpEarn / 18));
 
