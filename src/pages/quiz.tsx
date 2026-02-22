@@ -342,7 +342,7 @@ function ghostBtn(disabled?: boolean): React.CSSProperties {
   };
 }
 
-type ChipVariant = "sky" | "amber" | "slate" | "green";
+type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet";
 type BtnVariant = "emerald" | "indigo" | "sky" | "ghost";
 
 function chipStyle(v: ChipVariant): React.CSSProperties {
@@ -364,6 +364,7 @@ function chipStyle(v: ChipVariant): React.CSSProperties {
   if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.35)", background: "rgba(56,189,248,0.16)" };
   if (v === "amber") return { ...common, border: "1px solid rgba(251,191,36,0.35)", background: "rgba(251,191,36,0.14)" };
   if (v === "green") return { ...common, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(52,211,153,0.14)" };
+  if (v === "violet") return { ...common, border: "1px solid rgba(167,139,250,0.35)", background: "rgba(167,139,250,0.14)" };
   return { ...common, border: "1px solid rgba(148,163,184,0.25)", background: "rgba(148,163,184,0.08)" };
 }
 
@@ -557,7 +558,8 @@ export default function QuizPage(): JSX.Element {
   const [premiumContextUnlock, setPremiumContextUnlock] = useState<null | "daily" | "weekly" | "concorso">(null);
 
   const [homeTab, setHomeTab] = useState<HomeTab>("daily");
-  const [concorsoNoRepeat, setConcorsoNoRepeat] = useState<boolean>(false);
+  // Default ON: concorsi "a mazzo" (random senza ripetizioni finché non finiscono)
+  const [concorsoNoRepeat, setConcorsoNoRepeat] = useState<boolean>(true);
   const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly" | "concorso"; remaining: number }>(null);
 
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
@@ -582,7 +584,7 @@ export default function QuizPage(): JSX.Element {
     try {
       setPremium(localStorage.getItem(LS.premium) === "1");
       setFavs(getFavs());
-      setConcorsoNoRepeat(readBool(LS.concorsoNoRepeat, false));
+      setConcorsoNoRepeat(readBool(LS.concorsoNoRepeat, true));
       const savedTab = (localStorage.getItem(LS.lastHomeTab) || "daily") as HomeTab;
       if (savedTab === "daily" || savedTab === "weekly" || savedTab === "concorso" || savedTab === "review") setHomeTab(savedTab);
     } catch {}
@@ -935,6 +937,27 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
     setReveal({ isCorrect, correctIdx: q.answer, chosen: selected });
   }
 
+  // Concorso: opzione "Non rispondere" (omessa = 0 punti) e passa subito alla prossima domanda.
+  function omitAnswer() {
+    if (!runQuiz) return;
+    if (reveal) return;
+
+    const answers = [...runQuiz.answers];
+    answers[runQuiz.idx] = -1;
+
+    const nextIdx = runQuiz.idx + 1;
+    const next: QuizRun = { ...runQuiz, answers, idx: nextIdx };
+
+    setReveal(null);
+    setSelected(null);
+
+    if (nextIdx >= runQuiz.questions.length) {
+      finish(next);
+    } else {
+      setRunQuiz(next);
+    }
+  }
+
   function goNext() {
     if (!runQuiz) return;
     if (!reveal) return;
@@ -981,9 +1004,9 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("daily")} style={homeTab === "daily" ? chipStyle("sky") : chipStyle("slate")}>Daily</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("weekly")} style={homeTab === "weekly" ? chipStyle("sky") : chipStyle("slate")}>Weekly</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("concorso")} style={homeTab === "concorso" ? chipStyle("sky") : chipStyle("slate")}>Concorsi</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("sky") : chipStyle("slate")}>Errori</button>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("weekly")} style={homeTab === "weekly" ? chipStyle("amber") : chipStyle("slate")}>Weekly</button>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("concorso")} style={homeTab === "concorso" ? chipStyle("violet") : chipStyle("slate")}>Concorsi</button>
+                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("green") : chipStyle("slate")}>Errori</button>
               </div>
 
               
@@ -1006,7 +1029,6 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
             {`Rimanenti ${remaining}/${caps.max}`}
           </span>
         </div>
-        <div className="mt-2 nd-help">1 gratuito • altri con pubblicità o Premium</div>
       </div>
 
       <button
@@ -1056,7 +1078,6 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
             {`Rimanenti ${remaining}/${caps.max}`}
           </span>
         </div>
-        <div className="mt-2 nd-help">1 gratuito • extra con pubblicità o Premium</div>
       </div>
 
       <button
@@ -1097,7 +1118,6 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
         <div className="flex items-center justify-between gap-2">
           <div>
             <div className="text-sm font-extrabold text-white">Simulazione Concorsi</div>
-            <div className="nd-help">Timer • scoring con penalità • banca dedicata</div>
           </div>
           <span
             className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
@@ -1106,9 +1126,8 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
             {`Rimanenti ${remaining}/${caps.max}`}
           </span>
         </div>
-        <div className="mt-2 nd-help">1 gratuita a settimana • extra con pubblicità o Premium</div>
         <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="nd-help">Random senza ripetizioni finché non finiscono</div>
+          <div className="nd-help">Senza ripetizioni</div>
           <button
             type="button"
             onClick={() => setConcorsoNoRepeat((v) => !v)}
@@ -1215,18 +1234,15 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                   </div>
                 )}
               </div>
-{runQuiz.mode === "concorso" && (
-  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 900, fontSize: 12, opacity: 0.92 }}>
-    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Scoring: +1 / −0.25 / 0</span>
-    <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>
-      Punteggio: {(() => {
-        const wrongNow = runQuiz.answers.filter((a, i) => a !== -1 && a !== runQuiz.questions[i].answer).length;
-        const correctNow = runQuiz.answers.filter((a, i) => a !== -1 && a === runQuiz.questions[i].answer).length;
-        return (correctNow * 1 + wrongNow * -0.25).toFixed(2);
-      })()}
-    </span>
-  </div>
-)}
+
+              {runQuiz.mode === "concorso" && (
+                <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 900, fontSize: 12, opacity: 0.92 }}>
+                  <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>
+                    Scoring: +1 / −0.25 / 0
+                  </span>
+                </div>
+              )}
+
 
               <div style={{ marginTop: 10, fontWeight: 900, fontSize: 15 }}>{runQuiz.questions[runQuiz.idx].q}</div>
 
@@ -1303,6 +1319,12 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                   Esci
                 </button>
 
+                {runQuiz.mode === "concorso" && !reveal && (
+                  <button type="button" onClick={omitAnswer} className="nd-btn-ghost nd-press" style={ghostBtn(false)}>
+                    Non rispondere
+                  </button>
+                )}
+
                 {!reveal ? (
                   <button type="button" onClick={confirmAnswer} disabled={selected === null} className="nd-btn-primary nd-press" style={primaryBtn(selected === null)}>
                     Conferma
@@ -1313,18 +1335,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                   </button>
                 )}
               </div>
-{runQuiz.mode === "concorso" && (
-  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 900, fontSize: 12, opacity: 0.92 }}>
-    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Scoring: +1 / −0.25 / 0</span>
-    <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>
-      Punteggio: {(() => {
-        const wrongNow = runQuiz.answers.filter((a, i) => a !== -1 && a !== runQuiz.questions[i].answer).length;
-        const correctNow = runQuiz.answers.filter((a, i) => a !== -1 && a === runQuiz.questions[i].answer).length;
-        return (correctNow * 1 + wrongNow * -0.25).toFixed(2);
-      })()}
-    </span>
-  </div>
-)}
+
 
             </div>
           </div>
@@ -1360,7 +1371,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                 {quizResult.mode === "concorso" && (
                   <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>{quizResult.presetLabel ?? "Simulazione Concorsi"}</span>
-                    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Score: {(quizResult.score ?? 0).toFixed(2)}</span>
+                    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Punteggio: {(quizResult.score ?? 0).toFixed(2)}</span>
                     <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Errori: {quizResult.wrongCount ?? 0}</span>
                     <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Omesse: {quizResult.omittedCount ?? 0}</span>
                     {typeof quizResult.passMark === "number" && (
