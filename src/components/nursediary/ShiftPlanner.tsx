@@ -49,7 +49,7 @@ function monthLabel(d: Date) {
 function card(): React.CSSProperties {
   return {
     padding: 14,
-    borderRadius: 18,
+    borderRadius: isMobile ? "22px 22px 0 0" : 18,
     border: "1px solid rgba(255,255,255,0.10)",
     background: "rgba(255,255,255,0.04)",
     boxShadow: "0 12px 28px rgba(0,0,0,0.35)",
@@ -146,6 +146,25 @@ export default function ShiftPlanner(): JSX.Element {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [patternOpen, setPatternOpen] = useState(false);
   const [pattern, setPattern] = useState<ShiftCode[]>(["M", "M", "P", "P", "N", "R", "R"]);
+
+
+const [isMobile, setIsMobile] = useState(false);
+
+useEffect(() => {
+  if (typeof window === "undefined") return;
+  const mq = window.matchMedia("(max-width: 560px)");
+  const apply = () => setIsMobile(!!mq.matches);
+  apply();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const listener: any = (e: any) => apply();
+  try {
+    mq.addEventListener("change", listener);
+    return () => mq.removeEventListener("change", listener);
+  } catch {
+    mq.addListener(listener);
+    return () => mq.removeListener(listener);
+  }
+}, []);
 
   // load
   useEffect(() => {
@@ -259,7 +278,7 @@ export default function ShiftPlanner(): JSX.Element {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div>
           <div style={{ fontWeight: 950, fontSize: 16 }}>Organizzatore turni</div>
-          <div style={{ opacity: 0.72, fontWeight: 750, fontSize: 12 }}>Pianifica e tieni traccia del turno.</div>
+          <div style={{ opacity: 0.72, fontWeight: 750, fontSize: 12 }}>Tocca un giorno per impostare il turno.</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button type="button" onClick={() => setViewMonth(addMonths(viewMonth, -1))} style={smallBtn()}>
@@ -278,6 +297,17 @@ export default function ShiftPlanner(): JSX.Element {
       </div>
 
       <div style={{ marginTop: 10, fontWeight: 950, textTransform: "capitalize", opacity: 0.92 }}>{monthLabel(viewMonth)}</div>
+
+
+<div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+  <span style={{ opacity: 0.7, fontSize: 12, fontWeight: 850 }}>Legenda:</span>
+  {(["M", "P", "N", "R", "F"] as ShiftCode[]).map((c) => (
+    <span key={c} style={pillStyle(c)}>
+      {c} • {codeLong(c)}
+    </span>
+  ))}
+</div>
+
 
       <div style={{ marginTop: 10, width: "100%", maxWidth: "100%", overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 6 }}>
@@ -306,7 +336,7 @@ export default function ShiftPlanner(): JSX.Element {
                 minWidth: 0,
                 borderRadius: 14,
                 border: isToday ? "1px solid rgba(56,189,248,0.60)" : "1px solid rgba(255,255,255,0.10)",
-                background: key ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.02)",
+                background: key ? "linear-gradient(180deg, rgba(20,22,28,0.72), rgba(14,16,20,0.58))" : "rgba(255,255,255,0.02)",
                 color: "rgba(255,255,255,0.92)",
                 padding: 8,
                 cursor: key ? "pointer" : "default",
@@ -350,14 +380,14 @@ export default function ShiftPlanner(): JSX.Element {
             background: "rgba(0,0,0,0.55)",
             zIndex: 9998,
             display: "grid",
-            placeItems: "center",
-            padding: 16,
+            placeItems: isMobile ? "end center" : "center",
+            padding: isMobile ? 12 : 16,
           }}
           onClick={closeEdit}
         >
           <div
             style={{
-              width: "min(520px, calc(100vw - 24px))",
+              width: isMobile ? "100%" : "min(520px, calc(100vw - 24px))",
               borderRadius: 18,
               border: "1px solid rgba(255,255,255,0.12)",
               background: "rgba(18,18,18,0.98)",
@@ -366,6 +396,12 @@ export default function ShiftPlanner(): JSX.Element {
             }}
             onClick={(e) => e.stopPropagation()}
           >
+{isMobile && (
+  <div style={{ display: "grid", placeItems: "center", paddingBottom: 6 }}>
+    <div style={{ width: 44, height: 4, borderRadius: 999, background: "rgba(255,255,255,0.16)" }} />
+  </div>
+)}
+
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div>
                 <div style={{ fontWeight: 950, fontSize: 16 }}>Turno del {editing.key}</div>

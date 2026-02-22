@@ -13,7 +13,6 @@ const LS = {
   pills: "nd_pills",
   profile: "nd_profile",
   premium: "nd_premium",
-  freePacks: "nd_free_packs",
   milestones: "nd_milestones_claimed_v1", // Record<level,1>
 } as const;
 
@@ -62,14 +61,11 @@ function nextMilestone(level: number) {
 }
 
 function milestoneReward(level: number) {
-  // Simple, deterministic rewards (can be tuned later without breaking save data)
-  // Lv 5: +20 pills +1 pack
-  // Lv 10: +25 pills +2 pack
-  // Lv 15: +30 pills +2 pack
+  // Progressive reward every 5 levels (only pills)
+  // Lv 5: +15 • Lv 10: +20 • Lv 15: +25 ...
   const tier = Math.max(1, Math.floor(level / 5));
-  const pills = 15 + tier * 5;
-  const packs = 1 + Math.floor(level / 10);
-  return { pills, packs };
+  const pills = 10 + tier * 5;
+  return { pills };
 }
 
 function readNum(key: string) {
@@ -115,76 +111,120 @@ export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProf
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+
+const tips = useMemo(
+  () => [
+    "Prima di un prelievo: lascia asciugare l'antiseptico (riduce contaminazioni).",
+    "SpO₂ non distingue COHb: in sospetto CO usa co-ossimetria e clinica.",
+    "In shock: rivaluta sempre perfusione periferica (CRT) e diuresi oltre alla PA.",
+    "Prima di un bolo EV: controlla concentrazione, compatibilità e velocità.",
+    "In dispnea: pensa a cause non respiratorie (acidosi, anemia, dolore, ansia).",
+    "Con farmaci ad alto rischio: doppio controllo indipendente quando previsto.",
+    "Nel dolore toracico: ECG precoce e monitor, ma valuta anche segni di instabilità.",
+    "Se febbre in CVC: emocolture da CVC e periferica prima dell'antibiotico, se possibile.",
+    "Nel delirium: correggi prima trigger (ipossia, ipoglicemia, ritenzione urinaria).",
+    "In ipoglicemia: ricontrolla glicemia dopo trattamento e valuta causa.",
+    "In ventilazione: osserva sempre sincronismo paziente-ventilatore e allarmi.",
+    "Prima di ossigeno: imposta un target SpO₂ (es. BPCO spesso 88–92%).",
+    "Emogas: guarda il pH, poi PaCO₂/HCO₃⁻ per capire la componente primaria.",
+    "Potassio alto: verifica ECG e causa; attenzione a emolisi del campione.",
+    "In sepsi: tempo = organo. Rivaluta lattato e perfusione dopo fluidi/terapia.",
+    "Prima di eparina: controlla indicazione, controindicazioni e piastrine (HIT).",
+    "Con antibiotici: la tempistica conta, ma anche dose e via nel paziente critico.",
+    "Dopo una caduta: valuta trauma cranico e anticoagulanti prima di banalizzare.",
+    "Nausea/vomito: attenzione a rischio aspirazione e bilancio idrico-elettrolitico.",
+    "In terapia infusionale: etichetta linee e pompe (riduce errori).",
+  ],
+  []
+);
+
+const tipOfDay = useMemo(() => {
+  const now = new Date();
+  const seed = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
+  return tips[seed % tips.length];
+}, [tips]);
+
   const lvlInfo = useMemo(() => computeLevel(xp), [xp]);
   const lvl = lvlInfo.level;
   const need = lvlInfo.need;
   const remaining = lvlInfo.remaining;
   const pct = Math.max(0, Math.min(100, Math.round(lvlInfo.pct * 100)));
 
-  // Auto milestone rewards at Lv 5/10/15...
-  useEffect(() => {
-    if (!isBrowser()) return;
-    if (!lvl || lvl < 5) return;
 
-    const claimed = safeJson<Record<string, 1>>(localStorage.getItem(LS.milestones), {});
-    const newly: number[] = [];
+// Milestone rewards are claimed manually by tapping the 🎁 on the path.
+const [claimedMilestones, setClaimedMilestones] = useState<Record<string, 1>>({});
 
-    for (let m = 5; m <= lvl; m += 5) {
-      if (!claimed[String(m)]) newly.push(m);
-    }
-    if (!newly.length) return;
+useEffect(() => {
+  if (!isBrowser()) return;
+  setClaimedMilestones(safeJson<Record<string, 1>>(localStorage.getItem(LS.milestones), {}));
+}, []);
 
-    // Apply all unclaimed milestones up to current level
-    let addPills = 0;
-    let addPacks = 0;
-    newly.forEach((m) => {
-      const r = milestoneReward(m);
-      addPills += r.pills;
-      addPacks += r.packs;
-      claimed[String(m)] = 1;
-    });
+const claimMilestone = (milestoneLevel: number) => {
+  if (!isBrowser()) return;
+  if (milestoneLevel % 5 !== 0) return;
+  if (lvl < milestoneLevel) {
+    toast.push(`Completa il Lv ${milestoneLevel} per sbloccare il premio`, "info", { duration: 2400 });
+    return;
+  }
 
-    try {
-      localStorage.setItem(LS.milestones, JSON.stringify(claimed));
-    } catch {}
+  const key = String(milestoneLevel);
+  const currentClaimed = safeJson<Record<string, 1>>(localStorage.getItem(LS.milestones), {});
+  if (currentClaimed[key]) {
+    toast.push("Premio già riscattato ✅", "info", { duration: 1800 });
+    return;
+  }
 
-    // pills
-    const curP = readNum(LS.pills);
-    const nextP = curP + addPills;
-    try {
-      localStorage.setItem(LS.pills, String(nextP));
-    } catch {}
-    setPillsCount(nextP);
+  const r = milestoneReward(milestoneLevel);
 
-    // free packs
-    const curFree = readNum(LS.freePacks);
-    const nextFree = curFree + addPacks;
-    try {
-      localStorage.setItem(LS.freePacks, String(nextFree));
-    } catch {}
+  // persist claim
+  currentClaimed[key] = 1;
+  try {
+    localStorage.setItem(LS.milestones, JSON.stringify(currentClaimed));
+  } catch {}
+  setClaimedMilestones(currentClaimed);
 
-    // One toast only (no spam)
-    toast.push(`🎁 Milestone raggiunta! +${addPills}💊 e +${addPacks} bustine`, "success", { duration: 3500 });
-  }, [lvl]); // eslint-disable-line react-hooks/exhaustive-deps
+  // apply pills
+  const curP = readNum(LS.pills);
+  const nextP = curP + r.pills;
+  try {
+    localStorage.setItem(LS.pills, String(nextP));
+  } catch {}
+  setPillsCount(nextP);
+
+  toast.push(`🎁 Premio riscattato! +${r.pills}💊`, "success", { duration: 2600 });
+};
 
   const nextM = nextMilestone(lvl);
 
   const pathItems = useMemo(() => {
-    // Show a small "Duolingo-like" strip: current -> next milestone (max 8 nodes)
-    const start = Math.max(1, lvl);
-    const end = Math.max(start + 6, nextM); // ensure we include the chest
-    const items: Array<{ n: number; kind: "node" | "chest"; done: boolean; current: boolean }> = [];
-    for (let n = start; n <= end; n++) {
-      const isChest = n % 5 === 0;
-      items.push({ n, kind: isChest ? "chest" : "node", done: n < lvl, current: n === lvl });
-      if (items.length >= 8) break;
-    }
-    // If milestone not included, force it as last item
-    if (!items.some((x) => x.n === nextM)) {
-      items[items.length - 1] = { n: nextM, kind: "chest", done: nextM < lvl, current: nextM === lvl };
-    }
-    return items;
-  }, [lvl, nextM]);
+  // Small strip: current -> next milestone (max 8 nodes)
+  const start = Math.max(1, lvl);
+  const end = Math.max(start + 6, nextM); // ensure we include the chest
+  const items: Array<{
+    n: number;
+    kind: "node" | "chest";
+    done: boolean;
+    current: boolean;
+    claimed: boolean;
+    claimable: boolean;
+  }> = [];
+
+  for (let n = start; n <= end; n++) {
+    const isChest = n % 5 === 0;
+    const claimed = !!claimedMilestones[String(n)];
+    const claimable = isChest && !claimed && lvl >= n;
+    items.push({ n, kind: isChest ? "chest" : "node", done: n < lvl, current: n === lvl, claimed, claimable });
+    if (items.length >= 8) break;
+  }
+
+  // If milestone not included, force it as last item
+  if (!items.some((x) => x.n === nextM)) {
+    const claimed = !!claimedMilestones[String(nextM)];
+    const claimable = !claimed && lvl >= nextM;
+    items[items.length - 1] = { n: nextM, kind: "chest", done: nextM < lvl, current: nextM === lvl, claimed, claimable };
+  }
+  return items;
+}, [lvl, nextM, claimedMilestones]);
 
   return (
     <div
@@ -256,26 +296,37 @@ export default function HomeDashboard({ onGoToCards, onGoToDidattica, onGoToProf
               <div style={{ marginTop: 8, display: "flex", gap: 10, alignItems: "center", overflowX: "auto", paddingBottom: 2 }}>
                 {pathItems.map((it, idx) => (
                   <React.Fragment key={it.n}>
-                    <div
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 999,
-                        border: it.current ? "1px solid rgba(56,189,248,0.70)" : "1px solid rgba(255,255,255,0.14)",
-                        background: it.done
-                          ? "rgba(34,197,94,0.18)"
-                          : it.kind === "chest"
-                          ? "rgba(250,204,21,0.18)"
-                          : "rgba(255,255,255,0.06)",
-                        display: "grid",
-                        placeItems: "center",
-                        flex: "0 0 auto",
-                        boxShadow: it.current ? "0 0 0 3px rgba(56,189,248,0.10)" : "none",
-                      }}
-                      title={it.kind === "chest" ? `Milestone Lv ${it.n}` : `Lv ${it.n}`}
-                    >
-                      {it.kind === "chest" ? "🎁" : it.current ? "⭐" : it.done ? "✓" : it.n}
-                    </div>
+                    <button
+  type="button"
+  onClick={() => {
+    if (it.kind === "chest") claimMilestone(it.n);
+  }}
+  style={{
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    border: it.current ? "1px solid rgba(56,189,248,0.70)" : "1px solid rgba(255,255,255,0.14)",
+    background: it.claimed
+      ? "rgba(34,197,94,0.18)"
+      : it.claimable
+      ? "rgba(250,204,21,0.18)"
+      : it.kind === "chest"
+      ? "rgba(255,255,255,0.06)"
+      : "rgba(255,255,255,0.06)",
+    display: "grid",
+    placeItems: "center",
+    flex: "0 0 auto",
+    boxShadow: it.claimable ? "0 0 0 3px rgba(250,204,21,0.10)" : it.current ? "0 0 0 3px rgba(56,189,248,0.10)" : "none",
+    cursor: it.kind === "chest" ? "pointer" : "default",
+    padding: 0,
+    color: "rgba(255,255,255,0.92)",
+  }}
+  className={it.claimable ? "nd-press nd-pop" : "nd-press"}
+  title={it.kind === "chest" ? `Premio Lv ${it.n}` : `Lv ${it.n}`}
+  aria-label={it.kind === "chest" ? `Riscatta premio livello ${it.n}` : `Livello ${it.n}`}
+>
+  {it.kind === "chest" ? (it.claimed ? "✓" : "🎁") : it.current ? "⭐" : it.done ? "✓" : it.n}
+</button>
                     {idx < pathItems.length - 1 && <div style={{ width: 18, height: 3, borderRadius: 999, background: "rgba(255,255,255,0.10)", flex: "0 0 auto" }} />}
                   </React.Fragment>
                 ))}
