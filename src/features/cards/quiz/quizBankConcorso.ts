@@ -5405,7 +5405,7 @@ export const QUIZ_BANK_CONCORSO: QuizQuestion[] = [
     category: "antibiotici",
     difficulty: "medium",
     explain: "Dipende da tipo reazione e generazione; valutazione clinica.",
-  },,
+  },
   {
     id: "qc0751",
     q: "Paziente con dispnea e ipoventilazione. Emogas: pH 7.24, PaCO₂ 62 mmHg, HCO₃⁻ 26 mEq/L. Interpretazione più probabile?",
