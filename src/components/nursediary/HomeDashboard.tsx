@@ -56,6 +56,16 @@ function pill(code: string): React.CSSProperties {
   };
 }
 
+function tipCard(): React.CSSProperties {
+  return {
+    marginTop: 8,
+    padding: 10,
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "rgba(15,23,42,0.60)",
+  };
+}
+
 function nextMilestone(level: number) {
   return Math.ceil(Math.max(1, level) / 5) * 5;
 }
@@ -272,7 +282,17 @@ const claimMilestone = (milestoneLevel: number) => {
           <div style={{ ...card(), padding: 12 }}>
             <div style={{ opacity: 0.75, fontSize: 12, fontWeight: 800 }}>Pillole</div>
             <div style={{ fontWeight: 950, fontSize: 18, marginTop: 2 }}>{pillsCount} 💊</div>
-            <div style={{ marginTop: 8, opacity: 0.7, fontSize: 12 }}>Usale per aprire bustine e avanzare.</div>
+
+            {/* Tip del giorno (ruota automaticamente) */}
+            <div style={tipCard()}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ fontWeight: 950, fontSize: 12, opacity: 0.92 }}>Tip del giorno</div>
+                <span className="nd-pill nd-pill-slate" style={{ fontSize: 11 }}>
+                  📌
+                </span>
+              </div>
+              <div style={{ marginTop: 6, opacity: 0.78, fontSize: 12, lineHeight: 1.25 }}>{tipOfDay}</div>
+            </div>
           </div>
 
           <div style={{ ...card(), padding: 12 }}>

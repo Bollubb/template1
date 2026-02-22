@@ -327,8 +327,12 @@ export function CarteTab({
           </div>
 
           <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <div style={pillBox()}>💊 {pills}</div>
-            <div style={pillBox()}>🎁 {freePacks}</div>
+            <div className="nd-pill nd-pill-amber" style={pillBox()} aria-label="Pillole disponibili">
+              💊 {pills}
+            </div>
+            <div className="nd-pill nd-pill-green" style={pillBox()} aria-label="Bustine gratis disponibili">
+              🎁 {freePacks}
+            </div>
           </div>
         </div>
 
@@ -521,14 +525,8 @@ export function CarteTab({
 }
 
 function pillBox(): React.CSSProperties {
-  return {
-    padding: "10px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "#0f172a",
-    color: "rgba(255,255,255,0.90)",
-    fontWeight: 900,
-  };
+  // Keep it compact; background/border handled by global .nd-pill/.nd-chip (charcoal glass)
+  return {};
 }
 
 function btnPrimary(disabled: boolean, bg: string, fg: string): React.CSSProperties {
