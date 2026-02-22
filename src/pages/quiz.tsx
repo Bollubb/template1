@@ -727,7 +727,15 @@ setRunQuiz({
       return acc + (chosen === -1 ? 1 : 0);
     }, 0);
 
-    const omittedKeyedCount = run.answers.filter((a, idx) => run.questions[idx].answer !== null && run.questions[idx].answer !== undefined && run.questions[idx].answer >= 0 && a === -1).length;
+    // TS note: accessing the same optional field multiple times in a single expression may not narrow well.
+    // Also, be defensive if answers/questions arrays ever drift.
+    const omittedKeyedCount = run.answers.reduce((acc, a, idx) => {
+      const q = run.questions[idx];
+      if (!q) return acc;
+      const ans = q.answer;
+      const hasKey = ans !== null && ans !== undefined && ans >= 0;
+      return acc + (hasKey && a === -1 ? 1 : 0);
+    }, 0);
     const wrongCount = Math.max(0, keyedTotal - correctCount - omittedKeyedCount);
     const score =
       run.mode === "concorso"
