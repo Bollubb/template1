@@ -120,8 +120,10 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                 </button>
 
                 {menuOpen && (
-                  <div
-                    className="nd-surface"
+                  <>
+                    <div className="nd-backdrop" style={{ zIndex: 40 }} onClick={() => setMenuOpen(false)} />
+                    <div
+                    className="nd-popover nd-pop"
                     style={{
                       position: "absolute",
                       left: 0,
@@ -130,6 +132,7 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                       borderRadius: 18,
                       boxShadow: "0 20px 54px rgba(0,0,0,0.62)",
                       overflow: "hidden",
+                      zIndex: 60,
                     }}
                   >
                     <div style={{ padding: "10px 12px", borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
@@ -179,6 +182,7 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
                       Suggerimento: usa il menu per una home più pulita e focalizzata.
                     </div>
                   </div>
+                  </>
                 )}
               </div>
 
