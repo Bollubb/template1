@@ -41,6 +41,8 @@ type QuizResult = {
   mode: QuizRun["mode"];
   correct: number;
   total: number;
+  // Optional threshold for "idoneo" (used by concorso presets)
+  passMark?: number;
   ms: number;
   timeLimitMs?: number;
   byCategory: Record<string, { correct: number; total: number }>;
@@ -749,6 +751,7 @@ setRunQuiz({
       mode: run.mode,
       correct: run.correct,
       total: run.questions.length,
+      passMark: run.mode === "concorso" ? Math.ceil(run.questions.length * 0.6) : undefined,
       ms,
       byCategory,
       perfect: correctCount === run.questions.length,
