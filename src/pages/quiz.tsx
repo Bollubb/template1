@@ -1486,7 +1486,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                           </button>
                         </div>
                         <div style={{ marginTop: 6, fontWeight: 800, opacity: 0.85 }}>La tua: {w.q.options[w.chosen] ?? "(non risposta)"}</div>
-                        <div style={{ marginTop: 4, fontWeight: 900 }}>Corretta: {w.q.options[w.q.answer]}</div>
+                        <div style={{ marginTop: 4, fontWeight: 900 }}>Corretta: {(() => { const ans = w.q.answer as any; if (ans === null || ans === undefined || ans < 0) return "(senza chiave)"; return w.q.options[ans] ?? "(non disponibile)"; })()}</div>
                         <div style={{ marginTop: 6, opacity: 0.82, fontWeight: 800, fontSize: 13 }}>💡 {w.q.explain}</div>
                       </div>
                     );
