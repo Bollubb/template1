@@ -1,0 +1,140 @@
+import React, { useEffect, useMemo, useState } from "react";
+
+// ✅ Bottom bar: Home / Didattica / Carte / Profilo
+export type NurseTab = "home" | "didattica" | "carte" | "profilo";
+
+export default function NurseBottomNav({
+  active,
+  onChange,
+  locked,
+}: {
+  active: NurseTab;
+  onChange: (tab: NurseTab) => void;
+  /** When true, only the 'Profilo' tab is enabled (used during first-run profile creation). */
+  locked?: boolean;
+}) {
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onResize = () => setCompact(window.innerWidth < 360);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  const items: { key: NurseTab; label: string; icon: React.ReactNode }[] = useMemo(
+    () => [
+      { key: "home", label: "Home", icon: <IconHome /> },
+      { key: "didattica", label: compact ? "Did." : "Didattica", icon: <IconBook /> },
+      { key: "carte", label: "Carte", icon: <IconCards /> },
+      { key: "profilo", label: compact ? "Io" : "Profilo", icon: <IconUser /> },
+    ],
+    [compact]
+  );
+
+  return (
+    <nav
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 60,
+        padding: "8px 10px",
+        paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+        background: "transparent",
+        // ❗️No backdrop-filter
+      }}
+      aria-label="NurseDiary Bottom Navigation"
+    >
+      <div
+        className="nd-surface"
+        style={{
+          maxWidth: 520,
+          margin: "0 auto",
+          borderRadius: 18,
+          padding: compact ? 6 : 8,
+        }}
+      >
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: compact ? 6 : 8 }}>
+        {items.map((it) => {
+          const isActive = it.key === active;
+          const isDisabled = !!locked && it.key !== "profilo";
+          return (
+            <button
+              key={it.key}
+              type="button"
+              onClick={() => {
+                if (isDisabled) return;
+                onChange(it.key);
+              }}
+              disabled={isDisabled}
+              className="nd-press"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: compact ? 6 : 8,
+                padding: compact ? "9px 6px" : "10px 10px",
+                borderRadius: 14,
+                border: isActive ? "1px solid rgba(56,189,248,0.22)" : "1px solid rgba(255,255,255,0.00)",
+                cursor: isDisabled ? "not-allowed" : "pointer",
+                opacity: isDisabled ? 0.45 : 1,
+                background: isActive ? "linear-gradient(180deg, rgba(56,189,248,0.20), rgba(56,189,248,0.10))" : "transparent",
+                color: isActive ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.74)",
+                fontWeight: isActive ? 900 : 750,
+                fontSize: compact ? 12 : 13,
+                boxShadow: isActive ? "0 10px 22px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.06)" : "none",
+              }}
+            >
+              <span style={{ display: "inline-flex", width: 18, height: 18 }}>{it.icon}</span>
+              <span style={{ whiteSpace: "nowrap", minWidth: 0 }}>{it.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      </div>
+    </nav>
+  );
+}
+
+function IconHome() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M4 10.5 12 4l8 6.5V20a1.5 1.5 0 0 1-1.5 1.5H5.5A1.5 1.5 0 0 1 4 20v-9.5Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M9.5 21.5v-6h5v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconBook() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M4 19.5V6.5C4 5.4 4.9 4.5 6 4.5H20V20.5H6C4.9 20.5 4 19.6 4 18.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M8 8H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+      <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function IconCards() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M7 7h12v14H7V7Z" stroke="currentColor" strokeWidth="2" />
+      <path d="M5 17H4a1 1 0 0 1-1-1V5a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v1" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+}
+function IconUser() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" stroke="currentColor" strokeWidth="2" />
+      <path d="M20 21a8 8 0 1 0-16 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    </svg>
+  );
+}
