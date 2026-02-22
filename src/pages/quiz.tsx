@@ -356,15 +356,9 @@ function chipStyle(v: ChipVariant): React.CSSProperties {
   };
 }
 
-function pillStyle(v: ChipVariant): React.CSSProperties {
-  return {
-    ...chipStyle(v),
-    padding: "5px 10px",
-    fontSize: 11,
-    fontWeight: 950,
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-  };
+function pillStyle(_v: ChipVariant): React.CSSProperties {
+  // Prefer CSS classes for pill styling
+  return {};
 }
 
 function btnStyle(v: BtnVariant, disabled?: boolean): React.CSSProperties {
@@ -1022,7 +1016,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                   <span className="nd-badge nd-badge-sky" style={chipStyle("sky")}>Quiz</span>
                   {streak > 0 && <span className="nd-badge nd-badge-amber" style={chipStyle("amber")}>🔥 {streak}</span>}
                 </div>
-                {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
+                {!premium && <span className="nd-pill nd-pill--sm">Premium</span>}
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1046,7 +1040,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
             <div className="nd-help">Reset: {msToHMS(dailyLeft)}</div>
           </div>
           <span
-            className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
+            className="nd-pill nd-pill--sm"
             style={pillStyle(remaining > 0 ? "slate" : "green")}
           >
             {`Rimanenti ${remaining}/${caps.max}`}
@@ -1095,7 +1089,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
             <div className="nd-help">Reset: {msToHMS(weeklyLeft)}</div>
           </div>
           <span
-            className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
+            className="nd-pill nd-pill--sm"
             style={pillStyle(remaining > 0 ? "slate" : "green")}
           >
             {`Rimanenti ${remaining}/${caps.max}`}
@@ -1143,7 +1137,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
             <div className="text-sm font-extrabold text-white">Simulazione Concorsi</div>
           </div>
           <span
-            className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
+            className="nd-pill nd-pill--sm"
             style={pillStyle(remaining > 0 ? "slate" : "green")}
           >
             {`Rimanenti ${remaining}/${caps.max}`}
@@ -1204,7 +1198,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                       <div className="text-sm font-extrabold text-white">Ripasso errori</div>
                       <div className="nd-help">10 domande</div>
                     </div>
-                    {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
+                    {!premium && <span className="nd-pill nd-pill--sm">Premium</span>}
                   </div>
 
                   <button
@@ -1265,7 +1259,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
 
               {runQuiz.mode === "concorso" && (
                 <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 900, fontSize: 12, opacity: 0.92 }}>
-                  <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>
+                  <span className="nd-pill nd-pill--sm">
                     Scoring: +1 / −0.25 / 0
                   </span>
                 </div>
@@ -1375,15 +1369,15 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
               {lastReward && (
                 <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>+{lastReward.xp} XP</span>
-                  <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>+{lastReward.pills} pillole</span>
+                  <span className="nd-pill nd-pill--sm">+{lastReward.xp} XP</span>
+                  <span className="nd-pill nd-pill--sm">+{lastReward.pills} pillole</span>
                 </div>
               )}
               {!premium && (
                 <div className="nd-card nd-card-pad" style={{ ...card(), marginTop: 10 }}>
                   <div className="flex items-center justify-between gap-2">
                     <div style={{ fontWeight: 950 }}>Sblocca Premium</div>
-                    <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>
+                    <span className="nd-pill nd-pill--sm">Premium</span>
                   </div>
                   <div className="mt-2 nd-help">Simulazione Concorsi + Ripasso errori + XP bonus.</div>
                   <div className="mt-3" style={{ display: "flex", gap: 10 }}>
@@ -1398,17 +1392,17 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                 {quizResult.correct}/{quizResult.total} corrette • {msToHMS(quizResult.ms)}
                 {quizResult.mode === "concorso" && (
                   <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>{quizResult.presetLabel ?? "Simulazione Concorsi"}</span>
-                    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Punteggio: {(quizResult.score ?? 0).toFixed(2)}</span>
-                    <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Errori: {quizResult.wrongCount ?? 0}</span>
-                    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Omesse: {quizResult.omittedCount ?? 0}</span>
+                    <span className="nd-pill nd-pill--sm">{quizResult.presetLabel ?? "Simulazione Concorsi"}</span>
+                    <span className="nd-pill nd-pill--sm">Punteggio: {(quizResult.score ?? 0).toFixed(2)}</span>
+                    <span className="nd-pill nd-pill--sm">Errori: {quizResult.wrongCount ?? 0}</span>
+                    <span className="nd-pill nd-pill--sm">Omesse: {quizResult.omittedCount ?? 0}</span>
                     {typeof quizResult.passMark === "number" && (
-                      <span className={quizResult.correct >= quizResult.passMark ? "nd-pill nd-pill-green" : "nd-pill nd-pill-amber"} style={pillStyle(quizResult.correct >= quizResult.passMark ? "green" : "amber")}>
+                      <span className="nd-pill nd-pill--sm">
                         {quizResult.correct >= quizResult.passMark ? "IDONEO" : "NON IDONEO"} • soglia {quizResult.passMark}
                       </span>
                     )}
                     {quizResult.timeLimitMs && (
-                      <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Timer: {msToHMS(quizResult.timeLimitMs)}</span>
+                      <span className="nd-pill nd-pill--sm">Timer: {msToHMS(quizResult.timeLimitMs)}</span>
                     )}
                   </div>
                 )}
