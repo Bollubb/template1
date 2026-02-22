@@ -1,5 +1,5 @@
 import Head from "next/head";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
 
 
@@ -12,17 +12,52 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number; width: number } | null>(null);
+
+  const recomputeMenuPos = useCallback(() => {
+    const btn = triggerRef.current;
+    if (!btn) return;
+    const r = btn.getBoundingClientRect();
+
+    const desiredW = 320;
+    const viewportW = Math.max(0, window.innerWidth || 0);
+    const w = Math.min(desiredW, Math.max(260, viewportW - 20));
+
+    let left = r.left;
+    left = Math.max(10, Math.min(left, viewportW - w - 10));
+
+    const top = Math.max(10, r.bottom + 10);
+    setMenuPos({ left, top, width: w });
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
+
+    requestAnimationFrame(() => recomputeMenuPos());
+
     const onDown = (e: MouseEvent) => {
-      const el = menuRef.current;
-      if (!el) return;
-      if (e.target instanceof Node && !el.contains(e.target)) setMenuOpen(false);
+      const t = e.target;
+      if (!(t instanceof Node)) return;
+      // Allow interactions inside the trigger and inside the popover.
+      if (menuRef.current && menuRef.current.contains(t)) return;
+      if (popoverRef.current && popoverRef.current.contains(t)) return;
+      setMenuOpen(false);
     };
+
+    const onReflow = () => recomputeMenuPos();
+
     window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  }, [menuOpen]);
+    window.addEventListener("resize", onReflow);
+    window.addEventListener("scroll", onReflow, true);
+
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("resize", onReflow);
+      window.removeEventListener("scroll", onReflow, true);
+    };
+  }, [menuOpen, recomputeMenuPos]);
 
   const items = useMemo(
     () =>
@@ -57,6 +92,7 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
               {/* Logo + dropdown trigger */}
               <div ref={menuRef} style={{ position: "relative" }}>
                 <button
+                  ref={triggerRef}
                   type="button"
                   onClick={() => {
                     // Always toggle quick menu. Back navigation (if any) is handled by a dedicated button.
@@ -131,20 +167,22 @@ export default function Page({ title = "NurseDiary", children, headerOverride }:
           {/* Quick menu layer (fixed) */}
           {menuOpen && (
             <>
-              <div className="nd-backdrop" style={{ zIndex: 90 }} onClick={() => setMenuOpen(false)} />
+              <div className="nd-backdrop" style={{ zIndex: 2000 }} onClick={() => setMenuOpen(false)} />
               <div
-                className="nd-popover nd-pop"
+                ref={popoverRef}
+                className="nd-popover nd-pop nd-pop-enter"
                 role="menu"
                 aria-label="Menu rapido"
                 style={{
                   position: "fixed",
-                  left: 14,
-                  top: 66,
-                  width: 298,
+                  left: menuPos?.left ?? 14,
+                  top: menuPos?.top ?? 66,
+                  width: menuPos?.width ?? 320,
                   borderRadius: 18,
                   boxShadow: "0 20px 54px rgba(0,0,0,0.62)",
                   overflow: "hidden",
-                  zIndex: 91,
+                  zIndex: 2100,
+                  pointerEvents: "auto",
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
