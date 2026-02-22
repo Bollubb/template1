@@ -483,7 +483,7 @@ export default function QuizPage(): JSX.Element {
       setPremium(localStorage.getItem(LS.premium) === "1");
       setFavs(getFavs());
       const savedTab = (localStorage.getItem(LS.lastHomeTab) || "daily") as HomeTab;
-      if (savedTab === "daily" || savedTab === "weekly" || savedTab === "sim" || savedTab === "review") setHomeTab(savedTab);
+      if (savedTab === "daily" || savedTab === "weekly" || savedTab === "concorso" || savedTab === "review") setHomeTab(savedTab);
     } catch {}
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
