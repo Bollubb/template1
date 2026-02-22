@@ -93,11 +93,10 @@ export default function ClassificaPage(): JSX.Element {
       <Section>
         <div style={{ display: "grid", gap: 12 }}>
           <div
+            className="nd-surface"
             style={{
               padding: 12,
               borderRadius: 18,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(255,255,255,0.04)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -112,14 +111,16 @@ export default function ClassificaPage(): JSX.Element {
               <button
                 type="button"
                 onClick={() => setMode("weekly")}
+                className="nd-press"
                 style={{
                   padding: "10px 12px",
                   borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: mode === "weekly" ? "rgba(56,189,248,0.22)" : "rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.92)",
+                  border: mode === "weekly" ? "1px solid rgba(56,189,248,0.22)" : "1px solid rgba(255,255,255,0.12)",
+                  background: mode === "weekly" ? "linear-gradient(180deg, rgba(56,189,248,0.20), rgba(56,189,248,0.10))" : "rgba(10,12,18,0.55)",
+                  color: "rgba(255,255,255,0.94)",
                   cursor: "pointer",
                   fontWeight: 900,
+                  boxShadow: mode === "weekly" ? "0 14px 30px rgba(0,0,0,0.38)" : "none",
                 }}
               >
                 Weekly
@@ -127,14 +128,16 @@ export default function ClassificaPage(): JSX.Element {
               <button
                 type="button"
                 onClick={() => setMode("global")}
+                className="nd-press"
                 style={{
                   padding: "10px 12px",
                   borderRadius: 14,
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  background: mode === "global" ? "rgba(56,189,248,0.22)" : "rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.92)",
+                  border: mode === "global" ? "1px solid rgba(56,189,248,0.22)" : "1px solid rgba(255,255,255,0.12)",
+                  background: mode === "global" ? "linear-gradient(180deg, rgba(56,189,248,0.20), rgba(56,189,248,0.10))" : "rgba(10,12,18,0.55)",
+                  color: "rgba(255,255,255,0.94)",
                   cursor: "pointer",
                   fontWeight: 900,
+                  boxShadow: mode === "global" ? "0 14px 30px rgba(0,0,0,0.38)" : "none",
                 }}
               >
                 Globale

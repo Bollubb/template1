@@ -310,10 +310,13 @@ function pickQuestionsUniqueByStem(bank: QuizQuestion[], count: number, avoidIds
 
 function card(): React.CSSProperties {
   return {
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "rgba(255,255,255,0.04)",
-    borderRadius: 18,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "linear-gradient(180deg, rgba(10,14,25,0.78), rgba(10,14,25,0.60))",
+    borderRadius: 20,
     padding: 14,
+    boxShadow: "0 16px 44px rgba(0,0,0,0.44)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
   };
 }
 
@@ -321,24 +324,26 @@ function primaryBtn(disabled?: boolean): React.CSSProperties {
   return {
     width: "100%",
     padding: "12px 12px",
-    borderRadius: 14,
-    border: "1px solid rgba(56,189,248,0.35)",
-    background: disabled ? "rgba(255,255,255,0.06)" : "rgba(56,189,248,0.22)",
+    borderRadius: 16,
+    border: "1px solid rgba(56,189,248,0.28)",
+    background: disabled ? "rgba(255,255,255,0.06)" : "linear-gradient(180deg, rgba(56,189,248,0.22), rgba(56,189,248,0.10))",
     color: "rgba(255,255,255,0.95)",
     cursor: disabled ? "not-allowed" : "pointer",
-    fontWeight: 900,
+    fontWeight: 950,
+    boxShadow: disabled ? "none" : "0 16px 36px rgba(0,0,0,0.40)",
   };
 }
 
 function ghostBtn(disabled?: boolean): React.CSSProperties {
   return {
     padding: "12px 12px",
-    borderRadius: 14,
+    borderRadius: 16,
     border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.04)",
-    color: "rgba(255,255,255,0.88)",
+    background: "rgba(10,12,18,0.62)",
+    color: "rgba(255,255,255,0.90)",
     cursor: disabled ? "not-allowed" : "pointer",
-    fontWeight: 850,
+    fontWeight: 900,
+    boxShadow: disabled ? "none" : "0 14px 30px rgba(0,0,0,0.36)",
   };
 }
 
@@ -365,17 +370,18 @@ function btnStyle(v: BtnVariant, disabled?: boolean): React.CSSProperties {
   const common: React.CSSProperties = {
     width: "100%",
     padding: "12px 12px",
-    borderRadius: 14,
+    borderRadius: 16,
     border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(255,255,255,0.06)",
+    background: "rgba(10,12,18,0.60)",
     color: "rgba(255,255,255,0.92)",
     cursor: disabled ? "not-allowed" : "pointer",
     fontWeight: 950,
+    boxShadow: disabled ? "none" : "0 16px 36px rgba(0,0,0,0.40)",
   };
 
-  if (v === "emerald") return { ...common, border: "1px solid rgba(52,211,153,0.35)", background: disabled ? "rgba(255,255,255,0.06)" : "rgba(52,211,153,0.18)" };
-  if (v === "indigo") return { ...common, border: "1px solid rgba(129,140,248,0.35)", background: disabled ? "rgba(255,255,255,0.06)" : "rgba(129,140,248,0.16)" };
-  if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.35)", background: disabled ? "rgba(255,255,255,0.06)" : "rgba(56,189,248,0.18)" };
+  if (v === "emerald") return { ...common, border: "1px solid rgba(52,211,153,0.26)", background: disabled ? "rgba(255,255,255,0.06)" : "linear-gradient(180deg, rgba(52,211,153,0.18), rgba(52,211,153,0.08))" };
+  if (v === "indigo") return { ...common, border: "1px solid rgba(129,140,248,0.26)", background: disabled ? "rgba(255,255,255,0.06)" : "linear-gradient(180deg, rgba(129,140,248,0.16), rgba(129,140,248,0.08))" };
+  if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.26)", background: disabled ? "rgba(255,255,255,0.06)" : "linear-gradient(180deg, rgba(56,189,248,0.20), rgba(56,189,248,0.10))" };
   return common;
 }
 
@@ -481,10 +487,13 @@ function optionLetterStyle(opts: { idx: number; active: boolean; correct: boolea
 
 function tileStyle(): React.CSSProperties {
   return {
-    border: "1px solid rgba(255,255,255,0.10)",
-    background: "linear-gradient(180deg, rgba(56,189,248,0.08), rgba(255,255,255,0.02))",
+    border: "1px solid rgba(255,255,255,0.11)",
+    background: "linear-gradient(180deg, rgba(10,14,25,0.70), rgba(10,14,25,0.52))",
     borderRadius: 18,
     padding: 14,
+    boxShadow: "0 14px 34px rgba(0,0,0,0.38)",
+    backdropFilter: "blur(10px)",
+    WebkitBackdropFilter: "blur(10px)",
   };
 }
 
