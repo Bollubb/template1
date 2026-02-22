@@ -346,26 +346,24 @@ type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet";
 type BtnVariant = "emerald" | "indigo" | "sky" | "ghost";
 
 function chipStyle(v: ChipVariant): React.CSSProperties {
+  // Background is handled by global CSS (.nd-pill / .nd-chip) to keep it distinct from the app background.
   const common: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     gap: 6,
     padding: "6px 10px",
     borderRadius: 999,
-    fontSize: 12,
-    fontWeight: 900,
-    letterSpacing: 0.2,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    background: "transparent",
     color: "rgba(255,255,255,0.92)",
     whiteSpace: "nowrap",
   };
 
-  if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.35)", background: "rgba(56,189,248,0.16)" };
-  if (v === "amber") return { ...common, border: "1px solid rgba(251,191,36,0.35)", background: "rgba(251,191,36,0.14)" };
-  if (v === "green") return { ...common, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(52,211,153,0.14)" };
-  if (v === "violet") return { ...common, border: "1px solid rgba(167,139,250,0.35)", background: "rgba(167,139,250,0.14)" };
-  return { ...common, border: "1px solid rgba(148,163,184,0.25)", background: "rgba(148,163,184,0.08)" };
+  if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.30)" };
+  if (v === "amber") return { ...common, border: "1px solid rgba(251,191,36,0.30)" };
+  if (v === "green") return { ...common, border: "1px solid rgba(52,211,153,0.30)" };
+  if (v === "violet") return { ...common, border: "1px solid rgba(167,139,250,0.30)" };
+  return { ...common, border: "1px solid rgba(148,163,184,0.22)" };
 }
 
 function pillStyle(v: ChipVariant): React.CSSProperties {
