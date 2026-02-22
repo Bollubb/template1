@@ -212,30 +212,37 @@ function normStem(s: string) {
 
 function pickQuestionsUniqueByStem(bank: QuizQuestion[], count: number, avoidIds: Set<string>) {
   const pool = bank.filter((q) => !avoidIds.has(q.id));
-  const src = pool.length >= count ? pool : bank;
+  // Prefer the pool, but never silently ignore avoidIds (that increases repeats).
+  const src = pool.length > 0 ? pool : bank;
+
   const arr = [...src];
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
+
   const out: QuizQuestion[] = [];
   const seen = new Set<string>();
+
   for (const q of arr) {
-    // Our QuizQuestion uses `q` as the stem, but keep a safe fallback for legacy shapes.
     const stem = normStem(((q as any).q ?? (q as any).question ?? "") as string);
     if (seen.has(stem)) continue;
     seen.add(stem);
     out.push(q);
     if (out.length >= count) break;
   }
-  // fallback (should be rare)
+
+  // If we still don't have enough, relax uniqueness *but* keep avoiding recently-seen IDs.
   if (out.length < count) {
-    for (const q of arr) {
+    // Fill from pool first (already avoids IDs), then from full bank excluding avoidIds.
+    const filler = [...pool, ...bank.filter((q) => !avoidIds.has(q.id))];
+    for (const q of filler) {
       if (out.length >= count) break;
       if (out.some((x) => x.id === q.id)) continue;
       out.push(q);
     }
   }
+
   return out.slice(0, count);
 }
 
@@ -275,7 +282,7 @@ function ghostBtn(disabled?: boolean): React.CSSProperties {
   };
 }
 
-type ChipVariant = "sky" | "amber" | "slate" | "green";
+type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet";
 type BtnVariant = "emerald" | "indigo" | "sky" | "ghost";
 
 function chipStyle(v: ChipVariant): React.CSSProperties {
@@ -297,6 +304,7 @@ function chipStyle(v: ChipVariant): React.CSSProperties {
   if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.35)", background: "rgba(56,189,248,0.16)" };
   if (v === "amber") return { ...common, border: "1px solid rgba(251,191,36,0.35)", background: "rgba(251,191,36,0.14)" };
   if (v === "green") return { ...common, border: "1px solid rgba(52,211,153,0.35)", background: "rgba(52,211,153,0.14)" };
+  if (v === "violet") return { ...common, border: "1px solid rgba(167,139,250,0.35)", background: "rgba(167,139,250,0.14)" };
   return { ...common, border: "1px solid rgba(148,163,184,0.25)", background: "rgba(148,163,184,0.08)" };
 }
 
@@ -859,6 +867,27 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
     setReveal({ isCorrect, correctIdx: q.answer, chosen: selected });
   }
 
+
+  function skipQuestion() {
+    if (!runQuiz) return;
+    if (reveal) return;
+
+    const answers = [...runQuiz.answers];
+    answers[runQuiz.idx] = -1;
+
+    const nextIdx = runQuiz.idx + 1;
+    const next: QuizRun = { ...runQuiz, answers, idx: nextIdx };
+
+    setReveal(null);
+    setSelected(null);
+
+    if (nextIdx >= runQuiz.questions.length) {
+      finish(next);
+    } else {
+      setRunQuiz(next);
+    }
+  }
+
   function goNext() {
     if (!runQuiz) return;
     if (!reveal) return;
@@ -904,319 +933,19 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("daily")} style={homeTab === "daily" ? chipStyle("sky") : chipStyle("slate")}>Daily</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("weekly")} style={homeTab === "weekly" ? chipStyle("sky") : chipStyle("slate")}>Weekly</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("concorso")} style={homeTab === "concorso" ? chipStyle("sky") : chipStyle("slate")}>Concorsi</button>
-                <button type="button" className="nd-badge nd-press" onClick={() => setHomeTab("review")} style={homeTab === "review" ? chipStyle("sky") : chipStyle("slate")}>Errori</button>
-              </div>
-
-              
-{/* Daily */}
-{homeTab === "daily" && (() => {
-  const caps = getRunCaps("daily");
-  const remaining = Math.max(0, caps.allowed - caps.used);
-  return (
-    <div className="mt-3 grid gap-2">
-      <div className="nd-tile" style={tileStyle()}>
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-extrabold text-white">Daily</div>
-            <div className="nd-help">Reset: {msToHMS(dailyLeft)}</div>
-          </div>
-          <span
-            className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
-            style={pillStyle(remaining > 0 ? "slate" : "green")}
-          >
-            {`Rimanenti ${remaining}/${caps.max}`}
-          </span>
-        </div>
-        <div className="mt-2 nd-help">1 gratuito • altri con pubblicità o Premium</div>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => handleStart("daily")}
-        className="nd-btn nd-btn-sky nd-press"
-        style={btnStyle("sky")}
-      >
-        Avvia Daily
-      </button>
-
-      {!premium && remaining === 0 && (
-        <div className="nd-help">
-          <button
-            type="button"
-            onClick={() => {
-              setPremiumContextUnlock("daily");
-              setPremiumModalOpen(true);
-            }}
-            className="nd-btn-chip nd-press"
-            style={miniChipBtn()}
-          >
-            Sblocca con pubblicità / Premium
-          </button>
-        </div>
-      )}
-    </div>
-  );
-})()}
-
-{/* Weekly */}
-{homeTab === "weekly" && (() => {
-  const caps = getRunCaps("weekly");
-  const remaining = Math.max(0, caps.allowed - caps.used);
-  return (
-    <div className="mt-3 grid gap-2">
-      <div className="nd-tile" style={tileStyle()}>
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-extrabold text-white">Weekly</div>
-            <div className="nd-help">Reset: {msToHMS(weeklyLeft)}</div>
-          </div>
-          <span
-            className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
-            style={pillStyle(remaining > 0 ? "slate" : "green")}
-          >
-            {`Rimanenti ${remaining}/${caps.max}`}
-          </span>
-        </div>
-        <div className="mt-2 nd-help">1 gratuito • extra con pubblicità o Premium</div>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => handleStart("weekly")}
-        className="nd-btn nd-btn-sky nd-press"
-        style={btnStyle("sky")}
-      >
-        Avvia Weekly (25)
-      </button>
-
-      {!premium && remaining === 0 && (
-        <div className="nd-help">
-          <button
-            type="button"
-            onClick={() => {
-              setPremiumContextUnlock("weekly");
-              setPremiumModalOpen(true);
-            }}
-            className="nd-btn-chip nd-press"
-            style={miniChipBtn()}
-          >
-            Sblocca con pubblicità / Premium
-          </button>
-        </div>
-      )}
-    </div>
-  );
-})()}
-
-{/* Simulazione Concorsi */}
-{homeTab === "concorso" && (() => {
-  const caps = getRunCaps("concorso");
-  const remaining = Math.max(0, caps.allowed - caps.used);
-  return (
-    <div className="mt-3 grid gap-2">
-      <div className="nd-tile" style={tileStyle()}>
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <div className="text-sm font-extrabold text-white">Simulazione Concorsi</div>
-            <div className="nd-help">Timer • scoring con penalità • banca dedicata</div>
-          </div>
-          <span
-            className={remaining > 0 ? "nd-pill nd-pill-slate" : "nd-pill nd-pill-green"}
-            style={pillStyle(remaining > 0 ? "slate" : "green")}
-          >
-            {`Rimanenti ${remaining}/${caps.max}`}
-          </span>
-        </div>
-        <div className="mt-2 nd-help">1 gratuita a settimana • extra con pubblicità o Premium</div>
-      </div>
-
-      <div className="grid gap-2">
-        {CONCORSO_PRESETS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => handleStartConcorso(p.id)}
-            className="nd-btn nd-btn-ghost nd-press"
-            style={btnStyle("ghost")}
-          >
-            {p.label} • {p.n} domande • {p.min} min
-          </button>
-        ))}
-      </div>
-
-      {!premium && remaining === 0 && (
-        <div className="nd-help">
-          <button
-            type="button"
-            onClick={() => {
-              setPremiumContextUnlock("concorso");
-              setPremiumModalOpen(true);
-            }}
-            className="nd-btn-chip nd-press"
-            style={miniChipBtn()}
-          >
-            Sblocca con pubblicità / Premium
-          </button>
-        </div>
-      )}
-    </div>
-  );
-})()}
-
-{/* Review */}
-
-              {homeTab === "review" && (
-                <div className="mt-3 nd-tile" style={tileStyle()}>
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <div className="text-sm font-extrabold text-white">Ripasso errori</div>
-                      <div className="nd-help">10 domande</div>
-                    </div>
-                    {!premium && <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Premium</span>}
-                  </div>
-
+                $1{runQuiz.mode === "concorso" && !reveal && (
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!premium) {
-                        setPremiumModalOpen(true);
-                        return;
-                      }
-                      start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
-                    }}
-                    className="mt-3 nd-btn nd-btn-ghost nd-press"
-                    style={btnStyle("ghost")}
+                    onClick={skipQuestion}
+                    className="nd-btn-ghost nd-press"
+                    style={btnStyle("indigo")}
+                    title="Passa alla prossima domanda senza rispondere (0 punti)"
                   >
-                    Avvia (10)
+                    Non rispondere
                   </button>
-
-                  {!premium && (
-                    <div className="mt-2 nd-help">
-                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
-                        Sblocca Premium
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {runQuiz && (
-          <div className="grid gap-3">
-            <div className="nd-card nd-card-pad" style={card()}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ fontWeight: 950 }}>
-                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "concorso" ? "Simulazione Concorsi" : runQuiz.mode === "sim" ? "Simulazione" : "Ripasso errori"}
-                </div>
-                <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>
-                  {runQuiz.idx + 1}/{runQuiz.questions.length} • {runQuiz.mode === "concorso" && runQuiz.timeLimitMs ? msToHMS(remainingMs ?? (runQuiz.timeLimitMs - (nowTs - runQuiz.startedAt))) : msToHMS(nowTs - runQuiz.startedAt)}
-                </div>
-              </div>
-
-              <div style={{ marginTop: 10 }}>
-                <div className="nd-progress" style={progressWrapStyle()}>
-                  <div className="nd-progress-fill" style={progressFillStyle(((runQuiz.idx + (reveal ? 1 : 0)) / runQuiz.questions.length), "sky")} />
-                </div>
-                {reveal && (
-                  <div className={`nd-quiz-feedback ${reveal.isCorrect ? "ok" : "bad"}`} style={{ marginTop: 10 }}>
-                    {reveal.isCorrect ? "✅ Corretto!" : "❌ Non proprio."} <span style={{ opacity: 0.82 }}>Risposta corretta: {runQuiz.questions[runQuiz.idx].options[reveal.correctIdx]}</span>
-                  </div>
                 )}
-              </div>
-{runQuiz.mode === "concorso" && (
-  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 900, fontSize: 12, opacity: 0.92 }}>
-    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Scoring: +1 / −0.25 / 0</span>
-    <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>
-      Punteggio: {(() => {
-        const wrongNow = runQuiz.answers.filter((a, i) => a !== -1 && a !== runQuiz.questions[i].answer).length;
-        const correctNow = runQuiz.answers.filter((a, i) => a !== -1 && a === runQuiz.questions[i].answer).length;
-        return (correctNow * 1 + wrongNow * -0.25).toFixed(2);
-      })()}
-    </span>
-  </div>
-)}
 
-              <div style={{ marginTop: 10, fontWeight: 900, fontSize: 15 }}>{runQuiz.questions[runQuiz.idx].q}</div>
-
-              {!reveal && (
-                <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.72 }}>
-                  Tocca una risposta e poi premi <span style={{ opacity: 0.95 }}>“Conferma”</span>.
-                </div>
-              )}
-
-
-              <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
-                {runQuiz.questions[runQuiz.idx].options.map((opt, i) => {
-                  const active = selected === i;
-                  const correct = reveal ? i === reveal.correctIdx : false;
-                  const wrong = reveal ? i === reveal.chosen && !reveal.isCorrect : false;
-
-                  const cls =
-                    "nd-quiz-option" +
-                    (active && !reveal ? " nd-quiz-option--active" : "") +
-                    (correct ? " nd-quiz-option--correct" : "") +
-                    (wrong ? " nd-quiz-option--wrong" : "");
-
-                  const letter = String.fromCharCode(65 + i);
-                  const style = optionBtnStyle({ active: active && !reveal, correct, wrong, disabled: !!reveal });
-
-                  return (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => {
-                        setSelected(i);
-                      }}
-                      disabled={!!reveal}
-                      className={cls}
-                      style={style}
-                      aria-pressed={active}
-                    >
-                      <span style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            width: 26,
-                            height: 26,
-                            borderRadius: 10,
-                            border: "1px solid rgba(255,255,255,0.16)",
-                            background: "rgba(255,255,255,0.06)",
-                            fontWeight: 950,
-                            fontSize: 12,
-                            flex: "0 0 auto",
-                          }}
-                        >
-                          {letter}
-                        </span>
-                        <span style={{ flex: 1, paddingTop: 2 }}>{opt}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRunQuiz(null);
-                    setReveal(null);
-                    setSelected(null);
-                  }}
-                  className="nd-btn-ghost nd-press"
-                  style={ghostBtn()}
-                >
-                  Esci
-                </button>
-
-                {!reveal ? (
+                $2
                   <button type="button" onClick={confirmAnswer} disabled={selected === null} className="nd-btn-primary nd-press" style={primaryBtn(selected === null)}>
                     Conferma
                   </button>
@@ -1226,18 +955,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                   </button>
                 )}
               </div>
-{runQuiz.mode === "concorso" && (
-  <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", fontWeight: 900, fontSize: 12, opacity: 0.92 }}>
-    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Scoring: +1 / −0.25 / 0</span>
-    <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>
-      Punteggio: {(() => {
-        const wrongNow = runQuiz.answers.filter((a, i) => a !== -1 && a !== runQuiz.questions[i].answer).length;
-        const correctNow = runQuiz.answers.filter((a, i) => a !== -1 && a === runQuiz.questions[i].answer).length;
-        return (correctNow * 1 + wrongNow * -0.25).toFixed(2);
-      })()}
-    </span>
-  </div>
-)}
+
 
             </div>
           </div>
@@ -1273,7 +991,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                 {quizResult.mode === "concorso" && (
                   <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <span className="nd-pill nd-pill-sky" style={pillStyle("sky")}>{quizResult.presetLabel ?? "Simulazione Concorsi"}</span>
-                    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Score: {(quizResult.score ?? 0).toFixed(2)}</span>
+                    <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Punteggio: {(quizResult.score ?? 0).toFixed(2)}</span>
                     <span className="nd-pill nd-pill-amber" style={pillStyle("amber")}>Errori: {quizResult.wrongCount ?? 0}</span>
                     <span className="nd-pill nd-pill-slate" style={pillStyle("slate")}>Omesse: {quizResult.omittedCount ?? 0}</span>
                     {typeof quizResult.passMark === "number" && (
