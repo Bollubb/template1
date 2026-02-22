@@ -183,7 +183,7 @@
 
 
 
-/* ===== NurseDiary – Chips / Pills (charcoal glass, distinct from main background) ===== */
+/* ===== NurseDiary – Chips / Pills (unified dark look) ===== */
 .nd-chip,
 .nd-pill{
   display:inline-flex;
@@ -192,30 +192,44 @@
   gap:6px;
   padding:6px 10px;
   border-radius:999px;
-  /* Darker than the main background for legibility */
-  border:1px solid rgba(255,255,255,0.14);
-  background:
-    linear-gradient(180deg, rgba(12,14,18,0.92), rgba(8,10,14,0.86));
-  color: rgba(255,255,255,0.94);
+
+  /* Match the "Didattica" filter chips look: dark, crisp, readable */
+  background: rgba(10,12,18,0.70);
+  border: 1px solid rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.92);
+
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+
   box-shadow:
-    0 12px 26px rgba(0,0,0,0.42),
+    0 10px 22px rgba(0,0,0,0.38),
     inset 0 1px 0 rgba(255,255,255,0.06);
-  text-shadow: 0 1px 0 rgba(0,0,0,0.35);
+
   font-weight: 900;
   font-size: 12px;
   line-height: 1.1;
   letter-spacing: -0.15px;
+
+  /* Avoid text getting washed out on bright backgrounds */
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35);
 }
+
 .nd-chip.nd-press:hover,
 .nd-pill.nd-press:hover{
-  border-color: rgba(255,255,255,0.20);
+  border-color: rgba(255,255,255,0.22);
   box-shadow:
     0 0 0 3px rgba(255,255,255,0.06),
-    0 14px 30px rgba(0,0,0,0.46),
+    0 12px 26px rgba(0,0,0,0.42),
     inset 0 1px 0 rgba(255,255,255,0.07);
 }
+
+/* Compact variant (if needed) */
+.nd-chip--sm,
+.nd-pill--sm{
+  padding:5px 9px;
+  font-size: 11px;
+}
+
 
 /* Accent variants (keep background charcoal, add subtle tint) */
 .nd-pill-sky{ border-color: rgba(56,189,248,0.26); box-shadow: 0 0 0 1px rgba(56,189,248,0.22), 0 12px 26px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.06); }
