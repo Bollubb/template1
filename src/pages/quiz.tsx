@@ -60,6 +60,7 @@ const LS = {
   favs: "nd_quiz_favs",
   lastHomeTab: "nd_quiz_home_tab",
   seen: "nd_quiz_seen_v1",
+  seenConcorso: "nd_quiz_seen_concorso_v1",
   dailyRunsPrefix: "nd_quiz_daily_runs_",
   dailyUnlocksPrefix: "nd_quiz_daily_unlocks_",
   weeklyRunsPrefix: "nd_quiz_weekly_runs_",
@@ -135,6 +136,35 @@ function pushSeen(ids: string[]) {
     // keep last ~600
     next.sort((a, b) => b.ts - a.ts);
     localStorage.setItem(LS.seen, JSON.stringify(next.slice(0, 600)));
+  } catch {}
+}
+function getRecentSeenIdsConcorso(max = 220): string[] {
+  try {
+    const raw = localStorage.getItem(LS.seenConcorso);
+    if (!raw) return [];
+    const v = JSON.parse(raw);
+    if (!Array.isArray(v)) return [];
+    const items = v
+      .filter((x): x is SeenItem => x && typeof x.id === "string" && typeof x.ts === "number")
+      .sort((a, b) => b.ts - a.ts)
+      .slice(0, max);
+    return items.map((x) => x.id);
+  } catch {
+    return [];
+  }
+}
+
+function pushSeenConcorso(ids: string[]) {
+  try {
+    const raw = localStorage.getItem(LS.seenConcorso);
+    const prev = raw ? JSON.parse(raw) : [];
+    const now = Date.now();
+    const next: SeenItem[] = [
+      ...(Array.isArray(prev) ? prev.filter((x: any) => x && typeof x.id === "string" && typeof x.ts === "number") : []),
+      ...ids.map((id) => ({ id, ts: now })),
+    ];
+    next.sort((a, b) => b.ts - a.ts);
+    localStorage.setItem(LS.seenConcorso, JSON.stringify(next.slice(0, 1000)));
   } catch {}
 }
 
@@ -672,12 +702,12 @@ setRunQuiz({
       writeInt(rk, usedBefore + 1);
     } else {
       // sim / review
-      const perfect = correctCount === run.questions.length;
+      // sim / concorso / review
       const baseXp =
-        run.mode === "sim"
-          ? 35 + correctCount * 4 + (perfect ? 20 : 0)
-          : 22 + correctCount * 3 + (perfect ? 12 : 0);
-
+      const baseXp =
+        run.mode === "concorso"
+          ? 55 + correctCount * 5 + (perfect ? 25 : 0)
+          : run.mode === "sim" ? 35 + correctCount * 4 + (perfect ? 20 : 0) : 22 + correctCount * 3 + (perfect ? 12 : 0);
       const xpEarn = Math.max(5, Math.round(baseXp));
       const pillsEarn = Math.max(1, Math.floor(xpEarn / 18));
 
@@ -687,7 +717,7 @@ setRunQuiz({
     }
 
 // store seen ids to reduce repeats
-    pushSeen(run.questions.map((q) => q.id));
+    (run.mode === "concorso" ? pushSeenConcorso : pushSeen)(run.questions.map((q) => q.id));
 // mistakes log
     wrong.forEach((w) => recordMistake(w.q.id));
 
@@ -787,6 +817,28 @@ async function handleStart(kind: "daily" | "weekly") {
     setPremiumContextUnlock(kind);
     setPremiumModalOpen(true);
     return;}
+function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
+  const preset = CONCORSO_PRESETS.find((p) => p.id === presetId) ?? CONCORSO_PRESETS[0];
+
+  const caps = getRunCaps("concorso");
+  const remaining = Math.max(0, caps.allowed - caps.used);
+
+  if (remaining <= 0 && !premium) {
+    // show Premium summary (with optional rewarded unlock)
+    setPremiumContextUnlock("concorso");
+    setPremiumModalOpen(true);
+    return;
+  }
+
+  const avoid = new Set(getRecentSeenIdsConcorso(260));
+  const questions = pickQuestionsUniqueByStem(QUIZ_BANK_CONCORSO, preset.n, avoid);
+
+  start("concorso", {
+    questions,
+    timeLimitMs: preset.min * 60 * 1000,
+    presetId: preset.id,
+  });
+}
 
   function confirmAnswer() {
     if (!runQuiz) return;
