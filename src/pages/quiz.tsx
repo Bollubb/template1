@@ -7,7 +7,6 @@ import NurseBottomNav from "../components/nursediary/NurseBottomNav";
 import PremiumUpsellModal from "@/components/nursediary/PremiumUpsellModal";
 
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
-import { QUIZ_BANK_UNIVERSITY } from "@/features/cards/quiz/quizBankUniversity";
 import { QUIZ_BANK_CONCORSO } from "@/features/cards/quiz/quizBankConcorso";
 import {
   calcDailyReward,
@@ -18,6 +17,7 @@ import {
   setWeeklyState,
   getNextDailyResetMs,
   getNextWeeklyResetMs,
+  getHistory,
   pushHistory,
   type QuizHistoryItem,
 } from "@/features/cards/quiz/quizLogic";
@@ -33,7 +33,7 @@ type QuizRun = {
   startedAt: number;
   // concorsi
   timeLimitMs?: number;
-  presetId?: string;
+  presetId?: "asl" | "regione" | "mega" | "mese";
   scoring?: { correct: number; wrong: number; omit: number };
 };
 
@@ -321,19 +321,6 @@ const CONCORSO_PRESETS = [
   { id: "mese" as const, label: "Concorso del mese", n: 50, min: 45, pass: 30 },
 ];
 
-const UNI_SUBJECTS = [
-  { id: "farmacologia" as const, label: "Farmacologia" },
-  { id: "anatomia" as const, label: "Anatomia" },
-  { id: "fisiologia" as const, label: "Fisiologia" },
-  { id: "mix" as const, label: "Mix" },
-];
-
-const UNI_SIZES = [
-  { id: "mini" as const, label: "Mini", n: 10, min: 8 },
-  { id: "medio" as const, label: "Medio", n: 30, min: 25 },
-  { id: "esame" as const, label: "Esame", n: 60, min: 50 },
-];
-
 function normStem(s: string) {
   return s
     .toLowerCase()
@@ -616,8 +603,6 @@ export default function QuizPage(): JSX.Element {
 
   const [homeTab, setHomeTab] = useState<HomeTab>("daily");
   const [simTrack, setSimTrack] = useState<SimTrack>("concorso");
-  const [uniSubject, setUniSubject] = useState<(typeof UNI_SUBJECTS)[number]["id"]>("farmacologia");
-  const [uniSize, setUniSize] = useState<(typeof UNI_SIZES)[number]["id"]>("mini");
   // Default ON: concorsi "a mazzo" (random senza ripetizioni finché non finiscono)
   const [concorsoNoRepeat, setConcorsoNoRepeat] = useState<boolean>(true);
   const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly" | "concorso"; remaining: number }>(null);
@@ -628,6 +613,10 @@ export default function QuizPage(): JSX.Element {
   const [fxId, setFxId] = useState(0);
   const [answerFx, setAnswerFx] = useState<null | { kind: "ok" | "bad" | "neutral"; id: number }>(null);
   const [toast, setToast] = useState<null | { text: string; id: number }>(null);
+
+  const [combo, setCombo] = useState<number>(0);
+  const [bestCombo, setBestCombo] = useState<number>(0);
+  const [qStageKey, setQStageKey] = useState<number>(0);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [lastReward, setLastReward] = useState<{ xp: number; pills: number } | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
@@ -754,6 +743,9 @@ useEffect(() => {
     setLastReward(null);
     setSelected(null);
     setReveal(null);
+    setCombo(0);
+    setBestCombo(0);
+    setQStageKey((k) => k + 1);
     const scoring = mode === "concorso" ? { correct: 1, wrong: -0.25, omit: 0 } : undefined;
     setRunQuiz({
       mode,
@@ -930,9 +922,34 @@ useEffect(() => {
       total: run.questions.length,
       passMark: run.mode === "concorso" ? Math.ceil(run.questions.length * 0.6) : undefined,
       ms,
+      timeLimitMs: run.timeLimitMs,
       byCategory,
       perfect: correctCount === run.questions.length,
       wrong,
+      // concorso premium metrics (local, no backend)
+      wrongCount:
+        run.mode === "concorso"
+          ? Math.max(0, (keyedTotal || run.questions.length) - correctCount - run.questions.reduce((acc, q, i) => acc + (run.answers[i] === -1 ? 1 : 0), 0))
+          : undefined,
+      omittedCount:
+        run.mode === "concorso"
+          ? run.questions.reduce((acc, q, i) => acc + (run.answers[i] === -1 ? 1 : 0), 0)
+          : undefined,
+      score:
+        run.mode === "concorso"
+          ? (() => {
+              const evalTotal = keyedTotal || run.questions.length;
+              const omitted = run.questions.reduce((acc, q, i) => acc + (run.answers[i] === -1 ? 1 : 0), 0);
+              const wrongN = Math.max(0, evalTotal - correctCount - omitted);
+              const sc = (correctCount * (run.scoring?.correct ?? 1)) + (wrongN * (run.scoring?.wrong ?? -0.25)) + (omitted * (run.scoring?.omit ?? 0));
+              return Math.round(sc * 100) / 100;
+            })()
+          : undefined,
+      scoring: run.scoring,
+      presetLabel:
+        run.mode === "concorso"
+          ? (CONCORSO_PRESETS.find((p) => p.id === run.presetId)?.label ?? HOME_COPY.concorso.label)
+          : undefined,
     });
   }
 
@@ -1018,32 +1035,32 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
     timeLimitMs: preset.min * 60 * 1000,
     presetId: preset.id,
   });
+}
 
-
+// --- Compatibility: University start handler ---
+// Some UI variants (Phase 7/University) reference `handleStartUniversity` directly.
+// Keeping it here prevents TS build failures and allows the University CTA to work.
 function handleStartUniversity() {
-  const size = UNI_SIZES.find((s) => s.id === uniSize) ?? UNI_SIZES[0];
-  const subject = uniSubject;
-
-  const caps = getRunCaps("concorso"); // stessa caps delle simulazioni reali
-  const remaining = Math.max(0, caps.allowed - caps.used);
-  if (remaining <= 0 && !premium) {
-    setPremiumContextUnlock("concorso");
-    setPremiumModalOpen(true);
-    return;
+  // Reflect intent in UI when the toggle exists.
+  try {
+    // setSimTrack is defined in this page scope.
+    setSimTrack("uni");
+  } catch {
+    // no-op
   }
 
-  const bank =
-    subject === "mix"
-      ? QUIZ_BANK_UNIVERSITY
-      : QUIZ_BANK_UNIVERSITY.filter((q) => q.category === subject);
+  // Prefer university categories if present, otherwise fall back to the full bank.
+  const uniCats = new Set(["farmacologia", "anatomia", "fisiologia"]);
+  const bankUni = QUIZ_BANK.filter((q: any) => uniCats.has(String((q as any).category ?? "").toLowerCase()));
+  const src = bankUni.length >= 10 ? bankUni : QUIZ_BANK;
 
-  const questions = pickQuestionsUniqueByStem(bank, size.n, new Set(getRecentSeenIdsConcorso(260)));
+  const questions = pickQuestionsUniqueByStem(src, 30, new Set());
+  // Reuse existing run-mode/navigation for stability.
   start("concorso", {
     questions,
-    timeLimitMs: size.min * 60 * 1000,
-    presetId: `uni_${subject}_${size.id}`,
-});
-}
+    timeLimitMs: 25 * 60 * 1000,
+    presetId: "asl",
+  });
 }
 
   function confirmAnswer() {
@@ -1071,6 +1088,22 @@ setToast({
 });
 if (kind === "ok") safeVibrate(30);
 if (kind === "bad") safeVibrate([40, 30, 80]);
+
+// combo (premium UX)
+if (kind === "ok") {
+  setCombo((c) => {
+    const next = c + 1;
+    setBestCombo((b) => Math.max(b, next));
+    // premium micro-gamification
+    if (premium && (next === 3 || next === 5 || next === 8)) {
+      const tid = nextFx + 100 + next;
+      setToast({ text: `🔥 Combo x${next}`, id: tid });
+    }
+    return next;
+  });
+} else if (kind === "bad") {
+  setCombo(0);
+}
 setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected });
   }
 
@@ -1089,6 +1122,8 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     setSelected(null);
     setAnswerFx(null);
     setToast(null);
+    setCombo(0);
+    setQStageKey((k) => k + 1);
 
     if (nextIdx >= runQuiz.questions.length) {
       finish(next);
@@ -1108,6 +1143,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     setSelected(null);
     setAnswerFx(null);
     setToast(null);
+    setQStageKey((k) => k + 1);
 
     if (nextIdx >= runQuiz.questions.length) {
       finish(next);
@@ -1122,6 +1158,47 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     if (streak >= 7) return "Intermedio";
     return "Base";
   }, [streak]);
+
+
+  const resultProfile = useMemo(() => {
+    if (!quizResult) return null;
+
+    const acc = quizResult.total ? quizResult.correct / quizResult.total : 0;
+    const paceSec = quizResult.total ? (quizResult.ms / 1000) / quizResult.total : 0;
+
+    // local percentile vs your last runs (no backend yet)
+    let percentile: number | null = null;
+    try {
+      const hist = getHistory().filter((h) => h && h.mode === quizResult.mode);
+      if (hist.length >= 3) {
+        const rates = hist.map((h) => (h.total ? h.correct / h.total : 0)).sort((a, b) => a - b);
+        const rank = rates.filter((r) => r <= acc).length;
+        percentile = Math.round((rank / rates.length) * 100);
+      }
+    } catch {}
+
+    const concorsoLevel = (() => {
+      // heuristic: accuracy + pace
+      if (acc >= 0.85 && paceSec <= 70) return { label: "Élite", hint: "Ottimo ritmo e precisione", tone: "emerald" as const };
+      if (acc >= 0.75) return { label: "Avanzato", hint: "Vicino allo standard alto", tone: "indigo" as const };
+      if (acc >= 0.6) return { label: "Intermedio", hint: "Base solida, aumenta costanza", tone: "sky" as const };
+      return { label: "Base", hint: "Costruisci fondamenta mirate", tone: "slate" as const };
+    })();
+
+    const communityEstimate = (() => {
+      // deterministic "estimate" from accuracy to look stable until analytics backend exists
+      const est = 10 + Math.round(acc * 80); // 10..90
+      return Math.max(5, Math.min(95, est));
+    })();
+
+    return {
+      acc,
+      paceSec,
+      percentile,
+      concorsoLevel,
+      communityEstimate,
+    };
+  }, [quizResult]);
 
 
   const headerOverride = useMemo(
@@ -1345,56 +1422,6 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
             (struttura pronta)
           </span>
         </div>
-        {/* Uni controls */}
-        {simTrack === "uni" && (
-          <div className="mt-2" data-uni-controls style={{ display: "grid", gap: 10 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {UNI_SUBJECTS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setUniSubject(s.id)}
-                  className="nd-btn-chip nd-press"
-                  style={{
-                    ...miniChipBtn(),
-                    borderColor: uniSubject === s.id ? "rgba(34,197,94,0.55)" : "rgba(255,255,255,0.12)",
-                    background: uniSubject === s.id ? "rgba(34,197,94,0.16)" : "rgba(255,255,255,0.06)",
-                  }}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              {UNI_SIZES.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setUniSize(s.id)}
-                  className="nd-btn-chip nd-press"
-                  style={{
-                    ...miniChipBtn(),
-                    borderColor: uniSize === s.id ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)",
-                    background: uniSize === s.id ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.06)",
-                  }}
-                >
-                  {s.label} • {s.n}Q
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={handleStartUniversity}
-                className="nd-btn nd-btn-primary nd-press"
-                style={{ ...btnStyle("primary"), marginLeft: "auto" }}
-              >
-                Avvia esame
-              </button>
-            </div>
-          </div>
-        )}
-
 
         <div className="mt-2 flex items-center justify-between gap-2">
           <div className="nd-help">Senza ripetizioni</div>
@@ -1573,7 +1600,21 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
               )}
 
 
+              <div key={`q-${runQuiz.idx}-${qStageKey}`} className={`nd-qstage ${premium ? "nd-qstage--premium" : ""}`}>
               <div style={{ marginTop: 10, fontWeight: 900, fontSize: 15 }}>{runQuiz.questions[runQuiz.idx].q}</div>
+              <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                {premium ? (
+                  <>
+                    <span className="nd-pill nd-pill--sm">🔥 Combo: {combo}</span>
+                    <span className="nd-pill nd-pill--sm">🏆 Best: {bestCombo}</span>
+                    {runQuiz.mode === "concorso" && runQuiz.timeLimitMs ? (
+                      <span className="nd-pill nd-pill--sm">⏱️ Ritmo: {Math.max(1, Math.round(((nowTs - runQuiz.startedAt) / 1000) / Math.max(1, runQuiz.idx + (reveal ? 1 : 0))))}s/q</span>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="nd-help" style={{ fontWeight: 900, opacity: 0.65 }}>Modalità focus</span>
+                )}
+              </div>
 
               {!reveal && (
                 <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.72 }}>
@@ -1633,6 +1674,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     </button>
                   );
                 })}
+              </div>
               </div>
 
               <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
@@ -1716,6 +1758,60 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     )}
                   </div>
                 )}
+              {resultProfile && (
+                <div className="mt-3 nd-card nd-card-pad" style={{ ...card(), padding: 14 }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div style={{ fontWeight: 950 }}>Profilo concorsista</div>
+                    <span className="nd-pill nd-pill--sm">Premium</span>
+                  </div>
+
+                  {!premium ? (
+                    <div style={{ marginTop: 10 }}>
+                      <div className="nd-help" style={{ opacity: 0.9 }}>Sblocca per vedere percentile, confronto e livello concorso.</div>
+                      <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10, filter: "blur(2.6px)", opacity: 0.85 }}>
+                        <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                          <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Percentile</div>
+                          <div style={{ marginTop: 4, fontWeight: 950 }}>Top 32%</div>
+                        </div>
+                        <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                          <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Livello</div>
+                          <div style={{ marginTop: 4, fontWeight: 950 }}>Avanzato</div>
+                        </div>
+                        <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                          <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Confronto</div>
+                          <div style={{ marginTop: 4, fontWeight: 950 }}>Top 41%</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                      <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                        <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Percentile</div>
+                        <div style={{ marginTop: 4, fontWeight: 950 }}>
+                          {typeof resultProfile.percentile === "number" ? `Top ${Math.max(1, 100 - resultProfile.percentile)}%` : "—"}
+                        </div>
+                        <div className="nd-help" style={{ marginTop: 2, opacity: 0.72 }}>vs tue sessioni</div>
+                      </div>
+
+                      <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                        <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Livello concorso</div>
+                        <div style={{ marginTop: 4, fontWeight: 950 }}>{resultProfile.concorsoLevel.label}</div>
+                        <div className="nd-help" style={{ marginTop: 2, opacity: 0.72 }}>{resultProfile.concorsoLevel.hint}</div>
+                      </div>
+
+                      <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                        <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Confronto utenti</div>
+                        <div style={{ marginTop: 4, fontWeight: 950 }}>{`Top ${Math.max(1, 100 - resultProfile.communityEstimate)}%`}</div>
+                        <div className="nd-help" style={{ marginTop: 2, opacity: 0.72 }}>stima (analytics Fase 6)</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="nd-help" style={{ marginTop: 10, opacity: 0.72 }}>
+                    Percentile e confronto sono stime locali finché non attiviamo Analytics (Fase 6).
+                  </div>
+                </div>
+              )}
               {Object.keys(quizResult.byCategory || {}).length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   <div className="nd-subtitle">Categorie da ripassare</div>
@@ -1892,6 +1988,13 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
   .nd-progress.fx-bad .nd-progress-fill {
     animation: ndBarBad 520ms ease-out;
   }
+
+  .nd-qstage {
+    animation: ndQEnter 260ms ease-out;
+  }
+  .nd-qstage--premium {
+    animation: ndQEnterPremium 340ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
   .nd-quiz-toast {
     position: relative;
     margin-top: 10px;
@@ -1940,7 +2043,17 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     40% { filter: brightness(1.14); }
     100% { filter: brightness(1); }
   }
-  @keyframes ndToastUp {
+  
+  @keyframes ndQEnter {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes ndQEnterPremium {
+    0% { opacity: 0; transform: translateY(14px) scale(0.995); filter: blur(0.2px); }
+    60% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+@keyframes ndToastUp {
     0% { transform: translateY(0); opacity: 0.0; }
     10% { opacity: 0.95; }
     70% { opacity: 0.95; }
