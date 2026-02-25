@@ -558,32 +558,36 @@ function btnStyle(v: BtnVariant, disabled?: boolean): React.CSSProperties {
 }
 
 function miniChipBtn(state?: boolean): React.CSSProperties {
+  // state === true  -> ON (verde); state === false -> OFF (rosso); undefined -> neutro
   const isOn = state === true;
   const isOff = state === false;
+  const border = isOn
+    ? "1px solid rgba(34,197,94,0.40)"
+    : isOff
+    ? "1px solid rgba(239,68,68,0.34)"
+    : "1px solid rgba(255,255,255,0.12)";
+  const background = isOn
+    ? "rgba(34,197,94,0.14)"
+    : isOff
+    ? "rgba(239,68,68,0.12)"
+    : "rgba(0,0,0,0.18)";
+  const glow = isOn
+    ? "0 0 0 1px rgba(34,197,94,0.18), 0 10px 28px rgba(34,197,94,0.16)"
+    : isOff
+    ? "0 0 0 1px rgba(239,68,68,0.14), 0 10px 28px rgba(239,68,68,0.12)"
+    : "";
   return {
     display: "inline-flex",
     alignItems: "center",
     padding: "6px 10px",
     borderRadius: 999,
-    border: isOn
-      ? "1px solid rgba(34,197,94,0.38)"
-      : isOff
-        ? "1px solid rgba(244,63,94,0.38)"
-        : "1px solid rgba(255,255,255,0.12)",
-    background: isOn
-      ? "rgba(34,197,94,0.14)"
-      : isOff
-        ? "rgba(244,63,94,0.14)"
-        : "rgba(0,0,0,0.18)",
-    color: "rgba(255,255,255,0.96)",
-    fontWeight: 950,
+    border,
+    background,
+    color: "rgba(255,255,255,0.92)",
+    fontWeight: 900,
     fontSize: 12,
     cursor: "pointer",
-    boxShadow: isOn
-      ? "0 0 0 1px rgba(34,197,94,0.10), 0 10px 22px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)"
-      : isOff
-        ? "0 0 0 1px rgba(244,63,94,0.10), 0 10px 22px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)"
-        : "inset 0 1px 0 rgba(255,255,255,0.06)",
+    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.06)${glow ? `, ${glow}` : ""}`,
   };
 }
 
@@ -1565,11 +1569,11 @@ if (runQuiz.mode === "concorso") {
     <button
       type="button"
       className="nd-btn nd-btn-ghost nd-press"
-      style={{ ...btnStyle("ghost"), display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 14px" }}
+      style={{ ...btnStyle("ghost"), position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, padding: "14px 14px", minHeight: 56 }}
       onClick={() => setBoardsOpen(true)}
     >
       <span style={{ fontWeight: 950 }}>🏆 Classifiche</span>
-      <span className="nd-badge nd-badge-emerald" style={chipStyle("emerald")}>Personale/Globale</span>
+      <span className="nd-badge nd-badge-emerald" style={{ ...chipStyle("emerald"), position: "absolute", top: 8, right: 8, maxWidth: 112, textAlign: "center", whiteSpace: "normal", lineHeight: 1.05, padding: "6px 8px", fontSize: 11, pointerEvents: "none" }}>{leaderboard.tier}</span>
     </button>
 
     <button
@@ -1579,7 +1583,7 @@ if (runQuiz.mode === "concorso") {
       onClick={() => setChallengeOpen(true)}
     >
       <span style={{ fontWeight: 950 }}>⚔️ Sfide 1v1</span>
-      <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Settimana {weeklyBoard.wk.split("-W")[1]}</span>
+      <span className="nd-badge nd-badge-slate" style={{ ...chipStyle("slate"), position: "absolute", top: 8, right: 8, maxWidth: 112, textAlign: "center", whiteSpace: "normal", lineHeight: 1.05, padding: "6px 8px", fontSize: 11, pointerEvents: "none" }}>Settimana {weeklyBoard.wk.split("-W")[1]}</span>
     </button>
   </div>
 </div>
@@ -1656,7 +1660,7 @@ if (runQuiz.mode === "concorso") {
               setPremiumModalOpen(true);
             }}
             className="nd-btn-chip nd-press"
-            style={miniChipBtn(concorsoNoRepeat)}
+            style={miniChipBtn()}
           >
             Sblocca con pubblicità / Premium
           </button>
@@ -1706,7 +1710,7 @@ if (runQuiz.mode === "concorso") {
               setPremiumModalOpen(true);
             }}
             className="nd-btn-chip nd-press"
-            style={miniChipBtn(concorsoNoRepeat)}
+            style={miniChipBtn()}
           >
             Sblocca con pubblicità / Premium
           </button>
@@ -1798,7 +1802,10 @@ if (runQuiz.mode === "concorso") {
                   Seleziona materia e formato. Domande teoriche (non cliniche).
                 </div>
               </div>
-</div>
+              <span className="nd-pill nd-pill--sm" style={pillStyle("slate")}>
+                {getUniAvailableCount(QUIZ_BANK_UNIVERSITY, uniPreset)}Q
+              </span>
+            </div>
 
             <div className="mt-3" style={{ display: "grid", gap: 8 }}>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1867,7 +1874,7 @@ if (runQuiz.mode === "concorso") {
                   Piano giornaliero automatico basato sui tuoi errori.
                 </div>
               </div>
-              <button type="button" onClick={() => setCoachOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn(concorsoNoRepeat)}>
+              <button type="button" onClick={() => setCoachOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
                 Apri
               </button>
             </div>
@@ -1884,7 +1891,7 @@ if (runQuiz.mode === "concorso") {
               setPremiumModalOpen(true);
             }}
             className="nd-btn-chip nd-press"
-            style={miniChipBtn(concorsoNoRepeat)}
+            style={miniChipBtn()}
           >
             Sblocca con pubblicità / Premium
           </button>
@@ -1927,7 +1934,7 @@ if (runQuiz.mode === "concorso") {
 
                   {!premium && (
                     <div className="mt-2 nd-help">
-                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn(concorsoNoRepeat)}>
+                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
                         Sblocca Premium
                       </button>
                     </div>
@@ -2370,7 +2377,7 @@ if (runQuiz.mode === "concorso") {
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div style={{ fontWeight: 950, fontSize: 15 }}>Sblocca {unlockModal.kind === "daily" ? "Daily" : unlockModal.kind === "weekly" ? "Weekly" : "Concorsi"}</div>
-              <button type="button" onClick={() => setUnlockModal(null)} style={miniChipBtn(concorsoNoRepeat)}>
+              <button type="button" onClick={() => setUnlockModal(null)} style={miniChipBtn()}>
                 ✕
               </button>
             </div>
