@@ -1,19 +1,23 @@
 import type { QuizQuestion } from "./quizBank";
 
 export type UniPresetId = "farmacologia" | "anatomia" | "fisiologia";
+export type UniSizeId = "mini" | "medio" | "esame";
+
+export const UNI_SIZES: Array<{ id: UniSizeId; label: string; n: number; min: number }> = [
+  { id: "mini", label: "Mini test", n: 10, min: 8 },
+  { id: "medio", label: "Medio", n: 30, min: 25 },
+  { id: "esame", label: "Esame", n: 60, min: 50 },
+];
 
 export const UNI_PRESETS: Array<{
   id: UniPresetId;
   label: string;
-  n: number;
-  min: number;
   // categories expected in QuizQuestion.category
   categories: string[];
 }> = [
-  { id: "farmacologia", label: "Farmacologia", n: 30, min: 25, categories: ["farmacologia"] },
-  // Preset universitari: banca separata (categorie dedicate).
-  { id: "anatomia", label: "Anatomia", n: 30, min: 25, categories: ["anatomia"] },
-  { id: "fisiologia", label: "Fisiologia", n: 30, min: 25, categories: ["fisiologia"] },
+  { id: "farmacologia", label: "Farmacologia", categories: ["farmacologia"] },
+  { id: "anatomia", label: "Anatomia", categories: ["anatomia"] },
+  { id: "fisiologia", label: "Fisiologia", categories: ["fisiologia"] },
 ];
 
 export function getUniPool(bank: QuizQuestion[], presetId: UniPresetId): QuizQuestion[] {
@@ -25,4 +29,8 @@ export function getUniPool(bank: QuizQuestion[], presetId: UniPresetId): QuizQue
 
 export function getUniAvailableCount(bank: QuizQuestion[], presetId: UniPresetId): number {
   return getUniPool(bank, presetId).length;
+}
+
+export function getUniSize(sizeId: UniSizeId) {
+  return UNI_SIZES.find((s) => s.id === sizeId) ?? UNI_SIZES[1];
 }
