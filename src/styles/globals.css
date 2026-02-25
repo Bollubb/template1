@@ -527,31 +527,40 @@
 .nd-quickmenu-item:hover{ background: rgba(255,255,255,0.05); }
 .nd-quickmenu-item:active{ background: rgba(255,255,255,0.07); }
 
-/* Segmented tabs (Quiz mini-menu) – stronger active state */
+/* Segmented tabs (Quiz mini-menu) – premium + consistent on mobile */
 .nd-seg{
-  display:flex;
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap:8px;
   padding: 6px;
   border-radius: 18px;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.10);
+  backdrop-filter: blur(10px);
 }
 .nd-seg-btn{
   position: relative;
-  padding: 10px 12px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding: 11px 12px;
+  min-height: 44px;
   border-radius: 14px;
-  font-weight: 900;
+  font-weight: 950;
   font-size: 13px;
-  letter-spacing: .2px;
-  color: rgba(255,255,255,0.78);
-  border: 1px solid transparent;
-  background: transparent;
+  letter-spacing: .1px;
+  line-height: 1.05;
+  text-align: center;
+  color: rgba(255,255,255,0.82);
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.06);
 }
 .nd-seg-btn.is-active{
   color: rgba(255,255,255,0.96);
-  background: rgba(77,185,255,0.18);
-  border-color: rgba(77,185,255,0.32);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.42);
+  background: linear-gradient(180deg, rgba(77,185,255,0.22), rgba(77,185,255,0.10));
+  border-color: rgba(77,185,255,0.34);
+  box-shadow: 0 10px 24px rgba(0,0,0,0.44), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 .nd-seg-btn:focus-visible{
   outline: 2px solid rgba(77,185,255,0.40);
@@ -563,5 +572,16 @@
 .nd-seg-btn--violet.is-active{ background: rgba(139,124,255,0.16); border-color: rgba(139,124,255,0.30); }
 .nd-seg-btn--green.is-active{ background: rgba(34,197,94,0.14); border-color: rgba(34,197,94,0.26); }
 .nd-seg-btn--slate.is-active{ background: rgba(148,163,184,0.12); border-color: rgba(148,163,184,0.20); }
+
+@media (min-width: 560px){
+  .nd-seg{
+    display:flex;
+    flex-wrap: nowrap;
+  }
+  .nd-seg-btn{
+    flex: 1 1 0;
+    white-space: nowrap;
+  }
+}
 
 /* Utility colored chips should stay colored: no override here. */
