@@ -518,7 +518,7 @@ function ghostBtn(disabled?: boolean): React.CSSProperties {
 
 // Visual variants for pills/chips/badges.
 // NOTE: keep in sync with CSS classes (e.g. .nd-badge-emerald).
-type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet" | "emerald";
+type ChipVariant = "sky" | "amber" | "slate" | "green" | "red" | "violet" | "emerald";
 type BtnVariant = "emerald" | "indigo" | "sky" | "slate" | "ghost";
 
 function chipStyle(v: ChipVariant): React.CSSProperties {
@@ -741,6 +741,7 @@ export default function QuizPage(): JSX.Element {
 
   // Phase 11 – Challenges (1v1 async, share-based)
   const [challengeOpen, setChallengeOpen] = useState(false);
+const [boardsOpen, setBoardsOpen] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [challenges, setChallenges] = useState<Challenge[]>([]);
 
@@ -1522,7 +1523,6 @@ if (runQuiz.mode === "concorso") {
                 {!premium && <span className="nd-pill nd-pill--sm">Premium</span>}
               </div>
 
-              {/* Header premium (placeholder, non legato alla logica) */}
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontWeight: 950, fontSize: 18, letterSpacing: 0.2 }}>Allenamento clinico</div>
                 <div className="nd-help" style={{ marginTop: 4 }}>Dall’università al concorso.</div>
@@ -1544,81 +1544,31 @@ if (runQuiz.mode === "concorso") {
               </div>
 
 
-              {/* Phase 10 – Classifica (MVP, locale) */}
-              <div style={{ marginTop: 12, padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.22)" }}>
-                <div className="flex items-center justify-between gap-2">
-                  <div style={{ fontWeight: 950 }}>🏆 Classifica personale</div>
-                  <span className="nd-badge nd-badge-emerald" style={chipStyle("emerald")}>{leaderboard.tier}</span>
-                </div>
-                <div className="nd-help" style={{ marginTop: 4 }}>
-                  Basata sulle tue simulazioni reali (Concorso). Nessun dato inviato online.
-                </div>
-                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Migliore</div>
-                    <div style={{ marginTop: 4, fontWeight: 950 }}>
-                      {leaderboard.bestConcorso.total ? Math.round(leaderboard.bestConcorso.acc * 100) : "—"}%
-                    </div>
-                  </div>
-                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Ultime 10</div>
-                    <div style={{ marginTop: 4, fontWeight: 950 }}>
-                      {leaderboard.avgAcc10 === null ? "—" : Math.round(leaderboard.avgAcc10 * 100) + "%"}
-                    </div>
-                  </div>
-                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Run concorso</div>
-                    <div style={{ marginTop: 4, fontWeight: 950 }}>{leaderboard.concorsoRuns}</div>
-                  </div>
-                </div>
-              </div>
 
-              {/* Phase 11 – Weekly board + 1v1 async challenges (share-based MVP) */}
-              <div style={{ marginTop: 12, padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.22)" }}>
-                <div className="flex items-center justify-between gap-2">
-                  <div style={{ fontWeight: 950 }}>🌐 Classifica settimanale</div>
-                  <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Week {weeklyBoard.wk.split("-W")[1]}</span>
-                </div>
-                <div className="nd-help" style={{ marginTop: 4 }}>
-                  MVP offline: condividi il tuo punteggio per far crescere la community. (Online leaderboard in arrivo)
-                </div>
-                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
-                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Punti</div>
-                    <div style={{ marginTop: 4, fontWeight: 950 }}>{weeklyBoard.points}</div>
-                  </div>
-                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Run</div>
-                    <div style={{ marginTop: 4, fontWeight: 950 }}>{weeklyBoard.runs}</div>
-                  </div>
-                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Acc</div>
-                    <div style={{ marginTop: 4, fontWeight: 950 }}>{Math.round(weeklyBoard.acc * 100)}%</div>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="nd-btn nd-btn-ghost nd-press"
-                    style={btnStyle("ghost")}
-                    onClick={async () => {
-                      const text = `🌐 Nurse Diary – Classifica settimanale\nWeek ${weeklyBoard.wk}\nPunti: ${weeklyBoard.points} (Run: ${weeklyBoard.runs}, Acc: ${Math.round(weeklyBoard.acc * 100)}%)\n\nVuoi battermi? Apri Nurse Diary → Quiz → Simulazioni.`;
-                      await safeShare({ title: "Nurse Diary – Classifica settimanale", text });
-                      setToast({ text: "Condiviso ✅", id: Date.now() });
-                    }}
-                  >
-                    Condividi
-                  </button>
-                  <button
-                    type="button"
-                    className="nd-btn nd-btn-sky nd-press"
-                    style={btnStyle("sky")}
-                    onClick={() => setChallengeOpen(true)}
-                  >
-                    ⚔️ Sfide 1v1
-                  </button>
-                </div>
-              </div>
+{/* Classifiche + Sfide (compatte) */}
+<div style={{ marginTop: 12 }}>
+  <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
+    <button
+      type="button"
+      className="nd-btn nd-btn-ghost nd-press"
+      style={{ ...btnStyle("ghost"), display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 14px" }}
+      onClick={() => setBoardsOpen(true)}
+    >
+      <span style={{ fontWeight: 950 }}>🏆 Classifiche</span>
+      <span className="nd-badge nd-badge-emerald" style={chipStyle("emerald")}>{leaderboard.tier}</span>
+    </button>
+
+    <button
+      type="button"
+      className="nd-btn nd-btn-sky nd-press"
+      style={{ ...btnStyle("sky"), display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 14px" }}
+      onClick={() => setChallengeOpen(true)}
+    >
+      <span style={{ fontWeight: 950 }}>⚔️ Sfide 1v1</span>
+      <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>W{weeklyBoard.wk.split("-W")[1]}</span>
+    </button>
+  </div>
+</div>
 
               <div className="mt-3 nd-seg">
                 <button
@@ -1792,9 +1742,6 @@ if (runQuiz.mode === "concorso") {
             Concorsi
           </button>
 	      </div>
-	      <span className="nd-pill nd-pill--sm" style={pillStyle("slate")}>
-	        Struttura pronta
-	      </span>
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2">
@@ -1820,7 +1767,10 @@ if (runQuiz.mode === "concorso") {
               className="nd-btn nd-btn-ghost nd-press"
               style={btnStyle("ghost")}
             >
-              {p.label} • {p.n} domande • {p.min} min
+              <div style={{ textAlign: "center", lineHeight: 1.1 }}>
+                <div style={{ fontWeight: 950, fontSize: 16 }}>{p.label}</div>
+                <div className="nd-help" style={{ marginTop: 6, opacity: 0.82 }}>{p.n} domande • {p.min} min</div>
+              </div>
             </button>
           ))}
         </div>
@@ -2577,6 +2527,117 @@ if (runQuiz.mode === "concorso") {
           setPremiumModalOpen(false);
         }}
       />
+
+
+{/* Classifiche overlay (compatto) */}
+{boardsOpen && (
+  <div
+    role="dialog"
+    aria-modal="true"
+    onClick={() => setBoardsOpen(false)}
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 9998,
+      background: "rgba(0,0,0,0.55)",
+      backdropFilter: "blur(8px)",
+      WebkitBackdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "center",
+      padding: 12,
+    }}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="nd-card nd-card-pad"
+      style={{
+        width: "100%",
+        maxWidth: 560,
+        borderRadius: 22,
+        border: "1px solid rgba(255,255,255,0.12)",
+        background: "rgba(10,10,12,0.92)",
+        boxShadow: "0 24px 64px rgba(0,0,0,0.55)",
+        maxHeight: "82vh",
+        overflowY: "auto",
+        paddingBottom: "calc(18px + env(safe-area-inset-bottom))",
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div style={{ fontWeight: 950, fontSize: 18 }}>🏆 Classifiche</div>
+          <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>Personale • Settimanale</div>
+        </div>
+        <button type="button" className="nd-btn nd-btn-ghost nd-press" style={btnStyle("ghost")} onClick={() => setBoardsOpen(false)}>
+          Chiudi
+        </button>
+      </div>
+
+      <div style={{ marginTop: 12, padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+        <div className="flex items-center justify-between gap-2">
+          <div style={{ fontWeight: 950 }}>🏆 Personale</div>
+          <span className="nd-badge nd-badge-emerald" style={chipStyle("emerald")}>{leaderboard.tier}</span>
+        </div>
+
+        <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+          <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Migliore</div>
+            <div style={{ marginTop: 4, fontWeight: 950 }}>
+              {leaderboard.bestConcorso.total ? Math.round(leaderboard.bestConcorso.acc * 100) : "—"}%
+            </div>
+          </div>
+          <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Ultime 10</div>
+            <div style={{ marginTop: 4, fontWeight: 950 }}>
+              {leaderboard.avgAcc10 === null ? "—" : Math.round(leaderboard.avgAcc10 * 100) + "%"}
+            </div>
+          </div>
+          <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Run</div>
+            <div style={{ marginTop: 4, fontWeight: 950 }}>{leaderboard.concorsoRuns}</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 12, padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+        <div className="flex items-center justify-between gap-2">
+          <div style={{ fontWeight: 950 }}>🌐 Settimanale</div>
+          <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Week {weeklyBoard.wk.split("-W")[1]}</span>
+        </div>
+
+        <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+          <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Punti</div>
+            <div style={{ marginTop: 4, fontWeight: 950 }}>{weeklyBoard.points}</div>
+          </div>
+          <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Run</div>
+            <div style={{ marginTop: 4, fontWeight: 950 }}>{weeklyBoard.runs}</div>
+          </div>
+          <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Acc</div>
+            <div style={{ marginTop: 4, fontWeight: 950 }}>{Math.round(weeklyBoard.acc * 100)}%</div>
+          </div>
+        </div>
+
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            className="nd-btn nd-btn-ghost nd-press"
+            style={btnStyle("ghost")}
+            onClick={async () => {
+              const text = `🌐 Nurse Diary – Classifica settimanale\nWeek ${weeklyBoard.wk}\nPunti: ${weeklyBoard.points} (Run: ${weeklyBoard.runs}, Acc: ${Math.round(weeklyBoard.acc * 100)}%)\n\nVuoi battermi? Apri Nurse Diary → Quiz → Simulazioni.`;
+              await safeShare({ title: "Nurse Diary – Classifica settimanale", text });
+              setToast({ text: "Condiviso ✅", id: Date.now() });
+            }}
+          >
+            Condividi
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Phase 11 – Challenge overlay */}
       {challengeOpen && (
