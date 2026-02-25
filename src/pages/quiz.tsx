@@ -7,6 +7,9 @@ import NurseBottomNav from "../components/nursediary/NurseBottomNav";
 import PremiumUpsellModal from "@/components/nursediary/PremiumUpsellModal";
 
 import { QUIZ_BANK, type QuizQuestion } from "@/features/cards/quiz/quizBank";
+import { QUIZ_BANK_UNIVERSITY } from "@/features/cards/quiz/quizBankUniversity";
+import { UNI_PRESETS, UNI_SIZES, getUniPool, getUniSize, type UniPresetId, type UniSizeId, getUniAvailableCount } from "@/features/cards/quiz/quizUniversity";
+import { getCoachState, recordCoachSession, getTodayCoachPlan, setCoachWeeklyGoal, setCoachReminderHour } from "@/features/cards/quiz/quizCoach";
 import { QUIZ_BANK_CONCORSO } from "@/features/cards/quiz/quizBankConcorso";
 import {
   calcDailyReward,
@@ -22,7 +25,8 @@ import {
   type QuizHistoryItem,
 } from "@/features/cards/quiz/quizLogic";
 import { addXp } from "@/features/progress/xp";
-import { recordMistake, pickMistakeReviewQuestions } from "@/features/cards/quiz/quizMistakes";
+import { recordMistake } from "@/features/cards/quiz/quizMistakes";
+import { getDueCount, getWeakCategories, pickAdaptiveQuestions, recordAttempt } from "@/features/cards/quiz/quizAdaptive";
 
 type QuizRun = {
   mode: "daily" | "weekly" | "sim" | "concorso" | "review";
@@ -31,6 +35,7 @@ type QuizRun = {
   questions: QuizQuestion[];
   answers: number[]; // chosen option index, -1 if none
   startedAt: number;
+  track?: "core" | "concorso" | "uni";
   // concorsi
   timeLimitMs?: number;
   presetId?: "asl" | "regione" | "mega" | "mese";
@@ -603,6 +608,11 @@ export default function QuizPage(): JSX.Element {
 
   const [homeTab, setHomeTab] = useState<HomeTab>("daily");
   const [simTrack, setSimTrack] = useState<SimTrack>("concorso");
+  const [uniPreset, setUniPreset] = useState<UniPresetId>("farmacologia");
+  const [uniSize, setUniSize] = useState<UniSizeId>("medio");
+  const [coachOpen, setCoachOpen] = useState(false);
+  const [coachReminderHour, setCoachReminderHourState] = useState<number>(() => getCoachState().reminderHour);
+
   // Default ON: concorsi "a mazzo" (random senza ripetizioni finché non finiscono)
   const [concorsoNoRepeat, setConcorsoNoRepeat] = useState<boolean>(true);
   const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly" | "concorso"; remaining: number }>(null);
@@ -618,6 +628,7 @@ export default function QuizPage(): JSX.Element {
   const [bestCombo, setBestCombo] = useState<number>(0);
   const [qStageKey, setQStageKey] = useState<number>(0);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const [dueNow, setDueNow] = useState<number>(0);
   const [lastReward, setLastReward] = useState<{ xp: number; pills: number } | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
 
@@ -643,6 +654,15 @@ export default function QuizPage(): JSX.Element {
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [])
+
+  // Adaptive learning: badge for "domande da ripassare" (spaced repetition due now)
+  useEffect(() => {
+    try {
+      setDueNow(getDueCount());
+    } catch {
+      setDueNow(0);
+    }
+  }, [quizResult]);
 
 
   useEffect(() => {
@@ -719,7 +739,7 @@ useEffect(() => {
     persistFavs(next);
   }
 
-  function start(mode: QuizRun["mode"], opts?: { questions?: QuizQuestion[]; timeLimitMs?: number; presetId?: QuizRun["presetId"] }) {
+  function start(mode: QuizRun["mode"], opts?: { questions?: QuizQuestion[]; timeLimitMs?: number; presetId?: QuizRun["presetId"]; track?: QuizRun["track"] }) {
     const questions =
       opts?.questions ??
       (() => {
@@ -731,7 +751,8 @@ useEffect(() => {
           const preset = CONCORSO_PRESETS.find((p) => p.id === (opts?.presetId ?? "asl")) ?? CONCORSO_PRESETS[0];
           return pickQuestionsUniqueByStem(QUIZ_BANK_CONCORSO, preset.n, avoid);
         }
-        const picked = pickMistakeReviewQuestions(QUIZ_BANK, 10);
+        const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+        const picked = pickAdaptiveQuestions(bank, 10, { excludeIds: Array.from(avoid) });
         return picked.length ? picked : pickQuestions(QUIZ_BANK, 10, avoid);
       })();
 
@@ -756,6 +777,7 @@ useEffect(() => {
       startedAt: Date.now(),
       timeLimitMs: opts?.timeLimitMs,
       presetId: opts?.presetId,
+      track: opts?.track ?? (mode === "concorso" ? "concorso" : "core"),
       scoring,
     });
 
@@ -889,6 +911,16 @@ useEffect(() => {
 // mistakes log
     wrong.forEach((w) => recordMistake(w.q.id));
 
+    // Adaptive learning stats (local-first): record each attempt (skip omitted)
+    try {
+      run.questions.forEach((q, i) => {
+        const chosen = run.answers[i];
+        if (chosen === undefined || chosen === null) return;
+        if (chosen < 0) return; // -1 = omitted
+        recordAttempt(q, chosen);
+      });
+    } catch {}
+
     // history (for recency)
     const byCategory: QuizHistoryItem["byCategory"] = {};
 
@@ -912,6 +944,10 @@ useEffect(() => {
         byCategory,
       };
       pushHistory(item);
+    } catch {}
+
+    try {
+      recordCoachSession({ track: run.track ?? "core", mode: run.mode, total: run.questions.length, correct: correctCount, ms });
     } catch {}
 
     setRunQuiz(null);
@@ -1034,34 +1070,32 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
     questions,
     timeLimitMs: preset.min * 60 * 1000,
     presetId: preset.id,
+    track: "concorso",
   });
 }
 
-// --- Compatibility: University start handler ---
-// Some UI variants (Phase 7/University) reference `handleStartUniversity` directly.
-// Keeping it here prevents TS build failures and allows the University CTA to work.
-function handleStartUniversity() {
-  // Reflect intent in UI when the toggle exists.
-  try {
-    // setSimTrack is defined in this page scope.
-    setSimTrack("uni");
-  } catch {
-    // no-op
+  function handleStartUniversity() {
+    const size = getUniSize(uniSize);
+    const pool = getUniPool(QUIZ_BANK_UNIVERSITY, uniPreset);
+
+    if (pool.length === 0) {
+      // ultra-safe fallback: non bloccare l'utente se manca banca dati
+      const questions = pickQuestionsUniqueByStem(QUIZ_BANK, Math.min(10, size.n), new Set());
+      start("sim", { questions, timeLimitMs: size.min * 60 * 1000, track: "core" });
+      return;
+    }
+
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    let questions = shuffled.slice(0, size.n);
+
+    // se la banca è più piccola del formato, riempi con ripetizioni (meglio che bloccare)
+    while (questions.length < size.n) {
+      questions.push(pool[Math.floor(Math.random() * pool.length)]);
+    }
+
+    start("sim", { questions, timeLimitMs: size.min * 60 * 1000, track: "uni" });
   }
 
-  // Prefer university categories if present, otherwise fall back to the full bank.
-  const uniCats = new Set(["farmacologia", "anatomia", "fisiologia"]);
-  const bankUni = QUIZ_BANK.filter((q: any) => uniCats.has(String((q as any).category ?? "").toLowerCase()));
-  const src = bankUni.length >= 10 ? bankUni : QUIZ_BANK;
-
-  const questions = pickQuestionsUniqueByStem(src, 30, new Set());
-  // Reuse existing run-mode/navigation for stability.
-  start("concorso", {
-    questions,
-    timeLimitMs: 25 * 60 * 1000,
-    presetId: "asl",
-  });
-}
 
   function confirmAnswer() {
     if (!runQuiz) return;
@@ -1451,17 +1485,92 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
           ))}
         </div>
       ) : (
-        <div className="nd-tile" style={{ ...tileStyle(), opacity: 0.95 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-            <div style={{ fontWeight: 950 }}>Simulazioni università</div>
-            <span className="nd-pill nd-pill--sm">In arrivo</span>
+        <div className="grid gap-2">
+          <div className="nd-tile" style={tileStyle()}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 950 }}>Simulazioni università</div>
+                <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>
+                  Seleziona materia e formato. Domande teoriche (non cliniche).
+                </div>
+              </div>
+              <span className="nd-pill nd-pill--sm" style={pillStyle("slate")}>
+                {getUniAvailableCount(QUIZ_BANK_UNIVERSITY, uniPreset)}Q
+              </span>
+            </div>
+
+            <div className="mt-3" style={{ display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {UNI_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setUniPreset(p.id)}
+                    className="nd-btn-chip nd-press"
+                    style={{
+                      ...miniChipBtn(),
+                      borderColor: uniPreset === p.id ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)",
+                      background: uniPreset === p.id ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {UNI_SIZES.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setUniSize(s.id)}
+                    className="nd-btn-chip nd-press"
+                    style={{
+                      ...miniChipBtn(),
+                      borderColor: uniSize === s.id ? "rgba(34,197,94,0.55)" : "rgba(255,255,255,0.12)",
+                      background: uniSize === s.id ? "rgba(34,197,94,0.14)" : "rgba(255,255,255,0.06)",
+                    }}
+                  >
+                    {s.label} • {s.n}Q • {s.min}m
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <div className="nd-help" style={{ opacity: 0.8 }}>
+                  {(() => {
+                    const size = getUniSize(uniSize);
+                    const available = getUniAvailableCount(QUIZ_BANK_UNIVERSITY, uniPreset);
+                    if (available >= size.n) return "Banca completa per questo formato.";
+                    if (available === 0) return "Nessuna domanda per ora: aggiungi banca dati (PDF) o aggiorna.";
+                    return `Banca parziale: useremo ${available}Q (con possibili ripetizioni per arrivare a ${size.n}).`;
+                  })()}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleStartUniversity}
+                  className="nd-btn nd-btn-primary nd-press"
+                  style={{ ...btnStyle("primary"), marginLeft: "auto" }}
+                >
+                  Inizia
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="nd-help" style={{ marginTop: 6 }}>
-            Farmacologia • Anatomia • Fisiologia • Clinica. UI pronta: attiviamo la banca dati nella Fase 5.
+
+          <div className="nd-tile" style={tileStyle()}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+              <div>
+                <div style={{ fontWeight: 950 }}>Coach di studio</div>
+                <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>
+                  Piano giornaliero automatico basato sui tuoi errori.
+                </div>
+              </div>
+              <button type="button" onClick={() => setCoachOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
+                Apri
+              </button>
+            </div>
           </div>
-          <button type="button" className="mt-3 nd-btn nd-btn-ghost" style={{ ...btnStyle("ghost"), opacity: 0.55 }} disabled>
-            Prossimamente
-          </button>
         </div>
       )}
 
@@ -1492,7 +1601,9 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     <div>
                       <div className="text-sm font-extrabold text-white">{HOME_COPY.review.label}</div>
                       <div className="nd-help">{HOME_COPY.review.subtitle}</div>
-                      <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>10 domande</div>
+                      <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>
+                        10 domande{dueNow > 0 ? ` • ${dueNow} da ripassare` : ""}
+                      </div>
                     </div>
                     {!premium && <span className="nd-pill nd-pill--sm">Premium</span>}
                   </div>
@@ -1504,7 +1615,8 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                         setPremiumModalOpen(true);
                         return;
                       }
-                      start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
+                      const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+                      start("review", { questions: pickAdaptiveQuestions(bank, 10) });
                     }}
                     className="mt-3 nd-btn nd-btn-ghost nd-press"
                     style={btnStyle("ghost")}
@@ -1832,6 +1944,41 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                         </div>
                       ))}
                   </div>
+
+                  {(() => {
+                    // Build a focused recovery plan: session weak cats + global weak cats
+                    const sessionWeak = Object.entries(quizResult.byCategory)
+                      .map(([k, v]) => ({ k, rate: v.total ? v.correct / v.total : 0, total: v.total }))
+                      .filter((x) => x.total >= 3)
+                      .sort((a, b) => a.rate - b.rate)
+                      .slice(0, 2)
+                      .map((x) => x.k);
+
+                    const globalWeak = getWeakCategories(2).map((x) => x.cat);
+                    const focusCategories = Array.from(new Set([...sessionWeak, ...globalWeak])).slice(0, 3);
+
+                    if (focusCategories.length === 0) return null;
+
+                    return (
+                      <div className="mt-3 nd-help">
+                        <button
+                          type="button"
+                          className="nd-btn nd-btn-ghost nd-press"
+                          style={btnStyle("ghost")}
+                          onClick={() => {
+                            const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+                            setQuizResult(null);
+                            start("review", { questions: pickAdaptiveQuestions(bank, 10, { focusCategories }) });
+                          }}
+                        >
+                          Avvia recupero mirato
+                        </button>
+                        <div className="mt-2" style={{ opacity: 0.75 }}>
+                          Priorità: {focusCategories.join(" • ")}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -1847,7 +1994,10 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     else if (quizResult.mode === "weekly") start("weekly");
                     else if (quizResult.mode === "concorso") start("concorso", { presetId: "asl", timeLimitMs: (CONCORSO_PRESETS[0].min * 60 * 1000) });
                     else if (quizResult.mode === "sim") start("sim");
-                    else start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
+                    else {
+                      const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+                      start("review", { questions: pickAdaptiveQuestions(bank, 10) });
+                    }
                   }}
                   className="nd-btn-primary nd-press"
                 >
@@ -2088,7 +2238,139 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
         }}
       />
       </>
-    </Page>);
+          {/* Coach overlay */}
+      {coachOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setCoachOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            padding: 12,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="nd-card nd-card-pad"
+            style={{
+              width: "100%",
+              maxWidth: 560,
+              borderRadius: 22,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(10,10,12,0.92)",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.55)",
+              maxHeight: "82vh",
+              overflowY: "auto",
+              paddingBottom: "calc(18px + env(safe-area-inset-bottom))",
+            }}
+          >
+            {(() => {
+              const st = getCoachState();
+              const plan = getTodayCoachPlan({ uniPreset, simTrack });
+              const weeklyPct = Math.round(Math.min(1, st.weekDone / Math.max(1, st.weekGoal)) * 100);
+              return (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                    <div>
+                      <div style={{ fontWeight: 950, fontSize: 18 }}>Coach di studio</div>
+                      <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>
+                        Obiettivi + suggerimenti (local-first)
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => setCoachOpen(false)} className="nd-btn nd-btn-ghost nd-press" style={btnStyle("ghost")}>
+                      Chiudi
+                    </button>
+                  </div>
+
+                  <div className="mt-3" style={{ display: "grid", gap: 10 }}>
+                    <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                        <div style={{ fontWeight: 900 }}>Obiettivo settimanale</div>
+                        <div className="nd-meta">{st.weekDone}/{st.weekGoal}Q</div>
+                      </div>
+                      <div className="mt-2 nd-progress">
+                        <div className="nd-progress-fill" style={{ width: `${weeklyPct}%` }} />
+                      </div>
+
+                      <div className="mt-2" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {[100, 150, 200, 300].map((g) => (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => setCoachWeeklyGoal(g)}
+                            className="nd-btn-chip nd-press"
+                            style={{
+                              ...miniChipBtn(),
+                              borderColor: st.weekGoal === g ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)",
+                              background: st.weekGoal === g ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.06)",
+                            }}
+                          >
+                            {g}Q
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                      <div style={{ fontWeight: 900 }}>Oggi</div>
+                      <div className="nd-help" style={{ marginTop: 4, opacity: 0.8 }}>
+                        {plan.headline}
+                      </div>
+
+                      <div className="mt-3" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          className="nd-btn nd-btn-primary nd-press"
+                          style={btnStyle("primary")}
+                          onClick={() => {
+                            setCoachOpen(false);
+                            if (plan.kind === "uni") {
+                              setSimTrack("uni");
+                              setUniPreset(plan.preset);
+                              setUniSize("mini");
+                              setTimeout(() => handleStartUniversity(), 50);
+                            } else if (plan.kind === "review") {
+                              start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10), track: "core" });
+                            } else {
+                              start("daily", { track: "core" });
+                            }
+                          }}
+                        >
+                          Inizia adesso
+                        </button>
+                        <button
+                          type="button"
+                          className="nd-btn nd-btn-ghost nd-press"
+                          style={btnStyle("ghost")}
+                          onClick={() => {
+                            const h = coachReminderHour === 0 ? 20 : 0;
+                            setCoachReminderHourState(h);
+                            setCoachReminderHour(h);
+                          }}
+                        >
+                          {coachReminderHour === 0 ? "Promemoria OFF" : `Promemoria ${coachReminderHour}:00`}
+                        </button>
+                      </div>
+                      <div className="nd-help" style={{ marginTop: 10, opacity: 0.65 }}>
+                        Il promemoria è “in-app” (salvato localmente). Notifiche push in roadmap.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+</Page>);
 }
 
 function addPills(amount: number) {
