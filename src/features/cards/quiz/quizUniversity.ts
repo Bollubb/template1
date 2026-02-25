@@ -10,8 +10,8 @@ export const UNI_PRESETS: Array<{
   // categories expected in QuizQuestion.category
   categories: string[];
 }> = [
-  { id: "farmacologia", label: "Farmacologia", n: 30, min: 25, categories: ["farmaci"] },
-  // These become active when the real university bank is imported.
+  { id: "farmacologia", label: "Farmacologia", n: 30, min: 25, categories: ["farmacologia"] },
+  // Preset universitari: banca separata (categorie dedicate).
   { id: "anatomia", label: "Anatomia", n: 30, min: 25, categories: ["anatomia"] },
   { id: "fisiologia", label: "Fisiologia", n: 30, min: 25, categories: ["fisiologia"] },
 ];
