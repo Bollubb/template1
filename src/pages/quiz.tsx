@@ -1245,6 +1245,42 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     [router]
   );
 
+  const leaderboard = useMemo(() => {
+    const h = getHistory();
+    const concorsoRuns = h.filter((x) => x.mode === "concorso");
+    const uniRuns = h.filter((x) => x.mode === "sim" && (x as any).track === "uni"); // backward compat (if present)
+    const totalRuns = h.length;
+
+    const bestConcorso = concorsoRuns.reduce(
+      (best, x) => {
+        const acc = x.total > 0 ? x.correct / x.total : 0;
+        if (acc > best.acc) return { acc, correct: x.correct, total: x.total, ts: x.ts };
+        return best;
+      },
+      { acc: 0, correct: 0, total: 0, ts: 0 }
+    );
+
+    const last10 = concorsoRuns.slice(-10);
+    const avgAcc10 =
+      last10.length === 0
+        ? null
+        : last10.reduce((sum, x) => sum + (x.total > 0 ? x.correct / x.total : 0), 0) / last10.length;
+
+    // Tiering (local) – Phase 10 MVP
+    const tier =
+      bestConcorso.acc >= 0.9 ? "Élite" : bestConcorso.acc >= 0.8 ? "Avanzato" : bestConcorso.acc >= 0.7 ? "Intermedio" : "Base";
+
+    return {
+      totalRuns,
+      concorsoRuns: concorsoRuns.length,
+      bestConcorso,
+      avgAcc10,
+      tier,
+    };
+  }, [quizResult]);
+
+
+
   return (
     <Page title="Quiz" headerOverride={headerOverride}>
       <>
@@ -1278,6 +1314,36 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                   <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
                     <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Accuratezza</div>
                     <div style={{ marginTop: 4, fontWeight: 950 }}>—</div>
+                  </div>
+                </div>
+              </div>
+
+
+              {/* Phase 10 – Classifica (MVP, locale) */}
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.22)" }}>
+                <div className="flex items-center justify-between gap-2">
+                  <div style={{ fontWeight: 950 }}>🏆 Classifica personale</div>
+                  <span className="nd-badge nd-badge-emerald" style={chipStyle("emerald")}>{leaderboard.tier}</span>
+                </div>
+                <div className="nd-help" style={{ marginTop: 4 }}>
+                  Basata sulle tue simulazioni reali (Concorso). Nessun dato inviato online.
+                </div>
+                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Migliore</div>
+                    <div style={{ marginTop: 4, fontWeight: 950 }}>
+                      {leaderboard.bestConcorso.total ? Math.round(leaderboard.bestConcorso.acc * 100) : "—"}%
+                    </div>
+                  </div>
+                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Ultime 10</div>
+                    <div style={{ marginTop: 4, fontWeight: 950 }}>
+                      {leaderboard.avgAcc10 === null ? "—" : Math.round(leaderboard.avgAcc10 * 100) + "%"}
+                    </div>
+                  </div>
+                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Run concorso</div>
+                    <div style={{ marginTop: 4, fontWeight: 950 }}>{leaderboard.concorsoRuns}</div>
                   </div>
                 </div>
               </div>
@@ -1739,7 +1805,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                 {runQuiz.questions[runQuiz.idx].options.map((opt, i) => {
                   const active = selected === i;
                   const correct = reveal && reveal.correctIdx !== null ? i === reveal.correctIdx : false;
-                  const wrong = reveal ? i === reveal.chosen && !reveal.isCorrect : false;
+                  const wrong = reveal ? i === reveal.chosen && reveal.isCorrect === false : false;
 
                   const cls =
                     "nd-quiz-option" +
