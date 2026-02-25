@@ -557,19 +557,33 @@ function btnStyle(v: BtnVariant, disabled?: boolean): React.CSSProperties {
   return common;
 }
 
-function miniChipBtn(): React.CSSProperties {
+function miniChipBtn(state?: boolean): React.CSSProperties {
+  const isOn = state === true;
+  const isOff = state === false;
   return {
     display: "inline-flex",
     alignItems: "center",
     padding: "6px 10px",
     borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "rgba(0,0,0,0.18)",
-    color: "rgba(255,255,255,0.92)",
-    fontWeight: 900,
+    border: isOn
+      ? "1px solid rgba(34,197,94,0.38)"
+      : isOff
+        ? "1px solid rgba(244,63,94,0.38)"
+        : "1px solid rgba(255,255,255,0.12)",
+    background: isOn
+      ? "rgba(34,197,94,0.14)"
+      : isOff
+        ? "rgba(244,63,94,0.14)"
+        : "rgba(0,0,0,0.18)",
+    color: "rgba(255,255,255,0.96)",
+    fontWeight: 950,
     fontSize: 12,
     cursor: "pointer",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+    boxShadow: isOn
+      ? "0 0 0 1px rgba(34,197,94,0.10), 0 10px 22px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)"
+      : isOff
+        ? "0 0 0 1px rgba(244,63,94,0.10), 0 10px 22px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)"
+        : "inset 0 1px 0 rgba(255,255,255,0.06)",
   };
 }
 
@@ -1555,7 +1569,7 @@ if (runQuiz.mode === "concorso") {
       onClick={() => setBoardsOpen(true)}
     >
       <span style={{ fontWeight: 950 }}>🏆 Classifiche</span>
-      <span className="nd-badge nd-badge-emerald" style={chipStyle("emerald")}>{leaderboard.tier}</span>
+      <span className="nd-badge nd-badge-emerald" style={chipStyle("emerald")}>Personale/Globale</span>
     </button>
 
     <button
@@ -1565,7 +1579,7 @@ if (runQuiz.mode === "concorso") {
       onClick={() => setChallengeOpen(true)}
     >
       <span style={{ fontWeight: 950 }}>⚔️ Sfide 1v1</span>
-      <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>W{weeklyBoard.wk.split("-W")[1]}</span>
+      <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Settimana {weeklyBoard.wk.split("-W")[1]}</span>
     </button>
   </div>
 </div>
@@ -1642,7 +1656,7 @@ if (runQuiz.mode === "concorso") {
               setPremiumModalOpen(true);
             }}
             className="nd-btn-chip nd-press"
-            style={miniChipBtn()}
+            style={miniChipBtn(concorsoNoRepeat)}
           >
             Sblocca con pubblicità / Premium
           </button>
@@ -1692,7 +1706,7 @@ if (runQuiz.mode === "concorso") {
               setPremiumModalOpen(true);
             }}
             className="nd-btn-chip nd-press"
-            style={miniChipBtn()}
+            style={miniChipBtn(concorsoNoRepeat)}
           >
             Sblocca con pubblicità / Premium
           </button>
@@ -1750,7 +1764,7 @@ if (runQuiz.mode === "concorso") {
             type="button"
             onClick={() => setConcorsoNoRepeat((v) => !v)}
             className="nd-btn-chip nd-press"
-            style={miniChipBtn()}
+            style={miniChipBtn(concorsoNoRepeat)}
           >
             {concorsoNoRepeat ? "ON" : "OFF"}
           </button>
@@ -1784,10 +1798,7 @@ if (runQuiz.mode === "concorso") {
                   Seleziona materia e formato. Domande teoriche (non cliniche).
                 </div>
               </div>
-              <span className="nd-pill nd-pill--sm" style={pillStyle("slate")}>
-                {getUniAvailableCount(QUIZ_BANK_UNIVERSITY, uniPreset)}Q
-              </span>
-            </div>
+</div>
 
             <div className="mt-3" style={{ display: "grid", gap: 8 }}>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1831,7 +1842,7 @@ if (runQuiz.mode === "concorso") {
                   {(() => {
                     const size = getUniSize(uniSize);
                     const available = getUniAvailableCount(QUIZ_BANK_UNIVERSITY, uniPreset);
-                    if (available >= size.n) return "Banca completa per questo formato.";
+                    if (available >= size.n) return "";
                     if (available === 0) return "Nessuna domanda per ora: aggiungi banca dati (PDF) o aggiorna.";
                     return `Banca parziale: useremo ${available}Q (con possibili ripetizioni per arrivare a ${size.n}).`;
                   })()}
@@ -1856,7 +1867,7 @@ if (runQuiz.mode === "concorso") {
                   Piano giornaliero automatico basato sui tuoi errori.
                 </div>
               </div>
-              <button type="button" onClick={() => setCoachOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
+              <button type="button" onClick={() => setCoachOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn(concorsoNoRepeat)}>
                 Apri
               </button>
             </div>
@@ -1873,7 +1884,7 @@ if (runQuiz.mode === "concorso") {
               setPremiumModalOpen(true);
             }}
             className="nd-btn-chip nd-press"
-            style={miniChipBtn()}
+            style={miniChipBtn(concorsoNoRepeat)}
           >
             Sblocca con pubblicità / Premium
           </button>
@@ -1916,7 +1927,7 @@ if (runQuiz.mode === "concorso") {
 
                   {!premium && (
                     <div className="mt-2 nd-help">
-                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn()}>
+                      <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-chip nd-press" style={miniChipBtn(concorsoNoRepeat)}>
                         Sblocca Premium
                       </button>
                     </div>
@@ -2359,7 +2370,7 @@ if (runQuiz.mode === "concorso") {
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div style={{ fontWeight: 950, fontSize: 15 }}>Sblocca {unlockModal.kind === "daily" ? "Daily" : unlockModal.kind === "weekly" ? "Weekly" : "Concorsi"}</div>
-              <button type="button" onClick={() => setUnlockModal(null)} style={miniChipBtn()}>
+              <button type="button" onClick={() => setUnlockModal(null)} style={miniChipBtn(concorsoNoRepeat)}>
                 ✕
               </button>
             </div>
