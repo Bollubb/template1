@@ -405,7 +405,9 @@ function ghostBtn(disabled?: boolean): React.CSSProperties {
   };
 }
 
-type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet";
+// NOTE: Chip variants are used only for typing; actual visuals are controlled
+// by global CSS classes (e.g. .nd-badge-emerald).
+type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet" | "emerald";
 type BtnVariant = "emerald" | "indigo" | "sky" | "ghost";
 
 function chipStyle(v: ChipVariant): React.CSSProperties {
