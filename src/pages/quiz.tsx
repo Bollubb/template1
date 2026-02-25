@@ -519,7 +519,7 @@ function ghostBtn(disabled?: boolean): React.CSSProperties {
 // Visual variants for pills/chips/badges.
 // NOTE: keep in sync with CSS classes (e.g. .nd-badge-emerald).
 type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet" | "emerald";
-type BtnVariant = "emerald" | "indigo" | "sky" | "ghost";
+type BtnVariant = "emerald" | "indigo" | "sky" | "slate" | "ghost";
 
 function chipStyle(v: ChipVariant): React.CSSProperties {
   // IMPORTANT: do NOT override background/border here.
@@ -552,6 +552,7 @@ function btnStyle(v: BtnVariant, disabled?: boolean): React.CSSProperties {
 
   if (v === "emerald") return { ...common, border: "1px solid rgba(52,211,153,0.26)", background: disabled ? "rgba(255,255,255,0.06)" : "linear-gradient(180deg, rgba(52,211,153,0.18), rgba(52,211,153,0.08))" };
   if (v === "indigo") return { ...common, border: "1px solid rgba(129,140,248,0.26)", background: disabled ? "rgba(255,255,255,0.06)" : "linear-gradient(180deg, rgba(129,140,248,0.16), rgba(129,140,248,0.08))" };
+  if (v === "slate") return { ...common, border: "1px solid rgba(148,163,184,0.22)", background: disabled ? "rgba(255,255,255,0.06)" : "linear-gradient(180deg, rgba(148,163,184,0.16), rgba(148,163,184,0.08))" };
   if (v === "sky") return { ...common, border: "1px solid rgba(56,189,248,0.26)", background: disabled ? "rgba(255,255,255,0.06)" : "linear-gradient(180deg, rgba(56,189,248,0.20), rgba(56,189,248,0.10))" };
   return common;
 }
