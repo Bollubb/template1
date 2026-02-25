@@ -1,544 +1,635 @@
 import type { QuizQuestion } from "@/features/cards/quiz/quizBank";
 
+// University-focused question bank (theory-heavy, less clinical).
 export const QUIZ_BANK_UNIVERSITY: QuizQuestion[] = [
-  [
-    "FARMA_001",
-    "farmacologia",
-    "Quale parametro descrive meglio l'estensione di distribuzione di un farmaco nei tessuti rispetto al plasma?",
-    [
+  {
+    id: "FARMA_001",
+    category: "farmacologia",
+    q: "Quale parametro descrive meglio l'estensione di distribuzione di un farmaco nei tessuti rispetto al plasma?",
+    options: [
       "Clearance (CL)",
       "Volume di distribuzione (Vd)",
       "Emivita (t½)",
-      "Biodisponibilità (F)"
+      "Biodisponibilità (F)",
     ],
-    1
-  ],
-  [
-    "FARMA_002",
-    "farmacologia",
-    "Un aumento della clearance (CL), a parità di dose e biodisponibilità, tende a:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_002",
+    category: "farmacologia",
+    q: "Un aumento della clearance (CL), a parità di dose e biodisponibilità, tende a:",
+    options: [
       "Aumentare AUC",
       "Ridurre AUC",
       "Non modificare AUC",
-      "Aumentare Cmax sempre"
+      "Aumentare Cmax sempre",
     ],
-    1
-  ],
-  [
-    "FARMA_003",
-    "farmacologia",
-    "Il tempo per raggiungere lo steady state con cinetica di primo ordine dipende soprattutto da:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_003",
+    category: "farmacologia",
+    q: "Il tempo per raggiungere lo steady state con cinetica di primo ordine dipende soprattutto da:",
+    options: [
       "Dose somministrata",
       "Intervallo di somministrazione",
       "Emivita",
-      "Vd"
+      "Vd",
     ],
-    2
-  ],
-  [
-    "FARMA_004",
-    "farmacologia",
-    "Un agonista parziale rispetto a un agonista pieno ha:",
-    [
+    answer: 2,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_004",
+    category: "farmacologia",
+    q: "Un agonista parziale rispetto a un agonista pieno ha:",
+    options: [
       "Efficacia massima maggiore",
       "Efficacia massima minore",
       "Potenza sempre minore",
-      "Affinità nulla"
+      "Affinità nulla",
     ],
-    1
-  ],
-  [
-    "FARMA_005",
-    "farmacologia",
-    "Un antagonista competitivo tipicamente:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_005",
+    category: "farmacologia",
+    q: "Un antagonista competitivo tipicamente:",
+    options: [
       "Riduce Emax",
       "Sposta la curva a destra senza ridurre Emax",
       "Sposta la curva a sinistra",
-      "Aumenta Emax"
+      "Aumenta Emax",
     ],
-    1
-  ],
-  [
-    "FARMA_006",
-    "farmacologia",
-    "Quale affermazione su biodisponibilità (F) è corretta?",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_006",
+    category: "farmacologia",
+    q: "Quale affermazione su biodisponibilità (F) è corretta?",
+    options: [
       "È sempre 100% per via orale",
       "È influenzata dal primo passaggio epatico",
       "Coincide con Vd",
-      "È uguale alla clearance"
+      "È uguale alla clearance",
     ],
-    1
-  ],
-  [
-    "FARMA_007",
-    "farmacologia",
-    "Con cinetica di ordine zero (saturazione), l'eliminazione:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_007",
+    category: "farmacologia",
+    q: "Con cinetica di ordine zero (saturazione), l'eliminazione:",
+    options: [
       "È proporzionale alla concentrazione",
       "Avviene a velocità costante",
       "Non dipende dal fegato",
-      "Non può avvenire nei farmaci"
+      "Non può avvenire nei farmaci",
     ],
-    1
-  ],
-  [
-    "FARMA_008",
-    "farmacologia",
-    "La relazione AUC = Dose/CL è valida principalmente per:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_008",
+    category: "farmacologia",
+    q: "La relazione AUC = Dose/CL è valida principalmente per:",
+    options: [
       "Somministrazione endovenosa con cinetica lineare",
       "Solo via orale",
       "Solo per farmaci lipofili",
-      "Solo per antagonisti competitivi"
+      "Solo per antagonisti competitivi",
     ],
-    0
-  ],
-  [
-    "FARMA_009",
-    "farmacologia",
-    "Un farmaco altamente legato alle proteine plasmatiche tende ad avere:",
-    [
+    answer: 0,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_009",
+    category: "farmacologia",
+    q: "Un farmaco altamente legato alle proteine plasmatiche tende ad avere:",
+    options: [
       "Frazione libera maggiore",
       "Frazione libera minore",
       "Clearance renale sempre maggiore",
-      "Biodisponibilità aumentata"
+      "Biodisponibilità aumentata",
     ],
-    1
-  ],
-  [
-    "FARMA_010",
-    "farmacologia",
-    "Che cos'è l'EC50?",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_010",
+    category: "farmacologia",
+    q: "Che cos'è l'EC50?",
+    options: [
       "Dose che dà 50% della risposta massima",
       "Concentrazione che dà 50% dell'effetto massimo",
       "Clearance al 50%",
-      "Vd al 50%"
+      "Vd al 50%",
     ],
-    1
-  ],
-  [
-    "FARMA_011",
-    "farmacologia",
-    "L'indice terapeutico (TI) è più alto quando:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_011",
+    category: "farmacologia",
+    q: "L'indice terapeutico (TI) è più alto quando:",
+    options: [
       "La distanza tra dose efficace e tossica è ampia",
       "La distanza è minima",
       "Il farmaco è lipofilo",
-      "La clearance è bassa"
+      "La clearance è bassa",
     ],
-    0
-  ],
-  [
-    "FARMA_012",
-    "farmacologia",
-    "Un induttore enzimatico (es. CYP) tende a:",
-    [
+    answer: 0,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_012",
+    category: "farmacologia",
+    q: "Un induttore enzimatico (es. CYP) tende a:",
+    options: [
       "Aumentare concentrazioni plasmatiche del substrato",
       "Ridurre concentrazioni plasmatiche del substrato",
       "Non modificare AUC",
-      "Ridurre metabolismo"
+      "Ridurre metabolismo",
     ],
-    1
-  ],
-  [
-    "FARMA_013",
-    "farmacologia",
-    "Quale meccanismo spiega la tachifilassi?",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_013",
+    category: "farmacologia",
+    q: "Quale meccanismo spiega la tachifilassi?",
+    options: [
       "Aumento recettori",
       "Desensibilizzazione/down-regulation recettoriale",
       "Aumento biodisponibilità",
-      "Riduzione clearance"
+      "Riduzione clearance",
     ],
-    1
-  ],
-  [
-    "FARMA_014",
-    "farmacologia",
-    "La clearance totale di un farmaco è:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_014",
+    category: "farmacologia",
+    q: "La clearance totale di un farmaco è:",
+    options: [
       "Somma delle clearance d'organo (es. renale+epatica)",
       "Uguale sempre alla Vd",
       "Inversamente proporzionale alla dose",
-      "Uguale sempre all'emivita"
+      "Uguale sempre all'emivita",
     ],
-    0
-  ],
-  [
-    "FARMA_015",
-    "farmacologia",
-    "In genere, aumentando Vd a parità di CL, l'emivita:",
-    [
+    answer: 0,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FARMA_015",
+    category: "farmacologia",
+    q: "In genere, aumentando Vd a parità di CL, l'emivita:",
+    options: [
       "Diminuisce",
       "Aumenta",
       "Resta invariata",
-      "Diventa zero"
+      "Diventa zero",
     ],
-    1
-  ],
-  [
-    "ANAT_001",
-    "anatomia",
-    "Quale struttura attraversa il forame ovale (base cranica)?",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_001",
+    category: "anatomia",
+    q: "Quale struttura attraversa il forame ovale (base cranica)?",
+    options: [
       "Nervo ottico",
       "Nervo mandibolare (V3)",
       "Nervo faciale",
-      "Arteria carotide interna"
+      "Arteria carotide interna",
     ],
-    1
-  ],
-  [
-    "ANAT_002",
-    "anatomia",
-    "Il dotto toracico drena principalmente:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_002",
+    category: "anatomia",
+    q: "Il dotto toracico drena principalmente:",
+    options: [
       "Solo il quadrante superiore destro",
       "Tutta la linfa eccetto quadrante superiore destro",
       "Solo gli arti superiori",
-      "Solo l'addome"
+      "Solo l'addome",
     ],
-    1
-  ],
-  [
-    "ANAT_003",
-    "anatomia",
-    "Quale valvola cardiaca si trova tra atrio sinistro e ventricolo sinistro?",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_003",
+    category: "anatomia",
+    q: "Quale valvola cardiaca si trova tra atrio sinistro e ventricolo sinistro?",
+    options: [
       "Tricuspide",
       "Mitralica",
       "Aortica",
-      "Polmonare"
+      "Polmonare",
     ],
-    1
-  ],
-  [
-    "ANAT_004",
-    "anatomia",
-    "Il nervo frenico origina principalmente da:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_004",
+    category: "anatomia",
+    q: "Il nervo frenico origina principalmente da:",
+    options: [
       "C1-C2",
       "C3-C5",
       "T1-T4",
-      "L4-L5"
+      "L4-L5",
     ],
-    1
-  ],
-  [
-    "ANAT_005",
-    "anatomia",
-    "L'arteria coronaria destra irrora spesso:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_005",
+    category: "anatomia",
+    q: "L'arteria coronaria destra irrora spesso:",
+    options: [
       "Nodo seno-atriale e nodo AV (variabile)",
       "Solo ventricolo sinistro",
       "Solo atrio sinistro",
-      "Solo setto interventricolare anteriore"
+      "Solo setto interventricolare anteriore",
     ],
-    0
-  ],
-  [
-    "ANAT_006",
-    "anatomia",
-    "Il plesso brachiale è formato dalle radici:",
-    [
+    answer: 0,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_006",
+    category: "anatomia",
+    q: "Il plesso brachiale è formato dalle radici:",
+    options: [
       "C1-C4",
       "C5-T1",
       "T1-T12",
-      "L1-S1"
+      "L1-S1",
     ],
-    1
-  ],
-  [
-    "ANAT_007",
-    "anatomia",
-    "Quale osso fa parte della volta cranica?",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_007",
+    category: "anatomia",
+    q: "Quale osso fa parte della volta cranica?",
+    options: [
       "Sfenoide",
       "Frontale",
       "Vomer",
-      "Etmoide (lamina perpendicolare)"
+      "Etmoide (lamina perpendicolare)",
     ],
-    1
-  ],
-  [
-    "ANAT_008",
-    "anatomia",
-    "La vena porta epatica riceve sangue da:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_008",
+    category: "anatomia",
+    q: "La vena porta epatica riceve sangue da:",
+    options: [
       "Solo fegato",
       "Intestino e milza (sistema splancnico)",
       "Solo reni",
-      "Solo polmoni"
+      "Solo polmoni",
     ],
-    1
-  ],
-  [
-    "ANAT_009",
-    "anatomia",
-    "Il muscolo principale dell'inspirazione tranquilla è:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_009",
+    category: "anatomia",
+    q: "Il muscolo principale dell'inspirazione tranquilla è:",
+    options: [
       "Intercostali interni",
       "Diaframma",
       "Grande pettorale",
-      "Retto addominale"
+      "Retto addominale",
     ],
-    1
-  ],
-  [
-    "ANAT_010",
-    "anatomia",
-    "Quale nervo è responsabile dell'abduzione del braccio oltre i 15°?",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_010",
+    category: "anatomia",
+    q: "Quale nervo è responsabile dell'abduzione del braccio oltre i 15°?",
+    options: [
       "Nervo ascellare",
       "Nervo sovrascapolare",
       "Nervo radiale",
-      "Nervo ulnare"
+      "Nervo ulnare",
     ],
-    0
-  ],
-  [
-    "ANAT_011",
-    "anatomia",
-    "Il legamento crociato anteriore limita principalmente:",
-    [
+    answer: 0,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_011",
+    category: "anatomia",
+    q: "Il legamento crociato anteriore limita principalmente:",
+    options: [
       "Traslazione posteriore tibia",
       "Traslazione anteriore tibia",
       "Varismo",
-      "Rotazione esterna"
+      "Rotazione esterna",
     ],
-    1
-  ],
-  [
-    "ANAT_012",
-    "anatomia",
-    "Il colon ascendente è principalmente:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_012",
+    category: "anatomia",
+    q: "Il colon ascendente è principalmente:",
+    options: [
       "Intraperitoneale",
       "Retroperitoneale secondario",
       "Nello scavo pelvico",
-      "Nel mediastino"
+      "Nel mediastino",
     ],
-    1
-  ],
-  [
-    "ANAT_013",
-    "anatomia",
-    "Quale struttura contiene il liquido cefalorachidiano?",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_013",
+    category: "anatomia",
+    q: "Quale struttura contiene il liquido cefalorachidiano?",
+    options: [
       "Dura madre",
       "Spazio subaracnoideo",
       "Spazio epidurale",
-      "Seno sagittale"
+      "Seno sagittale",
     ],
-    1
-  ],
-  [
-    "ANAT_014",
-    "anatomia",
-    "Il nervo vago (X) è un nervo:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_014",
+    category: "anatomia",
+    q: "Il nervo vago (X) è un nervo:",
+    options: [
       "Solo sensitivo",
       "Solo motorio",
       "Misto con parasimpatico",
-      "Solo simpatico"
+      "Solo simpatico",
     ],
-    2
-  ],
-  [
-    "ANAT_015",
-    "anatomia",
-    "L'arteria femorale diventa arteria poplitea passando attraverso:",
-    [
+    answer: 2,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "ANAT_015",
+    category: "anatomia",
+    q: "L'arteria femorale diventa arteria poplitea passando attraverso:",
+    options: [
       "Canale del carpo",
       "Iato dell'adduttore",
       "Fossa cubitale",
-      "Forame otturatorio"
+      "Forame otturatorio",
     ],
-    1
-  ],
-  [
-    "FISIO_001",
-    "fisiologia",
-    "La gittata cardiaca (CO) è data da:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_001",
+    category: "fisiologia",
+    q: "La gittata cardiaca (CO) è data da:",
+    options: [
       "FC × volume sistolico",
       "PA × resistenze",
       "Vd × CL",
-      "FEV1 × CVF"
+      "FEV1 × CVF",
     ],
-    0
-  ],
-  [
-    "FISIO_002",
-    "fisiologia",
-    "Quale ormone aumenta la glicemia stimolando gluconeogenesi?",
-    [
+    answer: 0,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_002",
+    category: "fisiologia",
+    q: "Quale ormone aumenta la glicemia stimolando gluconeogenesi?",
+    options: [
       "Insulina",
       "Glucagone",
       "Calcitonina",
-      "Ossitocina"
+      "Ossitocina",
     ],
-    1
-  ],
-  [
-    "FISIO_003",
-    "fisiologia",
-    "Il potenziale di equilibrio del K+ è vicino a:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_003",
+    category: "fisiologia",
+    q: "Il potenziale di equilibrio del K+ è vicino a:",
+    options: [
       "+60 mV",
       "0 mV",
       "-90 mV",
-      "+120 mV"
+      "+120 mV",
     ],
-    2
-  ],
-  [
-    "FISIO_004",
-    "fisiologia",
-    "Nel rene, la maggior parte del sodio viene riassorbita in:",
-    [
+    answer: 2,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_004",
+    category: "fisiologia",
+    q: "Nel rene, la maggior parte del sodio viene riassorbita in:",
+    options: [
       "Dotto collettore",
       "Tubulo prossimale",
       "Ansa ascendente sottile",
-      "Capsula di Bowman"
+      "Capsula di Bowman",
     ],
-    1
-  ],
-  [
-    "FISIO_005",
-    "fisiologia",
-    "L'ADH aumenta principalmente:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_005",
+    category: "fisiologia",
+    q: "L'ADH aumenta principalmente:",
+    options: [
       "Filtrazione glomerulare",
       "Riassorbimento di acqua nel dotto collettore",
       "Secrezione di bicarbonato",
-      "Escrezione di Na+"
+      "Escrezione di Na+",
     ],
-    1
-  ],
-  [
-    "FISIO_006",
-    "fisiologia",
-    "La curva di dissociazione Hb-O2 si sposta a destra con:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_006",
+    category: "fisiologia",
+    q: "La curva di dissociazione Hb-O2 si sposta a destra con:",
+    options: [
       "Alcalosi",
       "Ipotermia",
       "Aumento CO2 / acidosi",
-      "Riduzione 2,3-BPG"
+      "Riduzione 2,3-BPG",
     ],
-    2
-  ],
-  [
-    "FISIO_007",
-    "fisiologia",
-    "La ventilazione alveolare aumenta quando:",
-    [
+    answer: 2,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_007",
+    category: "fisiologia",
+    q: "La ventilazione alveolare aumenta quando:",
+    options: [
       "Diminuisce frequenza respiratoria a parità di volume",
       "Aumenta volume corrente riducendo lo spazio morto relativo",
       "Aumenta solo spazio morto",
-      "Diminuisce volume corrente"
+      "Diminuisce volume corrente",
     ],
-    1
-  ],
-  [
-    "FISIO_008",
-    "fisiologia",
-    "Quale recettore è accoppiato a proteina Gs aumentando cAMP?",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_008",
+    category: "fisiologia",
+    q: "Quale recettore è accoppiato a proteina Gs aumentando cAMP?",
+    options: [
       "β1-adrenergico",
       "α1-adrenergico",
       "M3 muscarinico",
-      "Gi accoppiato"
+      "Gi accoppiato",
     ],
-    0
-  ],
-  [
-    "FISIO_009",
-    "fisiologia",
-    "Nel ciclo cellulare, la fase di sintesi del DNA è:",
-    [
+    answer: 0,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_009",
+    category: "fisiologia",
+    q: "Nel ciclo cellulare, la fase di sintesi del DNA è:",
+    options: [
       "G0",
       "G1",
       "S",
-      "M"
+      "M",
     ],
-    2
-  ],
-  [
-    "FISIO_010",
-    "fisiologia",
-    "Il pH ematico normale è circa:",
-    [
+    answer: 2,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_010",
+    category: "fisiologia",
+    q: "Il pH ematico normale è circa:",
+    options: [
       "6.8",
       "7.0",
       "7.4",
-      "7.8"
+      "7.8",
     ],
-    2
-  ],
-  [
-    "FISIO_011",
-    "fisiologia",
-    "Quale trasporto è tipico del glucosio nel tubulo prossimale?",
-    [
+    answer: 2,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_011",
+    category: "fisiologia",
+    q: "Quale trasporto è tipico del glucosio nel tubulo prossimale?",
+    options: [
       "Diffusione semplice",
       "Simporto Na+/glucosio (SGLT)",
       "Antiporto K+/H+",
-      "Canali Cl-"
+      "Canali Cl-",
     ],
-    1
-  ],
-  [
-    "FISIO_012",
-    "fisiologia",
-    "L'equazione di Nernst descrive:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_012",
+    category: "fisiologia",
+    q: "L'equazione di Nernst descrive:",
+    options: [
       "Relazione tra pH e CO2",
       "Potenziale di equilibrio di uno ione",
       "Legge di Poiseuille",
-      "Legge di Dalton"
+      "Legge di Dalton",
     ],
-    1
-  ],
-  [
-    "FISIO_013",
-    "fisiologia",
-    "La pressione arteriosa media (MAP) è approssimativamente:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_013",
+    category: "fisiologia",
+    q: "La pressione arteriosa media (MAP) è approssimativamente:",
+    options: [
       "PAS + PAD",
       "(PAS + 2×PAD)/3",
       "(2×PAS + PAD)/3",
-      "PAD - PAS"
+      "PAD - PAS",
     ],
-    1
-  ],
-  [
-    "FISIO_014",
-    "fisiologia",
-    "Il surfattante polmonare riduce:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_014",
+    category: "fisiologia",
+    q: "Il surfattante polmonare riduce:",
+    options: [
       "Compliance polmonare",
       "Tensione superficiale alveolare",
       "Ventilazione",
-      "Perfusione"
+      "Perfusione",
     ],
-    1
-  ],
-  [
-    "FISIO_015",
-    "fisiologia",
-    "La depolarizzazione rapida del miocardio ventricolare (fase 0) è dovuta a:",
-    [
+    answer: 1,
+    difficulty: "medium",
+    explain: "",
+  },
+  {
+    id: "FISIO_015",
+    category: "fisiologia",
+    q: "La depolarizzazione rapida del miocardio ventricolare (fase 0) è dovuta a:",
+    options: [
       "Ingresso Na+ rapido",
       "Uscita K+",
       "Ingresso Ca2+ L-type",
-      "Pompa Na/K"
+      "Pompa Na/K",
     ],
-    0
-  ]
+    answer: 0,
+    difficulty: "medium",
+    explain: "",
+  },
 ];
