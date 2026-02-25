@@ -75,6 +75,31 @@ const LS = {
 
 type HomeTab = "daily" | "weekly" | "concorso" | "review";
 
+type SimTrack = "concorso" | "uni";
+
+const HOME_COPY = {
+  daily: {
+    label: "Allenamento rapido",
+    subtitle: "10 domande mirate per mantenere la mente clinica attiva.",
+    cta: "Avvia allenamento rapido",
+  },
+  weekly: {
+    label: "Sessione profonda",
+    subtitle: "Allenamento concentrazione e resistenza.",
+    cta: "Avvia sessione profonda",
+  },
+  concorso: {
+    label: "Simulazioni reali",
+    subtitle: "Concorsi ed esami universitari.",
+    cta: "Avvia simulazione",
+  },
+  review: {
+    label: "Recupero intelligente",
+    subtitle: "Trasforma gli errori in punti di forza.",
+    cta: "Avvia recupero",
+  },
+} as const;
+
 function dayKey(ts = Date.now()) {
   const d = new Date(ts);
   const y = d.getFullYear();
@@ -566,6 +591,7 @@ export default function QuizPage(): JSX.Element {
   const [premiumContextUnlock, setPremiumContextUnlock] = useState<null | "daily" | "weekly" | "concorso">(null);
 
   const [homeTab, setHomeTab] = useState<HomeTab>("daily");
+  const [simTrack, setSimTrack] = useState<SimTrack>("concorso");
   // Default ON: concorsi "a mazzo" (random senza ripetizioni finché non finiscono)
   const [concorsoNoRepeat, setConcorsoNoRepeat] = useState<boolean>(true);
   const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly" | "concorso"; remaining: number }>(null);
@@ -1021,11 +1047,18 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
     }
   }
 
+  const candidateLevel = useMemo(() => {
+    if (streak >= 21) return "Élite";
+    if (streak >= 14) return "Avanzato";
+    if (streak >= 7) return "Intermedio";
+    return "Base";
+  }, [streak]);
+
 
   const headerOverride = useMemo(
     () => ({
-      title: "Quiz",
-      subtitle: "Daily • Weekly • Concorsi",
+      title: "Allenamento clinico",
+      subtitle: "Dall’università al concorso.",
       showBack: true,
       onBack: () => router.back(),
     }),
@@ -1042,10 +1075,31 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
             <div className="nd-card nd-card-pad" style={card()}>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <span className="nd-badge nd-badge-sky" style={chipStyle("sky")}>Quiz</span>
+                  <span className="nd-badge nd-badge-sky" style={chipStyle("sky")}>Allenamento</span>
                   {streak > 0 && <span className="nd-badge nd-badge-amber" style={chipStyle("amber")}>🔥 {streak}</span>}
                 </div>
                 {!premium && <span className="nd-pill nd-pill--sm">Premium</span>}
+              </div>
+
+              {/* Header premium (placeholder, non legato alla logica) */}
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontWeight: 950, fontSize: 18, letterSpacing: 0.2 }}>Allenamento clinico</div>
+                <div className="nd-help" style={{ marginTop: 4 }}>Dall’università al concorso.</div>
+
+                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                  <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Livello candidato</div>
+                    <div style={{ marginTop: 4, fontWeight: 950 }}>{candidateLevel}</div>
+                  </div>
+                  <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Streak</div>
+                    <div style={{ marginTop: 4, fontWeight: 950 }}>{streak > 0 ? `${streak}g` : "—"}</div>
+                  </div>
+                  <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Accuratezza</div>
+                    <div style={{ marginTop: 4, fontWeight: 950 }}>—</div>
+                  </div>
+                </div>
               </div>
 
               <div className="mt-3 nd-seg">
@@ -1054,28 +1108,28 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                   className={`nd-seg-btn nd-seg-btn--sky nd-press ${homeTab === "daily" ? "is-active" : ""}`}
                   onClick={() => setHomeTab("daily")}
                 >
-                  Daily
+                  {HOME_COPY.daily.label}
                 </button>
                 <button
                   type="button"
                   className={`nd-seg-btn nd-seg-btn--amber nd-press ${homeTab === "weekly" ? "is-active" : ""}`}
                   onClick={() => setHomeTab("weekly")}
                 >
-                  Weekly
+                  {HOME_COPY.weekly.label}
                 </button>
                 <button
                   type="button"
                   className={`nd-seg-btn nd-seg-btn--violet nd-press ${homeTab === "concorso" ? "is-active" : ""}`}
                   onClick={() => setHomeTab("concorso")}
                 >
-                  Concorsi
+                  {HOME_COPY.concorso.label}
                 </button>
                 <button
                   type="button"
                   className={`nd-seg-btn nd-seg-btn--green nd-press ${homeTab === "review" ? "is-active" : ""}`}
                   onClick={() => setHomeTab("review")}
                 >
-                  Errori
+                  {HOME_COPY.review.label}
                 </button>
               </div>
 
@@ -1089,8 +1143,9 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
       <div className="nd-tile" style={tileStyle()}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="text-sm font-extrabold text-white">Daily</div>
-            <div className="nd-help">Reset: {msToHMS(dailyLeft)}</div>
+            <div className="text-sm font-extrabold text-white">{HOME_COPY.daily.label}</div>
+            <div className="nd-help">{HOME_COPY.daily.subtitle}</div>
+            <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>Reset: {msToHMS(dailyLeft)}</div>
           </div>
           <span
             className="nd-pill nd-pill--sm"
@@ -1107,7 +1162,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
         className="nd-btn nd-btn-sky nd-press"
         style={btnStyle("sky")}
       >
-        Avvia Daily
+        {HOME_COPY.daily.cta}
       </button>
 
       {!premium && remaining === 0 && (
@@ -1138,8 +1193,9 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
       <div className="nd-tile" style={tileStyle()}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="text-sm font-extrabold text-white">Weekly</div>
-            <div className="nd-help">Reset: {msToHMS(weeklyLeft)}</div>
+            <div className="text-sm font-extrabold text-white">{HOME_COPY.weekly.label}</div>
+            <div className="nd-help">{HOME_COPY.weekly.subtitle}</div>
+            <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>Reset: {msToHMS(weeklyLeft)}</div>
           </div>
           <span
             className="nd-pill nd-pill--sm"
@@ -1156,7 +1212,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
         className="nd-btn nd-btn-sky nd-press"
         style={btnStyle("sky")}
       >
-        Avvia Weekly
+        {HOME_COPY.weekly.cta}
       </button>
 
       {!premium && remaining === 0 && (
@@ -1187,7 +1243,8 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
       <div className="nd-tile" style={tileStyle()}>
         <div className="flex items-center justify-between gap-2">
           <div>
-            <div className="text-sm font-extrabold text-white">Simulazione Concorsi</div>
+            <div className="text-sm font-extrabold text-white">{HOME_COPY.concorso.label}</div>
+            <div className="nd-help">{HOME_COPY.concorso.subtitle}</div>
           </div>
           <span
             className="nd-pill nd-pill--sm"
@@ -1196,6 +1253,30 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
             {`Rimanenti ${remaining}/${caps.max}`}
           </span>
         </div>
+
+        {/* Toggle UI: Università / Concorsi (per ora solo struttura) */}
+        <div className="mt-2" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={() => setSimTrack("uni")}
+            className="nd-btn-chip nd-press"
+            style={{ ...miniChipBtn(), borderColor: simTrack === "uni" ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)", background: simTrack === "uni" ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.06)" }}
+          >
+            Università
+          </button>
+          <button
+            type="button"
+            onClick={() => setSimTrack("concorso")}
+            className="nd-btn-chip nd-press"
+            style={{ ...miniChipBtn(), borderColor: simTrack === "concorso" ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)", background: simTrack === "concorso" ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.06)" }}
+          >
+            Concorsi
+          </button>
+          <span className="nd-help" style={{ opacity: 0.75, fontWeight: 850, alignSelf: "center" }}>
+            (struttura pronta)
+          </span>
+        </div>
+
         <div className="mt-2 flex items-center justify-between gap-2">
           <div className="nd-help">Senza ripetizioni</div>
           <button
@@ -1209,19 +1290,34 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
         </div>
       </div>
 
-      <div className="grid gap-2">
-        {CONCORSO_PRESETS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => handleStartConcorso(p.id)}
-            className="nd-btn nd-btn-ghost nd-press"
-            style={btnStyle("ghost")}
-          >
-            {p.label} • {p.n} domande • {p.min} min
+      {simTrack === "concorso" ? (
+        <div className="grid gap-2">
+          {CONCORSO_PRESETS.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => handleStartConcorso(p.id)}
+              className="nd-btn nd-btn-ghost nd-press"
+              style={btnStyle("ghost")}
+            >
+              {p.label} • {p.n} domande • {p.min} min
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="nd-tile" style={{ ...tileStyle(), opacity: 0.95 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+            <div style={{ fontWeight: 950 }}>Simulazioni università</div>
+            <span className="nd-pill nd-pill--sm">In arrivo</span>
+          </div>
+          <div className="nd-help" style={{ marginTop: 6 }}>
+            Farmacologia • Anatomia • Fisiologia • Clinica. UI pronta: attiviamo la banca dati nella Fase 5.
+          </div>
+          <button type="button" className="mt-3 nd-btn nd-btn-ghost" style={{ ...btnStyle("ghost"), opacity: 0.55 }} disabled>
+            Prossimamente
           </button>
-        ))}
-      </div>
+        </div>
+      )}
 
       {!premium && remaining === 0 && (
         <div className="nd-help">
@@ -1248,8 +1344,9 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                 <div className="mt-3 nd-tile" style={tileStyle()}>
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <div className="text-sm font-extrabold text-white">Ripasso errori</div>
-                      <div className="nd-help">10 domande</div>
+                      <div className="text-sm font-extrabold text-white">{HOME_COPY.review.label}</div>
+                      <div className="nd-help">{HOME_COPY.review.subtitle}</div>
+                      <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>10 domande</div>
                     </div>
                     {!premium && <span className="nd-pill nd-pill--sm">Premium</span>}
                   </div>
@@ -1266,7 +1363,7 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                     className="mt-3 nd-btn nd-btn-ghost nd-press"
                     style={btnStyle("ghost")}
                   >
-        Avvia
+        {HOME_COPY.review.cta}
                   </button>
 
                   {!premium && (
@@ -1287,7 +1384,15 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
             <div className="nd-card nd-card-pad" style={card()}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
                 <div style={{ fontWeight: 950 }}>
-                  {runQuiz.mode === "daily" ? "Daily" : runQuiz.mode === "weekly" ? "Weekly" : runQuiz.mode === "concorso" ? "Simulazione Concorsi" : runQuiz.mode === "sim" ? "Simulazione" : "Ripasso errori"}
+                  {runQuiz.mode === "daily"
+                    ? HOME_COPY.daily.label
+                    : runQuiz.mode === "weekly"
+                      ? HOME_COPY.weekly.label
+                      : runQuiz.mode === "concorso"
+                        ? HOME_COPY.concorso.label
+                        : runQuiz.mode === "sim"
+                          ? "Simulazione"
+                          : HOME_COPY.review.label}
                 </div>
                 <div style={{ opacity: 0.78, fontWeight: 900, fontSize: 12 }}>
                   {runQuiz.idx + 1}/{runQuiz.questions.length} • {runQuiz.mode === "concorso" && runQuiz.timeLimitMs ? msToHMS(remainingMs ?? (runQuiz.timeLimitMs - (nowTs - runQuiz.startedAt))) : msToHMS(nowTs - runQuiz.startedAt)}
@@ -1432,7 +1537,8 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                     <div style={{ fontWeight: 950 }}>Sblocca Premium</div>
                     <span className="nd-pill nd-pill--sm">Premium</span>
                   </div>
-                  <div className="mt-2 nd-help">Simulazione Concorsi + Ripasso errori + XP bonus.</div>
+                  <div className="mt-2 nd-help">{HOME_COPY.concorso.label} + {HOME_COPY.review.label} + XP bonus.</div>
+                  
                   <div className="mt-3" style={{ display: "flex", gap: 10 }}>
                     <button type="button" onClick={() => setPremiumModalOpen(true)} className="nd-btn-primary nd-press">
                       Scopri Premium
@@ -1445,7 +1551,8 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
                 {quizResult.correct}/{quizResult.total} corrette • {msToHMS(quizResult.ms)}
                 {quizResult.mode === "concorso" && (
                   <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <span className="nd-pill nd-pill--sm">{quizResult.presetLabel ?? "Simulazione Concorsi"}</span>
+                    <span className="nd-pill nd-pill--sm">{quizResult.presetLabel ?? HOME_COPY.concorso.label}</span>
+                    
                     <span className="nd-pill nd-pill--sm">Punteggio: {(quizResult.score ?? 0).toFixed(2)}</span>
                     <span className="nd-pill nd-pill--sm">Errori: {quizResult.wrongCount ?? 0}</span>
                     <span className="nd-pill nd-pill--sm">Omesse: {quizResult.omittedCount ?? 0}</span>
