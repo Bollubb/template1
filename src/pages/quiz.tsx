@@ -1550,7 +1550,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                   type="button"
                   onClick={handleStartUniversity}
                   className="nd-btn nd-btn-primary nd-press"
-                  style={{ ...btnStyle("primary"), marginLeft: "auto" }}
+                  style={{ ...btnStyle("emerald"), marginLeft: "auto" }}
                 >
                   Inizia
                 </button>
@@ -2329,7 +2329,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                         <button
                           type="button"
                           className="nd-btn nd-btn-primary nd-press"
-                          style={btnStyle("primary")}
+                          style={btnStyle("emerald")}
                           onClick={() => {
                             setCoachOpen(false);
                             if (plan.kind === "uni") {
