@@ -126,6 +126,41 @@ export function recordAttempt(q: QuizQuestion, chosen: number, now = Date.now())
   setState(s);
 }
 
+/**
+ * Back-compat helper used by other parts of the app.
+ * Some components only know whether the answer was correct/incorrect.
+ */
+export function recordQuizAnswer(q: QuizQuestion, ok: boolean, now = Date.now()) {
+  const hasKey = q.answer !== null && q.answer !== undefined && q.answer >= 0;
+  if (!hasKey) return;
+  // If ok -> choose the correct index; else choose a guaranteed-wrong index.
+  const chosen = ok ? (q.answer as number) : ((q.answer as number) + 1) % 4;
+  recordAttempt(q, chosen, now);
+}
+
+export type AdaptiveCategorySummary = {
+  category: string;
+  accuracy: number; // 0..1
+  total: number;
+  lastTs: number;
+};
+
+export function getAdaptiveCategorySummary(): AdaptiveCategorySummary[] {
+  const s = getState();
+  const rows = Object.entries(s.cat).map(([category, st]) => {
+    const accuracy = st.total > 0 ? st.correct / st.total : 0;
+    return { category, accuracy, total: st.total, lastTs: st.lastTs };
+  });
+  // weaker + more recent first
+  rows.sort((a, b) => {
+    const wa = 1 - a.accuracy;
+    const wb = 1 - b.accuracy;
+    if (wb !== wa) return wb - wa;
+    return b.lastTs - a.lastTs;
+  });
+  return rows;
+}
+
 export function getWeakCategories(limit = 3) {
   const s = getState();
   const rows = Object.entries(s.cat)
