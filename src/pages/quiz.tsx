@@ -24,7 +24,7 @@ import {
 import { addXp } from "@/features/progress/xp";
 import { recordMistake } from "@/features/cards/quiz/quizMistakes";
 import { getDueCount, getWeakCategories, pickAdaptiveQuestions, recordAttempt } from "@/features/cards/quiz/quizAdaptive";
-import { UNI_PRESETS, type UniPresetId, getUniPool, getUniAvailableCount } from "@/features/cards/quiz/quizUniversity";
+import { UNI_PRESETS, UNI_SIZES, type UniPresetId, type UniSizeId, getUniPool, getUniAvailableCount, getUniSize } from "@/features/cards/quiz/quizUniversity";
 
 type QuizRun = {
   mode: "daily" | "weekly" | "sim" | "concorso" | "review";
@@ -609,6 +609,7 @@ export default function QuizPage(): JSX.Element {
 
   const [homeTab, setHomeTab] = useState<HomeTab>("daily");
   const [simTrack, setSimTrack] = useState<SimTrack>("concorso");
+  const [uniSize, setUniSize] = useState<UniSizeId>("medio");
   // Default ON: concorsi "a mazzo" (random senza ripetizioni finché non finiscono)
   const [concorsoNoRepeat, setConcorsoNoRepeat] = useState<boolean>(true);
   const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly" | "concorso"; remaining: number }>(null);
@@ -1085,14 +1086,15 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
 
   start("concorso", {
     questions,
-    timeLimitMs: preset.min * 60 * 1000,
+    timeLimitMs: size.min * 60 * 1000,
     presetId: preset.id,
     track: "concorso",
   });
 }
 
-function handleStartUni(presetId: UniPresetId) {
+function handleStartUni(presetId: UniPresetId, sizeId: UniSizeId = uniSize) {
   const preset = UNI_PRESETS.find((p) => p.id === presetId) ?? UNI_PRESETS[0];
+  const size = getUniSize(sizeId);
 
   // University simulations share the same caps as "Simulazioni reali".
   const caps = getRunCaps("concorso");
@@ -1116,11 +1118,11 @@ function handleStartUni(presetId: UniPresetId) {
   }
 
   const avoid = new Set(getRecentSeenIds(160));
-  const n = Math.min(preset.n, available);
+  const n = Math.min(size.n, available);
   const questions = pickQuestions(pool, n, avoid);
 
   // If the bank is still being built, transparently start with the available questions.
-  if (n < preset.n) {
+  if (n < size.n) {
     const nextFx = fxId + 1;
     setFxId(nextFx);
     setToast({ text: `📚 Avvio con ${n} domande disponibili`, id: nextFx });
@@ -1128,7 +1130,7 @@ function handleStartUni(presetId: UniPresetId) {
 
   start("sim", {
     questions,
-    timeLimitMs: preset.min * 60 * 1000,
+    timeLimitMs: size.min * 60 * 1000,
     track: "uni",
     uniPresetId: preset.id,
   });
@@ -1321,14 +1323,15 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
         <div className="mx-auto w-full max-w-[560px]">
         {analyticsOpen && (
           <div
-            className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-3"
+            className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/75 p-3"
             onClick={() => setAnalyticsOpen(false)}
             role="dialog"
             aria-modal="true"
           >
             <div
-              className="w-full max-w-[560px] rounded-2xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl"
+              className="w-full max-w-[560px] rounded-2xl border border-white/10 bg-neutral-950 p-4 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
+              style={{ maxHeight: "calc(100vh - 120px)", overflowY: "auto", paddingBottom: "calc(env(safe-area-inset-bottom) + 84px)" }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -1654,6 +1657,23 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
         </div>
       ) : (
         <div className="grid gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {UNI_SIZES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setUniSize(s.id)}
+                className="nd-btn-chip nd-press"
+                style={{
+                  ...miniChipBtn(),
+                  borderColor: uniSize === s.id ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)",
+                  background: uniSize === s.id ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.06)",
+                }}
+              >
+                {s.label} • {s.n}Q
+              </button>
+            ))}
+          </div>
           {UNI_PRESETS.map((p) => {
             const available = getUniAvailableCount(QUIZ_BANK, p.id);
             const disabled = available <= 0;
@@ -1661,7 +1681,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
               <button
                 key={p.id}
                 type="button"
-                onClick={() => handleStartUni(p.id)}
+                onClick={() => handleStartUni(p.id, uniSize)}
                 className="nd-btn nd-btn-ghost nd-press"
                 style={{
                   ...btnStyle("ghost", disabled),
@@ -1669,7 +1689,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                 }}
                 disabled={disabled}
               >
-                {p.label} • {p.n} domande • {p.min} min {disabled ? "• In arrivo" : ""}
+                {p.label} • {getUniSize(uniSize).n} domande • {getUniSize(uniSize).min} min {disabled ? "• In arrivo" : ""}
               </button>
             );
           })}
