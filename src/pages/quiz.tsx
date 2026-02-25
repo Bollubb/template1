@@ -77,6 +77,23 @@ const LS = {
   weeklyUnlocksPrefix: "nd_quiz_weekly_unlocks_",
   concorsoRunsPrefix: "nd_quiz_concorso_runs_",
   concorsoUnlocksPrefix: "nd_quiz_concorso_unlocks_",
+  challenges: "nd_quiz_challenges_v1",
+  challengeInbox: "nd_quiz_challenge_inbox_v1",
+};
+
+type ChallengePreset = "asl" | "regione" | "mega" | "mese";
+
+type Challenge = {
+  id: string;
+  createdAt: number;
+  preset: ChallengePreset;
+  size: number;
+  timeLimitMs: number;
+  // A deterministic seed so both users can generate the same deck order.
+  seed: string;
+  // creator/opponent scores (local only)
+  myBest?: { score: number; correct: number; total: number; ms: number; ts: number };
+  opponentBest?: { score: number; correct: number; total: number; ms: number; ts: number };
 };
 
 type HomeTab = "daily" | "weekly" | "concorso" | "review";
@@ -167,6 +184,70 @@ function writeBool(key: string, v: boolean) {
   } catch {}
 }
 
+function safeId(prefix = "ND") {
+  // short, share-friendly
+  const rnd = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const ts = Date.now().toString(36).slice(-4).toUpperCase();
+  return `${prefix}-${ts}${rnd}`;
+}
+
+async function safeCopy(text: string) {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+async function safeShare(payload: { title?: string; text: string }) {
+  try {
+    if (typeof navigator !== "undefined" && (navigator as any).share) {
+      await (navigator as any).share({ title: payload.title, text: payload.text });
+      return true;
+    }
+  } catch {}
+  return safeCopy(payload.text);
+}
+
+function readChallenges(): Challenge[] {
+  try {
+    const raw = localStorage.getItem(LS.challenges);
+    const v = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(v)) return [];
+    return v.filter((x: any) => x && typeof x.id === "string" && typeof x.seed === "string" && typeof x.preset === "string");
+  } catch {
+    return [];
+  }
+}
+
+function writeChallenges(next: Challenge[]) {
+  try {
+    localStorage.setItem(LS.challenges, JSON.stringify(next.slice(0, 50)));
+  } catch {}
+}
+
+function upsertChallenge(ch: Challenge) {
+  const prev = readChallenges();
+  const idx = prev.findIndex((x) => x.id === ch.id);
+  const next = idx >= 0 ? [...prev.slice(0, idx), ch, ...prev.slice(idx + 1)] : [ch, ...prev];
+  writeChallenges(next);
+}
+
 type SeenItem = { id: string; ts: number };
 
 function getRecentSeenIds(max = 140): string[] {
@@ -236,6 +317,36 @@ function shuffleIds(ids: string[]) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+function seededShuffleIds(ids: string[], seed: string) {
+  // Deterministic shuffle for share-based challenges.
+  // Hash seed -> uint32, then xorshift.
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  let x = h >>> 0;
+  const rnd = () => {
+    // xorshift32
+    x ^= x << 13;
+    x ^= x >>> 17;
+    x ^= x << 5;
+    return (x >>> 0) / 4294967296;
+  };
+  const arr = [...ids];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function pickConcorsoSeeded(bank: QuizQuestion[], n: number, seed: string): QuizQuestion[] {
+  const byId = new Map(bank.map((q) => [q.id, q] as const));
+  const ids = seededShuffleIds(bank.map((q) => q.id), seed);
+  return ids.slice(0, n).map((id) => byId.get(id)!).filter(Boolean);
 }
 
 // Randomizza l'ordine delle opzioni e rimappa l'indice della risposta corretta.
@@ -627,6 +738,11 @@ export default function QuizPage(): JSX.Element {
   const [answerFx, setAnswerFx] = useState<null | { kind: "ok" | "bad" | "neutral"; id: number }>(null);
   const [toast, setToast] = useState<null | { text: string; id: number }>(null);
 
+  // Phase 11 – Challenges (1v1 async, share-based)
+  const [challengeOpen, setChallengeOpen] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+
   const [combo, setCombo] = useState<number>(0);
   const [bestCombo, setBestCombo] = useState<number>(0);
   const [qStageKey, setQStageKey] = useState<number>(0);
@@ -657,6 +773,11 @@ export default function QuizPage(): JSX.Element {
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setChallenges(readChallenges());
+  }, [quizResult]);
 
   // Adaptive learning: badge for "domande da ripassare" (spaced repetition due now)
   useEffect(() => {
@@ -1077,6 +1198,72 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
   });
 }
 
+  function presetMeta(presetId: ChallengePreset) {
+    const p = CONCORSO_PRESETS.find((x) => x.id === presetId) ?? CONCORSO_PRESETS[0];
+    return { preset: p.id as ChallengePreset, size: p.n, timeLimitMs: p.min * 60 * 1000, label: p.label };
+  }
+
+  async function createAndShareChallenge(presetId: ChallengePreset) {
+    const meta = presetMeta(presetId);
+    const ch: Challenge = {
+      id: safeId("NDCH"),
+      createdAt: Date.now(),
+      preset: meta.preset,
+      size: meta.size,
+      timeLimitMs: meta.timeLimitMs,
+      seed: safeId("S").replace(/[^A-Z0-9-]/g, ""),
+    };
+    upsertChallenge(ch);
+    setChallenges(readChallenges());
+    const code = `${ch.id}|${ch.preset}|${ch.size}|${Math.round(ch.timeLimitMs / 1000)}|${ch.seed}`;
+    await safeShare({
+      title: "Sfida 1v1 – Nurse Diary",
+      text: `⚡️ Sfida 1v1 (asincrona)\n\nCodice: ${code}\n\nApri Nurse Diary → Quiz → Sfide → Incolla codice per giocare la stessa prova.`,
+    });
+    setToast({ text: "Codice sfida copiato/condiviso ✅", id: Date.now() });
+  }
+
+  function parseChallengeCode(codeRaw: string): Challenge | null {
+    const s = (codeRaw || "").trim();
+    if (!s) return null;
+    const parts = s.split("|").map((x) => x.trim());
+    if (parts.length < 5) return null;
+    const [id, preset, sizeStr, secsStr, seed] = parts;
+    if (!id || !seed) return null;
+    if (preset !== "asl" && preset !== "regione" && preset !== "mega" && preset !== "mese") return null;
+    const size = Number(sizeStr);
+    const secs = Number(secsStr);
+    if (!Number.isFinite(size) || size <= 0) return null;
+    if (!Number.isFinite(secs) || secs <= 0) return null;
+    return {
+      id,
+      createdAt: Date.now(),
+      preset: preset as ChallengePreset,
+      size,
+      timeLimitMs: Math.floor(secs * 1000),
+      seed,
+    };
+  }
+
+  function joinChallenge() {
+    const ch = parseChallengeCode(joinCode);
+    if (!ch) {
+      setToast({ text: "Codice non valido", id: Date.now() });
+      return;
+    }
+    upsertChallenge(ch);
+    setChallenges(readChallenges());
+    setChallengeOpen(false);
+    setJoinCode("");
+    const questions = pickConcorsoSeeded(QUIZ_BANK_CONCORSO, ch.size, ch.seed);
+    start("concorso", {
+      questions,
+      timeLimitMs: ch.timeLimitMs,
+      presetId: ch.preset,
+      track: "concorso",
+    });
+  }
+
   function handleStartUniversity() {
     const size = getUniSize(uniSize);
     const pool = getUniPool(QUIZ_BANK_UNIVERSITY, uniPreset);
@@ -1303,6 +1490,19 @@ if (runQuiz.mode === "concorso") {
     };
   }, [quizResult]);
 
+  const weeklyBoard = useMemo(() => {
+    const wk = isoWeekKey();
+    const hist = getHistory();
+    const inWeek = hist.filter((h) => h.mode === "concorso" && isoWeekKey(h.ts) === wk);
+    const runs = inWeek.length;
+    const correct = inWeek.reduce((s, x) => s + (x.correct || 0), 0);
+    const total = inWeek.reduce((s, x) => s + (x.total || 0), 0);
+    const acc = total > 0 ? correct / total : 0;
+    // simple points model: correct answers (fast + intuitive)
+    const points = correct;
+    return { wk, runs, points, acc };
+  }, [quizResult]);
+
 
 
   return (
@@ -1369,6 +1569,53 @@ if (runQuiz.mode === "concorso") {
                     <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Run concorso</div>
                     <div style={{ marginTop: 4, fontWeight: 950 }}>{leaderboard.concorsoRuns}</div>
                   </div>
+                </div>
+              </div>
+
+              {/* Phase 11 – Weekly board + 1v1 async challenges (share-based MVP) */}
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.22)" }}>
+                <div className="flex items-center justify-between gap-2">
+                  <div style={{ fontWeight: 950 }}>🌐 Classifica settimanale</div>
+                  <span className="nd-badge nd-badge-slate" style={chipStyle("slate")}>Week {weeklyBoard.wk.split("-W")[1]}</span>
+                </div>
+                <div className="nd-help" style={{ marginTop: 4 }}>
+                  MVP offline: condividi il tuo punteggio per far crescere la community. (Online leaderboard in arrivo)
+                </div>
+                <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Punti</div>
+                    <div style={{ marginTop: 4, fontWeight: 950 }}>{weeklyBoard.points}</div>
+                  </div>
+                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Run</div>
+                    <div style={{ marginTop: 4, fontWeight: 950 }}>{weeklyBoard.runs}</div>
+                  </div>
+                  <div style={{ padding: 10, borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Acc</div>
+                    <div style={{ marginTop: 4, fontWeight: 950 }}>{Math.round(weeklyBoard.acc * 100)}%</div>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="nd-btn nd-btn-ghost nd-press"
+                    style={btnStyle("ghost")}
+                    onClick={async () => {
+                      const text = `🌐 Nurse Diary – Classifica settimanale\nWeek ${weeklyBoard.wk}\nPunti: ${weeklyBoard.points} (Run: ${weeklyBoard.runs}, Acc: ${Math.round(weeklyBoard.acc * 100)}%)\n\nVuoi battermi? Apri Nurse Diary → Quiz → Simulazioni.`;
+                      await safeShare({ title: "Nurse Diary – Classifica settimanale", text });
+                      setToast({ text: "Condiviso ✅", id: Date.now() });
+                    }}
+                  >
+                    Condividi
+                  </button>
+                  <button
+                    type="button"
+                    className="nd-btn nd-btn-sky nd-press"
+                    style={btnStyle("sky")}
+                    onClick={() => setChallengeOpen(true)}
+                  >
+                    ⚔️ Sfide 1v1
+                  </button>
                 </div>
               </div>
 
@@ -2329,6 +2576,118 @@ if (runQuiz.mode === "concorso") {
           setPremiumModalOpen(false);
         }}
       />
+
+      {/* Phase 11 – Challenge overlay */}
+      {challengeOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setChallengeOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            padding: 12,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="nd-card nd-card-pad"
+            style={{
+              width: "100%",
+              maxWidth: 560,
+              borderRadius: 22,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(10,10,12,0.92)",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.55)",
+              maxHeight: "82vh",
+              overflowY: "auto",
+              paddingBottom: "calc(18px + env(safe-area-inset-bottom))",
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div style={{ fontWeight: 950, fontSize: 18 }}>⚔️ Sfide 1v1 (asincrone)</div>
+                <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>Crea un codice, condividilo, e giocate la stessa prova.</div>
+              </div>
+              <button type="button" className="nd-btn nd-btn-ghost nd-press" style={btnStyle("ghost")} onClick={() => setChallengeOpen(false)}>
+                Chiudi
+              </button>
+            </div>
+
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+              <div style={{ fontWeight: 950 }}>Crea e condividi</div>
+              <div className="nd-help" style={{ marginTop: 4 }}>Scegli un formato Concorso e genera un codice.</div>
+              <div className="mt-3 grid gap-2" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                <button type="button" className="nd-btn nd-btn-slate nd-press" style={btnStyle("slate")} onClick={() => void createAndShareChallenge("asl")}>ASL/AO</button>
+                <button type="button" className="nd-btn nd-btn-slate nd-press" style={btnStyle("slate")} onClick={() => void createAndShareChallenge("regione")}>Regione</button>
+                <button type="button" className="nd-btn nd-btn-slate nd-press" style={btnStyle("slate")} onClick={() => void createAndShareChallenge("mega")}>Mega</button>
+                <button type="button" className="nd-btn nd-btn-slate nd-press" style={btnStyle("slate")} onClick={() => void createAndShareChallenge("mese")}>Del mese</button>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12, padding: 12, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+              <div style={{ fontWeight: 950 }}>Partecipa con un codice</div>
+              <div className="nd-help" style={{ marginTop: 4 }}>Incolla il codice che ti hanno inviato.</div>
+              <input
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                placeholder="NDCH-XXXX...|asl|40|2100|SEED..."
+                className="nd-input"
+                style={{ marginTop: 8, width: "100%" }}
+              />
+              <div className="mt-3 flex items-center gap-2">
+                <button type="button" className="nd-btn nd-btn-sky nd-press" style={btnStyle("sky")} onClick={() => joinChallenge()}>
+                  Avvia sfida
+                </button>
+                <button
+                  type="button"
+                  className="nd-btn nd-btn-ghost nd-press"
+                  style={btnStyle("ghost")}
+                  onClick={async () => {
+                    const ok = await safeCopy(joinCode);
+                    setToast({ text: ok ? "Copiato ✅" : "Impossibile copiare", id: Date.now() });
+                  }}
+                >
+                  Copia
+                </button>
+              </div>
+            </div>
+
+            {challenges.length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontWeight: 950, marginBottom: 6 }}>Le tue sfide</div>
+                <div className="grid gap-2">
+                  {challenges.slice(0, 6).map((c) => (
+                    <div key={c.id} className="nd-tile" style={tileStyle()}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <div style={{ fontWeight: 950 }}>{CONCORSO_PRESETS.find((p) => p.id === c.preset)?.label ?? "Sfida"}</div>
+                          <div className="nd-help" style={{ opacity: 0.75 }}>Codice: {c.id}…</div>
+                        </div>
+                        <button
+                          type="button"
+                          className="nd-btn nd-btn-ghost nd-press"
+                          style={btnStyle("ghost")}
+                          onClick={() => void safeShare({ title: "Sfida 1v1 – Nurse Diary", text: `${c.id}|${c.preset}|${c.size}|${Math.round(c.timeLimitMs / 1000)}|${c.seed}` })}
+                        >
+                          Condividi
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       </>
           {/* Coach overlay */}
       {coachOpen && (
