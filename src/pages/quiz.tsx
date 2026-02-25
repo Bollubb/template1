@@ -100,6 +100,16 @@ const HOME_COPY = {
   },
 } as const;
 
+function safeVibrate(pattern: number | number[]) {
+  try {
+    if (typeof navigator === "undefined") return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const n: any = navigator as any;
+    if (typeof n.vibrate === "function") n.vibrate(pattern);
+  } catch {}
+}
+
+
 function dayKey(ts = Date.now()) {
   const d = new Date(ts);
   const y = d.getFullYear();
@@ -599,6 +609,9 @@ export default function QuizPage(): JSX.Element {
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [reveal, setReveal] = useState<null | { isCorrect: boolean | null; correctIdx: number | null; chosen: number }>(null);
+  const [fxId, setFxId] = useState(0);
+  const [answerFx, setAnswerFx] = useState<null | { kind: "ok" | "bad" | "neutral"; id: number }>(null);
+  const [toast, setToast] = useState<null | { text: string; id: number }>(null);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [lastReward, setLastReward] = useState<{ xp: number; pills: number } | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
@@ -1006,7 +1019,17 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
 
     // stay on same question, reveal feedback first
     setRunQuiz({ ...runQuiz, answers, correct });
-    setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected });
+const kind: "ok" | "bad" | "neutral" = isCorrect === null ? "neutral" : isCorrect ? "ok" : "bad";
+const nextFx = fxId + 1;
+setFxId(nextFx);
+setAnswerFx({ kind, id: nextFx });
+setToast({
+  text: kind === "ok" ? "✅ Precisione +" : kind === "bad" ? "❌ Da ripassare" : "📌 Modalità studio",
+  id: nextFx,
+});
+if (kind === "ok") safeVibrate(30);
+if (kind === "bad") safeVibrate([40, 30, 80]);
+setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected });
   }
 
   // Concorso: opzione "Non rispondere" (omessa = 0 punti) e passa subito alla prossima domanda.
@@ -1022,6 +1045,8 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
 
     setReveal(null);
     setSelected(null);
+    setAnswerFx(null);
+    setToast(null);
 
     if (nextIdx >= runQuiz.questions.length) {
       finish(next);
@@ -1039,6 +1064,8 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
 
     setReveal(null);
     setSelected(null);
+    setAnswerFx(null);
+    setToast(null);
 
     if (nextIdx >= runQuiz.questions.length) {
       finish(next);
@@ -1400,9 +1427,39 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
               </div>
 
               <div style={{ marginTop: 10 }}>
-                <div className="nd-progress" style={progressWrapStyle()}>
-                  <div className="nd-progress-fill" style={progressFillStyle(((runQuiz.idx + (reveal ? 1 : 0)) / runQuiz.questions.length), "sky")} />
-                </div>
+                <div className={`nd-progress fx-${answerFx?.kind ?? "neutral"}`} style={progressWrapStyle()}>
+  <div className="nd-progress-fill" style={progressFillStyle(((runQuiz.idx + (reveal ? 1 : 0)) / runQuiz.questions.length), "sky")} />
+</div>
+{runQuiz.mode === "concorso" && runQuiz.timeLimitMs ? (
+  <div style={{ marginTop: 8 }}>
+    <div className="nd-help" style={{ display: "flex", justifyContent: "space-between", gap: 10, fontWeight: 900, opacity: 0.75 }}>
+      <span>Tempo</span>
+      <span>{msToHMS(remainingMs ?? (runQuiz.timeLimitMs - (nowTs - runQuiz.startedAt)))}</span>
+    </div>
+    <div className="nd-progress" style={{ ...progressWrapStyle(), height: 6, opacity: 0.95 }}>
+      <div
+        className="nd-progress-fill"
+        style={{
+          height: "100%",
+          width: `${Math.round(
+            clamp01((remainingMs ?? (runQuiz.timeLimitMs - (nowTs - runQuiz.startedAt))) / runQuiz.timeLimitMs) * 100
+          )}%`,
+          background:
+            (remainingMs ?? (runQuiz.timeLimitMs - (nowTs - runQuiz.startedAt))) / runQuiz.timeLimitMs <= 0.2
+              ? "rgba(239,68,68,0.70)"
+              : "rgba(56,189,248,0.55)",
+          borderRadius: 999,
+          transition: "width 220ms ease",
+        }}
+      />
+    </div>
+  </div>
+) : null}
+{toast ? (
+  <div key={toast.id} className="nd-quiz-toast">
+    {toast.text}
+  </div>
+) : null}
                 {reveal && (
                   <div className={`nd-quiz-feedback ${reveal.isCorrect === null ? "" : reveal.isCorrect ? "ok" : "bad"}`} style={{ marginTop: 10 }}>
                     {reveal.isCorrect === null ? "📌 Quiz senza chiave (studio)" : reveal.isCorrect ? "✅ Corretto!" : "❌ Non proprio."}
@@ -1450,10 +1507,11 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
 
                   return (
                     <button
-                      key={i}
+                      key={`${i}-${answerFx?.id ?? 0}`}
                       type="button"
                       onClick={() => {
                         setSelected(i);
+                        safeVibrate(10);
                       }}
                       disabled={!!reveal}
                       className={cls}
@@ -1715,6 +1773,89 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
           </div>
         </div>
       )}
+
+
+<style jsx global>{`
+  .nd-quiz-option {
+    transform: translateZ(0);
+    transition: transform 140ms ease, filter 140ms ease;
+    will-change: transform;
+  }
+  .nd-quiz-option:active {
+    transform: scale(0.99);
+    filter: brightness(1.06);
+  }
+  .nd-quiz-option--active {
+    animation: ndPop 160ms ease-out;
+  }
+  .nd-quiz-option--correct {
+    animation: ndGlowOk 520ms ease-out;
+  }
+  .nd-quiz-option--wrong {
+    animation: ndShake 260ms ease-in-out, ndGlowBad 520ms ease-out;
+  }
+  .nd-progress.fx-ok .nd-progress-fill {
+    animation: ndBarOk 520ms ease-out;
+  }
+  .nd-progress.fx-bad .nd-progress-fill {
+    animation: ndBarBad 520ms ease-out;
+  }
+  .nd-quiz-toast {
+    position: relative;
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.22);
+    font-weight: 950;
+    font-size: 12px;
+    letter-spacing: 0.2px;
+    opacity: 0.95;
+    animation: ndToastUp 900ms ease-out forwards;
+  }
+  @keyframes ndPop {
+    0% { transform: scale(0.985); }
+    100% { transform: scale(1); }
+  }
+  @keyframes ndShake {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+    100% { transform: translateX(0); }
+  }
+  @keyframes ndGlowOk {
+    0% { filter: brightness(1); }
+    35% { filter: brightness(1.12); }
+    100% { filter: brightness(1); }
+  }
+  @keyframes ndGlowBad {
+    0% { filter: brightness(1); }
+    35% { filter: brightness(1.10); }
+    100% { filter: brightness(1); }
+  }
+  @keyframes ndBarOk {
+    0% { filter: brightness(1); }
+    40% { filter: brightness(1.18); }
+    100% { filter: brightness(1); }
+  }
+  @keyframes ndBarBad {
+    0% { filter: brightness(1); }
+    40% { filter: brightness(1.14); }
+    100% { filter: brightness(1); }
+  }
+  @keyframes ndToastUp {
+    0% { transform: translateY(0); opacity: 0.0; }
+    10% { opacity: 0.95; }
+    70% { opacity: 0.95; }
+    100% { transform: translateY(-8px); opacity: 0; }
+  }
+`}</style>
+
 
       <NurseBottomNav active="didattica" onChange={(t) => { void goTab(t); }} />
 
