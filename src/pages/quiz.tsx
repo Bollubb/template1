@@ -24,9 +24,13 @@ import {
 import { addXp } from "@/features/progress/xp";
 import { recordMistake } from "@/features/cards/quiz/quizMistakes";
 import { getDueCount, getWeakCategories, pickAdaptiveQuestions, recordAttempt } from "@/features/cards/quiz/quizAdaptive";
+import { UNI_PRESETS, type UniPresetId, getUniPool, getUniAvailableCount } from "@/features/cards/quiz/quizUniversity";
 
 type QuizRun = {
   mode: "daily" | "weekly" | "sim" | "concorso" | "review";
+  // If the run is started from "Simulazioni reali", we tag the track.
+  track?: "concorso" | "uni";
+  uniPresetId?: UniPresetId;
   idx: number;
   correct: number;
   questions: QuizQuestion[];
@@ -663,7 +667,11 @@ export default function QuizPage(): JSX.Element {
 // AUTO_FINISH_CONCORSO: timer + auto finish when time is up (only Concorsi)
 useEffect(() => {
   timerDoneRef.current = false;
-  if (!runQuiz || runQuiz.mode !== "concorso" || !runQuiz.timeLimitMs) {
+  const timed =
+    !!runQuiz &&
+    !!runQuiz.timeLimitMs &&
+    (runQuiz.mode === "concorso" || (runQuiz.mode === "sim" && runQuiz.track === "uni"));
+  if (!timed) {
     setRemainingMs(null);
     return;
   }
@@ -682,7 +690,7 @@ useEffect(() => {
   tick();
   const id = window.setInterval(tick, 250);
   return () => window.clearInterval(id);
-}, [runQuiz?.mode, runQuiz?.startedAt, runQuiz?.timeLimitMs]);
+}, [runQuiz?.mode, runQuiz?.track, runQuiz?.startedAt, runQuiz?.timeLimitMs]);
 ;
 
   useEffect(() => {
@@ -730,7 +738,16 @@ useEffect(() => {
     persistFavs(next);
   }
 
-  function start(mode: QuizRun["mode"], opts?: { questions?: QuizQuestion[]; timeLimitMs?: number; presetId?: QuizRun["presetId"] }) {
+  function start(
+    mode: QuizRun["mode"],
+    opts?: {
+      questions?: QuizQuestion[];
+      timeLimitMs?: number;
+      presetId?: QuizRun["presetId"];
+      track?: SimTrack;
+      uniPresetId?: UniPresetId;
+    }
+  ) {
     const questions =
       opts?.questions ??
       (() => {
@@ -761,6 +778,8 @@ useEffect(() => {
     const scoring = mode === "concorso" ? { correct: 1, wrong: -0.25, omit: 0 } : undefined;
     setRunQuiz({
       mode,
+      track: opts?.track,
+      uniPresetId: opts?.uniPresetId,
       idx: 0,
       correct: 0,
       questions: shuffledQuestions,
@@ -896,6 +915,15 @@ useEffect(() => {
       setLastReward({ xp: xpEarn, pills: pillsEarn });
     }
 
+    // University simulations share the same weekly cap as "Simulazioni reali".
+    // We only bump the cap counter here (reward logic stays in the sim branch).
+    if (run.mode !== "concorso" && run.track === "uni") {
+      const wk = isoWeekKey();
+      const rk = `${LS.concorsoRunsPrefix}${wk}`;
+      const usedBefore = readInt(rk, 0);
+      writeInt(rk, usedBefore + 1);
+    }
+
 // store seen ids to reduce repeats
     (run.mode === "concorso" ? pushSeenConcorso : pushSeen)(run.questions.map((q) => q.id));
 // mistakes log
@@ -971,7 +999,9 @@ useEffect(() => {
       presetLabel:
         run.mode === "concorso"
           ? (CONCORSO_PRESETS.find((p) => p.id === run.presetId)?.label ?? HOME_COPY.concorso.label)
-          : undefined,
+          : run.track === "uni"
+            ? (`Università • ${UNI_PRESETS.find((p) => p.id === run.uniPresetId)?.label ?? "Simulazione"}`)
+            : undefined,
     });
   }
 
@@ -1056,6 +1086,50 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
     questions,
     timeLimitMs: preset.min * 60 * 1000,
     presetId: preset.id,
+    track: "concorso",
+  });
+}
+
+function handleStartUni(presetId: UniPresetId) {
+  const preset = UNI_PRESETS.find((p) => p.id === presetId) ?? UNI_PRESETS[0];
+
+  // University simulations share the same caps as "Simulazioni reali".
+  const caps = getRunCaps("concorso");
+  const remaining = Math.max(0, caps.allowed - caps.used);
+
+  if (remaining <= 0 && !premium) {
+    setPremiumContextUnlock("concorso");
+    setPremiumModalOpen(true);
+    return;
+  }
+
+  const pool = getUniPool(QUIZ_BANK, preset.id);
+  const available = pool.length;
+
+  if (available <= 0) {
+    const nextFx = fxId + 1;
+    setFxId(nextFx);
+    setToast({ text: "📚 Banca dati università in arrivo", id: nextFx });
+    safeVibrate([20, 40, 20]);
+    return;
+  }
+
+  const avoid = new Set(getRecentSeenIds(160));
+  const n = Math.min(preset.n, available);
+  const questions = pickQuestions(pool, n, avoid);
+
+  // If the bank is still being built, transparently start with the available questions.
+  if (n < preset.n) {
+    const nextFx = fxId + 1;
+    setFxId(nextFx);
+    setToast({ text: `📚 Avvio con ${n} domande disponibili`, id: nextFx });
+  }
+
+  start("sim", {
+    questions,
+    timeLimitMs: preset.min * 60 * 1000,
+    track: "uni",
+    uniPresetId: preset.id,
   });
 }
 
@@ -1396,7 +1470,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
           </span>
         </div>
 
-        {/* Toggle UI: Università / Concorsi (per ora solo struttura) */}
+        {/* Toggle: Università / Concorsi */}
         <div className="mt-2" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
             type="button"
@@ -1414,22 +1488,21 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
           >
             Concorsi
           </button>
-          <span className="nd-help" style={{ opacity: 0.75, fontWeight: 850, alignSelf: "center" }}>
-            (struttura pronta)
-          </span>
         </div>
 
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="nd-help">Senza ripetizioni</div>
-          <button
-            type="button"
-            onClick={() => setConcorsoNoRepeat((v) => !v)}
-            className="nd-btn-chip nd-press"
-            style={miniChipBtn()}
-          >
-            {concorsoNoRepeat ? "ON" : "OFF"}
-          </button>
-        </div>
+        {simTrack === "concorso" && (
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div className="nd-help">Senza ripetizioni</div>
+            <button
+              type="button"
+              onClick={() => setConcorsoNoRepeat((v) => !v)}
+              className="nd-btn-chip nd-press"
+              style={miniChipBtn()}
+            >
+              {concorsoNoRepeat ? "ON" : "OFF"}
+            </button>
+          </div>
+        )}
       </div>
 
       {simTrack === "concorso" ? (
@@ -1447,17 +1520,30 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
           ))}
         </div>
       ) : (
-        <div className="nd-tile" style={{ ...tileStyle(), opacity: 0.95 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-            <div style={{ fontWeight: 950 }}>Simulazioni università</div>
-            <span className="nd-pill nd-pill--sm">In arrivo</span>
+        <div className="grid gap-2">
+          {UNI_PRESETS.map((p) => {
+            const available = getUniAvailableCount(QUIZ_BANK, p.id);
+            const disabled = available <= 0;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handleStartUni(p.id)}
+                className="nd-btn nd-btn-ghost nd-press"
+                style={{
+                  ...btnStyle("ghost", disabled),
+                  opacity: disabled ? 0.55 : 1,
+                }}
+                disabled={disabled}
+              >
+                {p.label} • {p.n} domande • {p.min} min {disabled ? "• In arrivo" : ""}
+              </button>
+            );
+          })}
+
+          <div className="nd-help" style={{ opacity: 0.75 }}>
+            La modalità Università usa categorie dedicate (farmacologia/anatomia/fisiologia). Se una materia è “In arrivo”, significa che la banca dati deve ancora essere importata.
           </div>
-          <div className="nd-help" style={{ marginTop: 6 }}>
-            Farmacologia • Anatomia • Fisiologia • Clinica. UI pronta: attiviamo la banca dati nella Fase 5.
-          </div>
-          <button type="button" className="mt-3 nd-btn nd-btn-ghost" style={{ ...btnStyle("ghost"), opacity: 0.55 }} disabled>
-            Prossimamente
-          </button>
         </div>
       )}
 
