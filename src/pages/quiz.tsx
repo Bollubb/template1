@@ -604,6 +604,7 @@ export default function QuizPage(): JSX.Element {
   const [weeklyLeft, setWeeklyLeft] = useState(0);
   const [premium, setPremium] = useState(false);
   const [premiumModalOpen, setPremiumModalOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [premiumContextUnlock, setPremiumContextUnlock] = useState<null | "daily" | "weekly" | "concorso">(null);
 
   const [homeTab, setHomeTab] = useState<HomeTab>("daily");
@@ -1281,11 +1282,128 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     [router]
   );
 
+  const analytics = useMemo(() => {
+    const now = Date.now();
+    const hist = (() => {
+      try {
+        return getHistory();
+      } catch {
+        return [];
+      }
+    })();
+
+    const withinDays = (days: number) => hist.filter((h) => now - (h.ts || 0) <= days * 24 * 60 * 60 * 1000);
+
+    const calc = (arr: typeof hist) => {
+      const totalQ = arr.reduce((s, h) => s + (h.total || 0), 0);
+      const correct = arr.reduce((s, h) => s + (h.correct || 0), 0);
+      const runs = arr.length;
+      const acc = totalQ > 0 ? correct / totalQ : 0;
+      return { runs, totalQ, correct, acc };
+    };
+
+    const last7 = calc(withinDays(7));
+    const last30 = calc(withinDays(30));
+
+    const modes: Array<QuizHistoryItem["mode"]> = ["daily", "weekly", "sim", "concorso", "review"];
+    const byMode = modes.map((mode) => ({ mode, ...calc(hist.filter((h) => h.mode === mode)) }));
+
+    const weak = getWeakCategories(5);
+    const due = getDueCount();
+
+    return { last7, last30, byMode, weak, due, totalRuns: hist.length };
+  }, []);
+
   return (
     <Page title="Quiz" headerOverride={headerOverride}>
       <>
 <Section>
         <div className="mx-auto w-full max-w-[560px]">
+        {analyticsOpen && (
+          <div
+            className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-3"
+            onClick={() => setAnalyticsOpen(false)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="w-full max-w-[560px] rounded-2xl border border-white/10 bg-neutral-950/95 p-4 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="nd-h2">Analytics</div>
+                  <div className="nd-help" style={{ marginTop: 2, opacity: 0.8 }}>Categorie deboli, trend e andamento per modalità.</div>
+                </div>
+                <button type="button" className="nd-btn nd-btn-ghost nd-press" onClick={() => setAnalyticsOpen(false)}>
+                  Chiudi
+                </button>
+              </div>
+
+              <div className="mt-3 grid gap-2">
+                <div className="nd-card" style={{ padding: 12 }}>
+                  <div className="flex items-center justify-between">
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Ultimi 7 giorni</div>
+                    <div style={{ fontWeight: 950 }}>{Math.round(analytics.last7.acc * 100)}%</div>
+                  </div>
+                  <div className="nd-help" style={{ marginTop: 4, opacity: 0.75 }}>{analytics.last7.runs} sessioni • {analytics.last7.totalQ} domande</div>
+                </div>
+
+                <div className="nd-card" style={{ padding: 12 }}>
+                  <div className="flex items-center justify-between">
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Ultimi 30 giorni</div>
+                    <div style={{ fontWeight: 950 }}>{Math.round(analytics.last30.acc * 100)}%</div>
+                  </div>
+                  <div className="nd-help" style={{ marginTop: 4, opacity: 0.75 }}>{analytics.last30.runs} sessioni • {analytics.last30.totalQ} domande</div>
+                </div>
+
+                <div className="nd-card" style={{ padding: 12 }}>
+                  <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Categorie deboli</div>
+                  {analytics.weak.length === 0 ? (
+                    <div className="nd-help" style={{ marginTop: 6, opacity: 0.75 }}>Ancora pochi dati: completa qualche sessione per sbloccare l’analisi.</div>
+                  ) : (
+                    <div className="mt-2 grid gap-2">
+                      {analytics.weak.map((r) => (
+                        <div key={r.cat} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div style={{ fontWeight: 900 }}>{r.cat}</div>
+                          <div className="nd-help" style={{ fontWeight: 900, opacity: 0.85 }}>{Math.round(r.acc * 100)}% • {r.total}Q</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="nd-card" style={{ padding: 12 }}>
+                  <div className="flex items-center justify-between">
+                    <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Da ripassare ora</div>
+                    <div style={{ fontWeight: 950 }}>{analytics.due}</div>
+                  </div>
+                  <div className="nd-help" style={{ marginTop: 6, opacity: 0.75 }}>Basato su errori + ripetizione dilazionata (adaptive learning).</div>
+                </div>
+
+                <div className="nd-card" style={{ padding: 12 }}>
+                  <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Andamento per modalità</div>
+                  <div className="mt-2 grid gap-2">
+                    {analytics.byMode.map((m) => (
+                      <div key={m.mode} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                        <div style={{ fontWeight: 900 }}>{m.mode}</div>
+                        <div className="nd-help" style={{ fontWeight: 900, opacity: 0.85 }}>
+                          {m.totalQ > 0 ? `${Math.round(m.acc * 100)}%` : "—"} • {m.runs} sess.
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {!premium && (
+                    <div className="nd-help" style={{ marginTop: 8, opacity: 0.7 }}>
+                      💎 Premium: trend avanzati per categoria + consigli automatici (prossima iterazione).
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {!runQuiz && !quizResult && (
           <div className="grid gap-3">
             <div className="nd-card nd-card-pad" style={card()}>
@@ -1315,6 +1433,21 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Accuratezza</div>
                     <div style={{ marginTop: 4, fontWeight: 950 }}>—</div>
                   </div>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="nd-help" style={{ fontWeight: 900, opacity: 0.78 }}>
+                    📊 {analytics.due} da ripassare • {Math.round(analytics.last7.acc * 100)}% ultimi 7g
+                  </div>
+                  <button
+                    type="button"
+                    className="nd-btn nd-btn-ghost nd-press"
+                    style={{ padding: "8px 10px", borderRadius: 14 }}
+                    onClick={() => setAnalyticsOpen(true)}
+                    aria-label="Apri Analytics"
+                  >
+                    Analytics
+                  </button>
                 </div>
               </div>
 
