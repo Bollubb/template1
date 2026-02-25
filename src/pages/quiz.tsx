@@ -405,9 +405,7 @@ function ghostBtn(disabled?: boolean): React.CSSProperties {
   };
 }
 
-// NOTE: Chip variants are used only for typing; actual visuals are controlled
-// by global CSS classes (e.g. .nd-badge-emerald).
-type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet" | "emerald";
+type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet";
 type BtnVariant = "emerald" | "indigo" | "sky" | "ghost";
 
 function chipStyle(v: ChipVariant): React.CSSProperties {
@@ -451,12 +449,13 @@ function miniChipBtn(): React.CSSProperties {
     alignItems: "center",
     padding: "6px 10px",
     borderRadius: 999,
-    border: "1px solid rgba(255,255,255,0.14)",
-    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(0,0,0,0.18)",
     color: "rgba(255,255,255,0.92)",
     fontWeight: 900,
     fontSize: 12,
     cursor: "pointer",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
   };
 }
 
@@ -1502,13 +1501,14 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
           </span>
         </div>
 
-        {/* Toggle UI: Università / Concorsi (per ora solo struttura) */}
-        <div className="mt-2" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+	    {/* Toggle UI: Università / Concorsi */}
+	    <div className="mt-2" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+	      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
             type="button"
             onClick={() => setSimTrack("uni")}
             className="nd-btn-chip nd-press"
-            style={{ ...miniChipBtn(), borderColor: simTrack === "uni" ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)", background: simTrack === "uni" ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.06)" }}
+	        style={{ ...miniChipBtn(), borderColor: simTrack === "uni" ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)", background: simTrack === "uni" ? "linear-gradient(180deg, rgba(56,189,248,0.20), rgba(56,189,248,0.08))" : "rgba(0,0,0,0.18)" }}
           >
             Università
           </button>
@@ -1516,13 +1516,14 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
             type="button"
             onClick={() => setSimTrack("concorso")}
             className="nd-btn-chip nd-press"
-            style={{ ...miniChipBtn(), borderColor: simTrack === "concorso" ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)", background: simTrack === "concorso" ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.06)" }}
+	        style={{ ...miniChipBtn(), borderColor: simTrack === "concorso" ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)", background: simTrack === "concorso" ? "linear-gradient(180deg, rgba(56,189,248,0.20), rgba(56,189,248,0.08))" : "rgba(0,0,0,0.18)" }}
           >
             Concorsi
           </button>
-          <span className="nd-help" style={{ opacity: 0.75, fontWeight: 850, alignSelf: "center" }}>
-            (struttura pronta)
-          </span>
+	      </div>
+	      <span className="nd-pill nd-pill--sm" style={pillStyle("slate")}>
+	        Struttura pronta
+	      </span>
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2">
@@ -1578,7 +1579,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     style={{
                       ...miniChipBtn(),
                       borderColor: uniPreset === p.id ? "rgba(56,189,248,0.55)" : "rgba(255,255,255,0.12)",
-                      background: uniPreset === p.id ? "rgba(56,189,248,0.16)" : "rgba(255,255,255,0.06)",
+								background: uniPreset === p.id ? "linear-gradient(180deg, rgba(56,189,248,0.20), rgba(56,189,248,0.08))" : "rgba(0,0,0,0.18)",
                     }}
                   >
                     {p.label}
