@@ -25,7 +25,7 @@ import {
   type QuizHistoryItem,
 } from "@/features/cards/quiz/quizLogic";
 import { addXp } from "@/features/progress/xp";
-import { recordMistake } from "@/features/cards/quiz/quizMistakes";
+import { pickMistakeReviewQuestions, recordMistake } from "@/features/cards/quiz/quizMistakes";
 import { getDueCount, getWeakCategories, pickAdaptiveQuestions, recordAttempt } from "@/features/cards/quiz/quizAdaptive";
 
 type QuizRun = {
