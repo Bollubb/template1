@@ -195,6 +195,18 @@
   border-color: rgba(56,189,248,0.28);
   background: linear-gradient(180deg, rgba(56,189,248,0.22), rgba(56,189,248,0.10));
 }
+.nd-btn-emerald{
+  border-color: rgba(52,211,153,0.26);
+  background: linear-gradient(180deg, rgba(52,211,153,0.18), rgba(52,211,153,0.08));
+}
+.nd-btn-indigo{
+  border-color: rgba(129,140,248,0.26);
+  background: linear-gradient(180deg, rgba(129,140,248,0.16), rgba(129,140,248,0.08));
+}
+.nd-btn-slate{
+  border-color: rgba(148,163,184,0.22);
+  background: linear-gradient(180deg, rgba(148,163,184,0.16), rgba(148,163,184,0.08));
+}
 .nd-btn-ghost{
   background: rgba(255,255,255,0.04);
   border-color: rgba(255,255,255,0.10);
