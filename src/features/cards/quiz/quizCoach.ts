@@ -76,7 +76,7 @@ export function getTodayCoachPlan(ctx: { uniPreset: UniPresetId; simTrack: "conc
     return { kind: "review" as const, headline: `Recupero intelligente: ${due} domande da ripassare oggi.` };
   }
 
-  const weak = getWeakCategories(5).map((x) => String(x.category || "").toLowerCase());
+  const weak = getWeakCategories(5).map((x) => String(x.cat || "").toLowerCase());
   const uni: Array<{ preset: UniPresetId; label: string }> = [
     { preset: "farmacologia", label: "Farmacologia" },
     { preset: "anatomia", label: "Anatomia" },
