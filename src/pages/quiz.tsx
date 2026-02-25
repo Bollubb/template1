@@ -17,6 +17,7 @@ import {
   setWeeklyState,
   getNextDailyResetMs,
   getNextWeeklyResetMs,
+  getHistory,
   pushHistory,
   type QuizHistoryItem,
 } from "@/features/cards/quiz/quizLogic";
@@ -612,6 +613,10 @@ export default function QuizPage(): JSX.Element {
   const [fxId, setFxId] = useState(0);
   const [answerFx, setAnswerFx] = useState<null | { kind: "ok" | "bad" | "neutral"; id: number }>(null);
   const [toast, setToast] = useState<null | { text: string; id: number }>(null);
+
+  const [combo, setCombo] = useState<number>(0);
+  const [bestCombo, setBestCombo] = useState<number>(0);
+  const [qStageKey, setQStageKey] = useState<number>(0);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
   const [lastReward, setLastReward] = useState<{ xp: number; pills: number } | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
@@ -738,6 +743,9 @@ useEffect(() => {
     setLastReward(null);
     setSelected(null);
     setReveal(null);
+    setCombo(0);
+    setBestCombo(0);
+    setQStageKey((k) => k + 1);
     const scoring = mode === "concorso" ? { correct: 1, wrong: -0.25, omit: 0 } : undefined;
     setRunQuiz({
       mode,
@@ -914,9 +922,34 @@ useEffect(() => {
       total: run.questions.length,
       passMark: run.mode === "concorso" ? Math.ceil(run.questions.length * 0.6) : undefined,
       ms,
+      timeLimitMs: run.timeLimitMs,
       byCategory,
       perfect: correctCount === run.questions.length,
       wrong,
+      // concorso premium metrics (local, no backend)
+      wrongCount:
+        run.mode === "concorso"
+          ? Math.max(0, (keyedTotal || run.questions.length) - correctCount - run.questions.reduce((acc, q, i) => acc + (run.answers[i] === -1 ? 1 : 0), 0))
+          : undefined,
+      omittedCount:
+        run.mode === "concorso"
+          ? run.questions.reduce((acc, q, i) => acc + (run.answers[i] === -1 ? 1 : 0), 0)
+          : undefined,
+      score:
+        run.mode === "concorso"
+          ? (() => {
+              const evalTotal = keyedTotal || run.questions.length;
+              const omitted = run.questions.reduce((acc, q, i) => acc + (run.answers[i] === -1 ? 1 : 0), 0);
+              const wrongN = Math.max(0, evalTotal - correctCount - omitted);
+              const sc = (correctCount * (run.scoring?.correct ?? 1)) + (wrongN * (run.scoring?.wrong ?? -0.25)) + (omitted * (run.scoring?.omit ?? 0));
+              return Math.round(sc * 100) / 100;
+            })()
+          : undefined,
+      scoring: run.scoring,
+      presetLabel:
+        run.mode === "concorso"
+          ? (CONCORSO_PRESETS.find((p) => p.id === run.presetId)?.label ?? HOME_COPY.concorso.label)
+          : undefined,
     });
   }
 
@@ -1029,6 +1062,22 @@ setToast({
 });
 if (kind === "ok") safeVibrate(30);
 if (kind === "bad") safeVibrate([40, 30, 80]);
+
+// combo (premium UX)
+if (kind === "ok") {
+  setCombo((c) => {
+    const next = c + 1;
+    setBestCombo((b) => Math.max(b, next));
+    // premium micro-gamification
+    if (premium && (next === 3 || next === 5 || next === 8)) {
+      const tid = nextFx + 100 + next;
+      setToast({ text: `🔥 Combo x${next}`, id: tid });
+    }
+    return next;
+  });
+} else if (kind === "bad") {
+  setCombo(0);
+}
 setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected });
   }
 
@@ -1047,6 +1096,8 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     setSelected(null);
     setAnswerFx(null);
     setToast(null);
+    setCombo(0);
+    setQStageKey((k) => k + 1);
 
     if (nextIdx >= runQuiz.questions.length) {
       finish(next);
@@ -1066,6 +1117,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     setSelected(null);
     setAnswerFx(null);
     setToast(null);
+    setQStageKey((k) => k + 1);
 
     if (nextIdx >= runQuiz.questions.length) {
       finish(next);
@@ -1080,6 +1132,47 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     if (streak >= 7) return "Intermedio";
     return "Base";
   }, [streak]);
+
+
+  const resultProfile = useMemo(() => {
+    if (!quizResult) return null;
+
+    const acc = quizResult.total ? quizResult.correct / quizResult.total : 0;
+    const paceSec = quizResult.total ? (quizResult.ms / 1000) / quizResult.total : 0;
+
+    // local percentile vs your last runs (no backend yet)
+    let percentile: number | null = null;
+    try {
+      const hist = getHistory().filter((h) => h && h.mode === quizResult.mode);
+      if (hist.length >= 3) {
+        const rates = hist.map((h) => (h.total ? h.correct / h.total : 0)).sort((a, b) => a - b);
+        const rank = rates.filter((r) => r <= acc).length;
+        percentile = Math.round((rank / rates.length) * 100);
+      }
+    } catch {}
+
+    const concorsoLevel = (() => {
+      // heuristic: accuracy + pace
+      if (acc >= 0.85 && paceSec <= 70) return { label: "Élite", hint: "Ottimo ritmo e precisione", tone: "emerald" as const };
+      if (acc >= 0.75) return { label: "Avanzato", hint: "Vicino allo standard alto", tone: "indigo" as const };
+      if (acc >= 0.6) return { label: "Intermedio", hint: "Base solida, aumenta costanza", tone: "sky" as const };
+      return { label: "Base", hint: "Costruisci fondamenta mirate", tone: "slate" as const };
+    })();
+
+    const communityEstimate = (() => {
+      // deterministic "estimate" from accuracy to look stable until analytics backend exists
+      const est = 10 + Math.round(acc * 80); // 10..90
+      return Math.max(5, Math.min(95, est));
+    })();
+
+    return {
+      acc,
+      paceSec,
+      percentile,
+      concorsoLevel,
+      communityEstimate,
+    };
+  }, [quizResult]);
 
 
   const headerOverride = useMemo(
@@ -1481,7 +1574,21 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
               )}
 
 
+              <div key={`q-${runQuiz.idx}-${qStageKey}`} className={`nd-qstage ${premium ? "nd-qstage--premium" : ""}`}>
               <div style={{ marginTop: 10, fontWeight: 900, fontSize: 15 }}>{runQuiz.questions[runQuiz.idx].q}</div>
+              <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                {premium ? (
+                  <>
+                    <span className="nd-pill nd-pill--sm">🔥 Combo: {combo}</span>
+                    <span className="nd-pill nd-pill--sm">🏆 Best: {bestCombo}</span>
+                    {runQuiz.mode === "concorso" && runQuiz.timeLimitMs ? (
+                      <span className="nd-pill nd-pill--sm">⏱️ Ritmo: {Math.max(1, Math.round(((nowTs - runQuiz.startedAt) / 1000) / Math.max(1, runQuiz.idx + (reveal ? 1 : 0))))}s/q</span>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="nd-help" style={{ fontWeight: 900, opacity: 0.65 }}>Modalità focus</span>
+                )}
+              </div>
 
               {!reveal && (
                 <div style={{ marginTop: 6, fontSize: 12, fontWeight: 850, opacity: 0.72 }}>
@@ -1541,6 +1648,7 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     </button>
                   );
                 })}
+              </div>
               </div>
 
               <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
@@ -1624,6 +1732,60 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     )}
                   </div>
                 )}
+              {resultProfile && (
+                <div className="mt-3 nd-card nd-card-pad" style={{ ...card(), padding: 14 }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div style={{ fontWeight: 950 }}>Profilo concorsista</div>
+                    <span className="nd-pill nd-pill--sm">Premium</span>
+                  </div>
+
+                  {!premium ? (
+                    <div style={{ marginTop: 10 }}>
+                      <div className="nd-help" style={{ opacity: 0.9 }}>Sblocca per vedere percentile, confronto e livello concorso.</div>
+                      <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10, filter: "blur(2.6px)", opacity: 0.85 }}>
+                        <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                          <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Percentile</div>
+                          <div style={{ marginTop: 4, fontWeight: 950 }}>Top 32%</div>
+                        </div>
+                        <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                          <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Livello</div>
+                          <div style={{ marginTop: 4, fontWeight: 950 }}>Avanzato</div>
+                        </div>
+                        <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                          <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Confronto</div>
+                          <div style={{ marginTop: 4, fontWeight: 950 }}>Top 41%</div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+                      <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                        <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Percentile</div>
+                        <div style={{ marginTop: 4, fontWeight: 950 }}>
+                          {typeof resultProfile.percentile === "number" ? `Top ${Math.max(1, 100 - resultProfile.percentile)}%` : "—"}
+                        </div>
+                        <div className="nd-help" style={{ marginTop: 2, opacity: 0.72 }}>vs tue sessioni</div>
+                      </div>
+
+                      <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                        <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Livello concorso</div>
+                        <div style={{ marginTop: 4, fontWeight: 950 }}>{resultProfile.concorsoLevel.label}</div>
+                        <div className="nd-help" style={{ marginTop: 2, opacity: 0.72 }}>{resultProfile.concorsoLevel.hint}</div>
+                      </div>
+
+                      <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                        <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Confronto utenti</div>
+                        <div style={{ marginTop: 4, fontWeight: 950 }}>{`Top ${Math.max(1, 100 - resultProfile.communityEstimate)}%`}</div>
+                        <div className="nd-help" style={{ marginTop: 2, opacity: 0.72 }}>stima (analytics Fase 6)</div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="nd-help" style={{ marginTop: 10, opacity: 0.72 }}>
+                    Percentile e confronto sono stime locali finché non attiviamo Analytics (Fase 6).
+                  </div>
+                </div>
+              )}
               {Object.keys(quizResult.byCategory || {}).length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   <div className="nd-subtitle">Categorie da ripassare</div>
@@ -1800,6 +1962,13 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
   .nd-progress.fx-bad .nd-progress-fill {
     animation: ndBarBad 520ms ease-out;
   }
+
+  .nd-qstage {
+    animation: ndQEnter 260ms ease-out;
+  }
+  .nd-qstage--premium {
+    animation: ndQEnterPremium 340ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
   .nd-quiz-toast {
     position: relative;
     margin-top: 10px;
@@ -1848,7 +2017,17 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
     40% { filter: brightness(1.14); }
     100% { filter: brightness(1); }
   }
-  @keyframes ndToastUp {
+  
+  @keyframes ndQEnter {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes ndQEnterPremium {
+    0% { opacity: 0; transform: translateY(14px) scale(0.995); filter: blur(0.2px); }
+    60% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+@keyframes ndToastUp {
     0% { transform: translateY(0); opacity: 0.0; }
     10% { opacity: 0.95; }
     70% { opacity: 0.95; }
