@@ -405,7 +405,9 @@ function ghostBtn(disabled?: boolean): React.CSSProperties {
   };
 }
 
-type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet";
+// Visual variants for pills/chips/badges.
+// NOTE: keep in sync with CSS classes (e.g. .nd-badge-emerald).
+type ChipVariant = "sky" | "amber" | "slate" | "green" | "violet" | "emerald";
 type BtnVariant = "emerald" | "indigo" | "sky" | "ghost";
 
 function chipStyle(v: ChipVariant): React.CSSProperties {
@@ -1112,7 +1114,8 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
     const correct = runQuiz.correct + (isCorrect ? 1 : 0);
 
     // stay on same question, reveal feedback first
-    setRunQuiz({ ...runQuiz, answers, correct });
+    const updatedRun: QuizRun = { ...runQuiz, answers, correct };
+    setRunQuiz(updatedRun);
 const kind: "ok" | "bad" | "neutral" = isCorrect === null ? "neutral" : isCorrect ? "ok" : "bad";
 const nextFx = fxId + 1;
 setFxId(nextFx);
@@ -1140,6 +1143,26 @@ if (kind === "ok") {
   setCombo(0);
 }
 setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected });
+
+// Concorso UX: auto-advance after a short feedback flash.
+// This prevents rare "stuck" states on some mobile webviews and keeps the flow fast.
+if (runQuiz.mode === "concorso") {
+  const nextIdx = runQuiz.idx + 1;
+  const nextRun: QuizRun = { ...updatedRun, idx: nextIdx };
+  window.setTimeout(() => {
+    setReveal(null);
+    setSelected(null);
+    setAnswerFx(null);
+    setToast(null);
+    setCombo(0);
+    setQStageKey((k) => k + 1);
+    if (nextIdx >= updatedRun.questions.length) {
+      finish(nextRun);
+    } else {
+      setRunQuiz(nextRun);
+    }
+  }, 550);
+}
   }
 
   // Concorso: opzione "Non rispondere" (omessa = 0 punti) e passa subito alla prossima domanda.
