@@ -22,7 +22,8 @@ import {
   type QuizHistoryItem,
 } from "@/features/cards/quiz/quizLogic";
 import { addXp } from "@/features/progress/xp";
-import { recordMistake, pickMistakeReviewQuestions } from "@/features/cards/quiz/quizMistakes";
+import { recordMistake } from "@/features/cards/quiz/quizMistakes";
+import { getDueCount, getWeakCategories, pickAdaptiveQuestions, recordAttempt } from "@/features/cards/quiz/quizAdaptive";
 
 type QuizRun = {
   mode: "daily" | "weekly" | "sim" | "concorso" | "review";
@@ -618,6 +619,7 @@ export default function QuizPage(): JSX.Element {
   const [bestCombo, setBestCombo] = useState<number>(0);
   const [qStageKey, setQStageKey] = useState<number>(0);
   const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const [dueNow, setDueNow] = useState<number>(0);
   const [lastReward, setLastReward] = useState<{ xp: number; pills: number } | null>(null);
   const [nowTs, setNowTs] = useState<number>(Date.now());
 
@@ -643,6 +645,15 @@ export default function QuizPage(): JSX.Element {
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
   }, [])
+
+  // Adaptive learning: badge for "domande da ripassare" (spaced repetition due now)
+  useEffect(() => {
+    try {
+      setDueNow(getDueCount());
+    } catch {
+      setDueNow(0);
+    }
+  }, [quizResult]);
 
 
   useEffect(() => {
@@ -731,7 +742,8 @@ useEffect(() => {
           const preset = CONCORSO_PRESETS.find((p) => p.id === (opts?.presetId ?? "asl")) ?? CONCORSO_PRESETS[0];
           return pickQuestionsUniqueByStem(QUIZ_BANK_CONCORSO, preset.n, avoid);
         }
-        const picked = pickMistakeReviewQuestions(QUIZ_BANK, 10);
+        const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+        const picked = pickAdaptiveQuestions(bank, 10, { excludeIds: Array.from(avoid) });
         return picked.length ? picked : pickQuestions(QUIZ_BANK, 10, avoid);
       })();
 
@@ -888,6 +900,16 @@ useEffect(() => {
     (run.mode === "concorso" ? pushSeenConcorso : pushSeen)(run.questions.map((q) => q.id));
 // mistakes log
     wrong.forEach((w) => recordMistake(w.q.id));
+
+    // Adaptive learning stats (local-first): record each attempt (skip omitted)
+    try {
+      run.questions.forEach((q, i) => {
+        const chosen = run.answers[i];
+        if (chosen === undefined || chosen === null) return;
+        if (chosen < 0) return; // -1 = omitted
+        recordAttempt(q, chosen);
+      });
+    } catch {}
 
     // history (for recency)
     const byCategory: QuizHistoryItem["byCategory"] = {};
@@ -1466,7 +1488,9 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     <div>
                       <div className="text-sm font-extrabold text-white">{HOME_COPY.review.label}</div>
                       <div className="nd-help">{HOME_COPY.review.subtitle}</div>
-                      <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>10 domande</div>
+                      <div className="nd-help" style={{ marginTop: 2, opacity: 0.75 }}>
+                        10 domande{dueNow > 0 ? ` • ${dueNow} da ripassare` : ""}
+                      </div>
                     </div>
                     {!premium && <span className="nd-pill nd-pill--sm">Premium</span>}
                   </div>
@@ -1478,7 +1502,8 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                         setPremiumModalOpen(true);
                         return;
                       }
-                      start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
+                      const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+                      start("review", { questions: pickAdaptiveQuestions(bank, 10) });
                     }}
                     className="mt-3 nd-btn nd-btn-ghost nd-press"
                     style={btnStyle("ghost")}
@@ -1806,6 +1831,41 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                         </div>
                       ))}
                   </div>
+
+                  {(() => {
+                    // Build a focused recovery plan: session weak cats + global weak cats
+                    const sessionWeak = Object.entries(quizResult.byCategory)
+                      .map(([k, v]) => ({ k, rate: v.total ? v.correct / v.total : 0, total: v.total }))
+                      .filter((x) => x.total >= 3)
+                      .sort((a, b) => a.rate - b.rate)
+                      .slice(0, 2)
+                      .map((x) => x.k);
+
+                    const globalWeak = getWeakCategories(2).map((x) => x.cat);
+                    const focusCategories = Array.from(new Set([...sessionWeak, ...globalWeak])).slice(0, 3);
+
+                    if (focusCategories.length === 0) return null;
+
+                    return (
+                      <div className="mt-3 nd-help">
+                        <button
+                          type="button"
+                          className="nd-btn nd-btn-ghost nd-press"
+                          style={btnStyle("ghost")}
+                          onClick={() => {
+                            const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+                            setQuizResult(null);
+                            start("review", { questions: pickAdaptiveQuestions(bank, 10, { focusCategories }) });
+                          }}
+                        >
+                          Avvia recupero mirato
+                        </button>
+                        <div className="mt-2" style={{ opacity: 0.75 }}>
+                          Priorità: {focusCategories.join(" • ")}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -1821,7 +1881,10 @@ setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected })
                     else if (quizResult.mode === "weekly") start("weekly");
                     else if (quizResult.mode === "concorso") start("concorso", { presetId: "asl", timeLimitMs: (CONCORSO_PRESETS[0].min * 60 * 1000) });
                     else if (quizResult.mode === "sim") start("sim");
-                    else start("review", { questions: pickMistakeReviewQuestions(QUIZ_BANK, 10) });
+                    else {
+                      const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+                      start("review", { questions: pickAdaptiveQuestions(bank, 10) });
+                    }
                   }}
                   className="nd-btn-primary nd-press"
                 >
