@@ -242,11 +242,11 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
     setUpsellOpen(true);
   }
 
-  const TOOL_META: Record<UtilityToolId, { label: string; open: () => void; badge?: string; accent: { solid: string; soft: string; border: string } }> = {
-    INTERACTIONS: { label: "Interazioni", badge: "TOP", open: () => { goSection("interactions"); markRecent("INTERACTIONS"); } , accent: ACCENTS["interactions"] },
-    INFUSION: { label: "Infusioni EV", badge: "ICU", open: () => { startToolLoad("INFUSION"); goSection("infusion"); markRecent("INFUSION"); } , accent: ACCENTS["infusion"] },
-    NEWS2: { label: "NEWS2", badge: "CORE", open: () => { goSection("scales"); setActiveScale("news2"); markRecent("NEWS2"); } , accent: ACCENTS["scales"] },
-    GCS: { label: "GCS", badge: "NEURO", open: () => { goSection("scales"); setActiveScale("gcs"); markRecent("GCS"); } , accent: ACCENTS["scales"] },
+  const TOOL_META: Record<UtilityToolId, { title: string; icon: string; label: string; open: () => void; badge?: string; accent: { solid: string; soft: string; border: string } }> = {
+    INTERACTIONS: { title: "Interazioni", icon: "💊", label: "Interazioni", badge: "TOP", open: () => { goSection("interactions"); markRecent("INTERACTIONS"); } , accent: ACCENTS["interactions"] },
+    INFUSION: { title: "Infusioni EV", icon: "💉", label: "Infusioni EV", badge: "ICU", open: () => { startToolLoad("INFUSION"); goSection("infusion"); markRecent("INFUSION"); } , accent: ACCENTS["infusion"] },
+    NEWS2: { title: "NEWS2", icon: "🩺", label: "NEWS2", badge: "CORE", open: () => { goSection("scales"); setActiveScale("news2"); markRecent("NEWS2"); } , accent: ACCENTS["scales"] },
+    GCS: { title: "GCS", icon: "🧠", label: "GCS", badge: "NEURO", open: () => { goSection("scales"); setActiveScale("gcs"); markRecent("GCS"); } , accent: ACCENTS["scales"] },
   };
 
   const [query, setQuery] = useState("");
