@@ -76,6 +76,38 @@ function writeRecent(next: RecentItem[]) {
   } catch {}
 }
 
+
+async function copyToClipboard(text: string) {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.top = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {}
+  return false;
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, n));
+}
+
+function numOrNull(v: any) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 function dayKey(d = new Date()) {
   return d.toISOString().slice(0, 10);
 }
@@ -344,7 +376,9 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             </div>
 
             {query.trim() === "" && recent3.length > 0 && (
-              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2 }}>Recenti</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {recent3.map((id) => {
                   const m = TOOL_META[id];
                   if (!m) return null;
@@ -373,6 +407,74 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   );
                 })}
               </div>
+              </div>
+
+            {query.trim() === "" && (
+              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2 }}>Preferiti</div>
+                  {!premium && (
+                    <button
+                      type="button"
+                      className="nd-press"
+                      onClick={() =>
+                        openUpsell({
+                          title: "Preferiti Premium",
+                          subtitle: "Sblocca preferiti e accesso rapido ai tuoi tool più usati.",
+                          bullets: ["Preferiti illimitati", "Accesso rapido in Utility", "Storico avanzato"],
+                        })
+                      }
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 999,
+                        border: "1px solid rgba(255,255,255,0.10)",
+                        background: "rgba(255,255,255,0.05)",
+                        fontWeight: 950,
+                        fontSize: 12,
+                        color: "rgba(255,255,255,0.92)",
+                      }}>
+                      Sblocca
+                    </button>
+                  )}
+                </div>
+
+                {favs.length > 0 ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {favs.slice(0, 8).map((id) => {
+                      const m = TOOL_META[id];
+                      if (!m) return null;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          className="nd-press"
+                          onClick={() => m.open()}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: "8px 10px",
+                            borderRadius: 999,
+                            border: `1px solid ${m.accent.border}`,
+                            background: m.accent.soft,
+                            color: "rgba(255,255,255,0.92)",
+                            fontWeight: 950,
+                            fontSize: 12,
+                            letterSpacing: -0.2,
+                          }}>
+                          <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
+                          {m.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, opacity: 0.65, fontWeight: 800 }}>
+                    Aggiungi i tool che usi più spesso e trovali subito qui.
+                  </div>
+                )}
+              </div>
+            )}
             )}
             </div>
           </div>
@@ -1179,13 +1281,13 @@ function ToolMlH({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
   }, [vol, hours]);
 
   return (
-    <CalcShell title="Velocità infusione (ml/h)" subtitle="Da volume e tempo" onSave={() => {
+    <CalcShell title="Velocità infusione (ml/h)" subtitle="Da volume e tempo" out={out} onToast={onToast} onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "ml/h", ts: Date.now(), inputs: { vol, hours }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Volume (ml)" value={vol} setValue={setVol} />
-      <NumRow label="Tempo (h)" value={hours} setValue={setHours} />
+      <NumRow label="Volume (ml)" value={vol} setValue={setVol} min={1} max={5000} />
+      <NumRow label="Tempo (h)" value={hours} setValue={setHours} min={0.1} max={72} step={0.25} />
       <CalcOut out={out} />
     </CalcShell>
   );
@@ -1206,13 +1308,13 @@ function ToolGtt({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
   }, [vol, min, set]);
 
   return (
-    <CalcShell title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" onSave={() => {
+    <CalcShell title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" out={out} onToast={onToast} onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "gtt/min", ts: Date.now(), inputs: { vol, min, set }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Volume (ml)" value={vol} setValue={setVol} />
-      <NumRow label="Tempo (min)" value={min} setValue={setMin} />
+      <NumRow label="Volume (ml)" value={vol} setValue={setVol} min={1} max={5000} />
+      <NumRow label="Tempo (min)" value={min} setValue={setMin} min={1} max={24*60} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10 }}>
         <div style={{ fontWeight: 850, opacity: 0.9 }}>Deflussore</div>
         <select value={set} onChange={(e) => setSet(Number(e.target.value))} style={selectStyle()}>
@@ -1244,14 +1346,14 @@ function ToolMgKgMin({ last, onSave, onToast }: { last: UtilityHistoryItem | nul
   }, [dose, weight, conc]);
 
   return (
-    <CalcShell title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" onSave={() => {
+    <CalcShell title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" out={out} onToast={onToast} onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "mg/kg/min → ml/h", ts: Date.now(), inputs: { dose, weight, conc }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Dose (mg/kg/min)" value={dose} setValue={setDose} step={0.01} />
-      <NumRow label="Peso (kg)" value={weight} setValue={setWeight} />
-      <NumRow label="Concentrazione (mg/ml)" value={conc} setValue={setConc} step={0.1} />
+      <NumRow label="Dose (mg/kg/min)" value={dose} setValue={setDose} step={0.01} min={0.001} max={50} />
+      <NumRow label="Peso (kg)" value={weight} setValue={setWeight} min={1} max={300} />
+      <NumRow label="Concentrazione (mg/ml)" value={conc} setValue={setConc} step={0.1} min={0.001} max={1000} />
       <CalcOut out={out} />
     </CalcShell>
   );
@@ -1270,13 +1372,13 @@ function ToolMAP({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
   }, [sys, dia]);
 
   return (
-    <CalcShell title="MAP" subtitle="Pressione arteriosa media" onSave={() => {
+    <CalcShell title="MAP" subtitle="Pressione arteriosa media" out={out} onToast={onToast} onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "MAP", ts: Date.now(), inputs: { sys, dia }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Sistolica" value={sys} setValue={setSys} />
-      <NumRow label="Diastolica" value={dia} setValue={setDia} />
+      <NumRow label="Sistolica" value={sys} setValue={setSys} min={40} max={300} />
+      <NumRow label="Diastolica" value={dia} setValue={setDia} min={20} max={200} />
       <CalcOut out={out} />
     </CalcShell>
   );
@@ -1295,13 +1397,13 @@ function ToolBMI({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
   }, [kg, cm]);
 
   return (
-    <CalcShell title="BMI" subtitle="Indice massa corporea" onSave={() => {
+    <CalcShell title="BMI" subtitle="Indice massa corporea" out={out} onToast={onToast} onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "BMI", ts: Date.now(), inputs: { kg, cm }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Peso (kg)" value={kg} setValue={setKg} />
-      <NumRow label="Altezza (cm)" value={cm} setValue={setCm} />
+      <NumRow label="Peso (kg)" value={kg} setValue={setKg} min={1} max={400} />
+      <NumRow label="Altezza (cm)" value={cm} setValue={setCm} min={50} max={250} />
       <CalcOut out={out} />
     </CalcShell>
   );
@@ -1322,20 +1424,36 @@ function ToolDiuresi({ last, onSave, onToast }: { last: UtilityHistoryItem | nul
   }, [ml, hours, weight]);
 
   return (
-    <CalcShell title="Diuresi" subtitle="ml/kg/h" onSave={() => {
+    <CalcShell title="Diuresi" subtitle="ml/kg/h" out={out} onToast={onToast} onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "Diuresi", ts: Date.now(), inputs: { ml, hours, weight }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Diuresi (ml)" value={ml} setValue={setMl} />
-      <NumRow label="Tempo (h)" value={hours} setValue={setHours} />
-      <NumRow label="Peso (kg)" value={weight} setValue={setWeight} />
+      <NumRow label="Diuresi (ml)" value={ml} setValue={setMl} min={1} max={10000} />
+      <NumRow label="Tempo (h)" value={hours} setValue={setHours} min={0.1} max={72} step={0.25} />
+      <NumRow label="Peso (kg)" value={weight} setValue={setWeight} min={1} max={300} />
       <CalcOut out={out} />
     </CalcShell>
   );
 }
 
-function CalcShell({ title, subtitle, children, onSave }: { title: string; subtitle: string; children: React.ReactNode; onSave: () => void }) {
+function CalcShell({
+  title,
+  subtitle,
+  out,
+  children,
+  onSave,
+  onToast,
+}: {
+  title: string;
+  subtitle: string;
+  out: string;
+  children: React.ReactNode;
+  onSave: () => void;
+  onToast: (msg: string, type?: any) => void;
+}) {
+  const canCopy = Boolean(out);
+
   return (
     <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
       <div style={{ fontWeight: 950, fontSize: 15 }}>{title}</div>
@@ -1343,7 +1461,18 @@ function CalcShell({ title, subtitle, children, onSave }: { title: string; subti
 
       <div style={{ marginTop: 12 }}>{children}</div>
 
-      <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 10 }}>
+        <button
+          type="button"
+          onClick={async () => {
+            if (!canCopy) return onToast("Nessun risultato da copiare", "warning");
+            const ok = await copyToClipboard(out);
+            onToast(ok ? "Copiato" : "Copia non riuscita", ok ? "success" : "warning");
+          }}
+          style={primaryBtn(true)}
+          disabled={!canCopy}>
+          Copia
+        </button>
         <button type="button" onClick={onSave} style={primaryBtn(false)}>
           Salva
         </button>
@@ -1352,15 +1481,39 @@ function CalcShell({ title, subtitle, children, onSave }: { title: string; subti
   );
 }
 
-function NumRow({ label, value, setValue, step }: { label: string; value: number; setValue: (n: number) => void; step?: number }) {
+function NumRow({
+  label,
+  value,
+  setValue,
+  step,
+  min,
+  max,
+}: {
+  label: string;
+  value: number;
+  setValue: (n: number) => void;
+  step?: number;
+  min?: number;
+  max?: number;
+}) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10 }}>
       <div style={{ fontWeight: 850, opacity: 0.9 }}>{label}</div>
       <input
         type="number"
-        value={value}
+        value={Number.isFinite(value) ? value : 0}
         step={step}
-        onChange={(e) => setValue(Number(e.target.value))}
+        min={min}
+        max={max}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw === "") return setValue(0);
+          const n = Number(raw);
+          if (!Number.isFinite(n)) return;
+          // clamp to avoid negative / absurd values
+          const nn = typeof min === "number" || typeof max === "number" ? clamp(n, min ?? -1e9, max ?? 1e9) : n;
+          setValue(nn);
+        }}
         style={inputStyle()}
       />
     </div>
