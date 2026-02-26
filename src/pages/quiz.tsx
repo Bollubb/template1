@@ -1652,12 +1652,39 @@ if (runQuiz.mode === "concorso") {
     <button
       type="button"
       className="nd-btn nd-btn-ghost nd-press"
-      style={{ ...btnStyle("ghost"), minHeight: 56, padding: "14px 14px" }}
+      style={{ ...btnStyle("ghost"), minHeight: 64, padding: "14px 14px" }}
       onClick={() => setBoardsOpen(true)}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", minWidth: 0 }}>
-        <span style={{ fontWeight: 950, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🏆 Classifiche</span>
-        <span className="nd-badge nd-badge-emerald" style={{ ...chipStyle("emerald"), flex: "0 0 auto", fontSize: 11, padding: "6px 10px", lineHeight: 1 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
+          gridTemplateRows: "auto auto",
+          alignItems: "center",
+          gap: "6px 10px",
+          width: "100%",
+          minWidth: 0,
+        }}
+      >
+        <div style={{ gridColumn: "1 / span 2", display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{ fontWeight: 950, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🏆 Classifiche</span>
+        </div>
+        <span
+          className="nd-badge nd-badge-emerald"
+          style={{
+            ...chipStyle("emerald"),
+            gridColumn: "2",
+            justifySelf: "end",
+            alignSelf: "end",
+            maxWidth: "100%",
+            fontSize: 11,
+            padding: "6px 10px",
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
           Personale/Globale
         </span>
       </div>
@@ -1666,12 +1693,39 @@ if (runQuiz.mode === "concorso") {
     <button
       type="button"
       className="nd-btn nd-btn-sky nd-press"
-      style={{ ...btnStyle("sky"), minHeight: 56, padding: "14px 14px" }}
+      style={{ ...btnStyle("sky"), minHeight: 64, padding: "14px 14px" }}
       onClick={() => setChallengeOpen(true)}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", minWidth: 0 }}>
-        <span style={{ fontWeight: 950, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>⚔️ Sfide 1v1</span>
-        <span className="nd-badge nd-badge-slate" style={{ ...chipStyle("slate"), flex: "0 0 auto", fontSize: 11, padding: "6px 10px", lineHeight: 1 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr auto",
+          gridTemplateRows: "auto auto",
+          alignItems: "center",
+          gap: "6px 10px",
+          width: "100%",
+          minWidth: 0,
+        }}
+      >
+        <div style={{ gridColumn: "1 / span 2", display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{ fontWeight: 950, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>⚔️ Sfide 1v1</span>
+        </div>
+        <span
+          className="nd-badge nd-badge-slate"
+          style={{
+            ...chipStyle("slate"),
+            gridColumn: "2",
+            justifySelf: "end",
+            alignSelf: "end",
+            maxWidth: "100%",
+            fontSize: 11,
+            padding: "6px 10px",
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
           Settimana {weeklyBoard.wk.split("-W")[1]}
         </span>
       </div>
