@@ -226,7 +226,8 @@ export default function ToolChecklists({
     const next: Record<string, boolean> = {};
     setState(next);
     writeState(active.id, next);
-    writeLastStep(active.id, sid);
+    // Clear last step on reset (prevents resume highlighting a stale step)
+    writeLastStep(active.id, "");
     writeLast(active.id);
     onToast("Checklist azzerata", "success");
   };
