@@ -56,7 +56,8 @@ function makeVariant(q: QuizQuestion, variantIndex: number): QuizQuestion {
   const seed = hash32(`${q.id}::v${variantIndex}`);
   const idx = shuffleWithSeed([0, 1, 2, 3], seed);
   const options = idx.map((i) => q.options[i]);
-  const answer = idx.indexOf(q.answer);
+  const rawAnswer = typeof q.answer === "number" ? q.answer : 0;
+  const answer = Math.max(0, idx.indexOf(rawAnswer));
 
   // Minimal, non-invasive label to avoid duplicates in UI without changing meaning.
   const baseQ = String((q as any).q ?? "");
