@@ -4,6 +4,7 @@ import { isPremium } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
 import ToolScales from "./utility/ToolScales";
 import ToolInfusions from "./utility/ToolInfusions";
+import ToolChecklists from "./utility/ToolChecklists";
 
 const LS = {
   section: "nd_utility_section_v1",
@@ -605,7 +606,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
               onToggleFav={toggleFav}
             />
           )}
-          {section === "checklists" && <ComingSoon title="Checklist operative" desc="Checklist step-by-step, stampabili e pronte da reparto." onUpsell={openUpsell} />}
+          {section === "checklists" && <ToolChecklists onUpsell={openUpsell} onToast={(m, t) => toast.push(m, t)} />}
 
           {section === "calculators" && (
             <>
@@ -848,6 +849,137 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
       ],
     },
 
+    
+    // ---- Estensione DB (alta resa infermieristica) ----
+    {
+      id: "apixaban",
+      name: "Apixaban",
+      group: "DOAC",
+      interactions: [
+        { key: "antiagg", sev: "avoid", why: "Somma rischio emorragico con antiaggreganti.", monitor: ["Valuta segni di sanguinamento", "Valuta indicazione clinica"], alternatives: ["Monoterapia se appropriata (decisione medico)"] },
+        { key: "fans", sev: "avoid", why: "Aumenta rischio emorragico (mucosa + piastrine).", monitor: ["Educazione segni di sanguinamento", "Valuta gastroprotezione"] },
+        { key: "cyp3a4", sev: "caution", why: "Interazioni metaboliche possibili (CYP3A4/P-gp).", monitor: ["Sorveglia sanguinamenti", "Valuta farmaci concomitanti"] },
+      ],
+    },
+    {
+      id: "enoxaparina",
+      name: "Enoxaparina",
+      group: "Eparine",
+      interactions: [
+        { key: "antiagg", sev: "avoid", why: "Somma rischio emorragico (eparina + antiaggregante).", monitor: ["Controlla ematomi/sanguinamenti", "Valuta Hb se indicato"] },
+        { key: "fans", sev: "avoid", why: "Somma rischio emorragico.", monitor: ["Segni emorragia", "Valuta gastroprotezione"] },
+      ],
+    },
+    {
+      id: "aspirina",
+      name: "Acido acetilsalicilico",
+      group: "Antiaggreganti",
+      also: ["ASA"],
+      interactions: [
+        { key: "anticoag", sev: "avoid", why: "Somma rischio emorragico con anticoagulanti.", monitor: ["Segni sanguinamento", "Valuta Hb/ematocrito se indicato"] },
+        { key: "fans", sev: "avoid", why: "Somma gastrolesività e rischio emorragico.", monitor: ["Valuta gastroprotezione"] },
+      ],
+    },
+    {
+      id: "clopidogrel",
+      name: "Clopidogrel",
+      group: "Antiaggreganti",
+      interactions: [
+        { key: "ppi", sev: "caution", why: "Alcuni PPI possono ridurre attivazione (CYP2C19).", monitor: ["Valuta scelta PPI", "Sorveglia efficacia antiaggregante secondo indicazione"] },
+        { key: "anticoag", sev: "avoid", why: "Somma rischio emorragico.", monitor: ["Segni sanguinamento"] },
+      ],
+    },
+    {
+      id: "ramipril",
+      name: "Ramipril",
+      group: "ACE-inibitori",
+      interactions: [
+        { key: "k", sev: "caution", why: "Rischio iperkaliemia (specie con risparmiatori di K).", monitor: ["K sierico", "ECG se K elevato"] },
+        { key: "diuretici", sev: "caution", why: "Ipotensione/insufficienza renale in associazione.", monitor: ["PA", "Creatinina", "Diuresi"] },
+      ],
+    },
+    {
+      id: "losartan",
+      name: "Losartan",
+      group: "ARB",
+      interactions: [
+        { key: "k", sev: "caution", why: "Rischio iperkaliemia.", monitor: ["K sierico", "Monitoraggio ECG se rischio"] },
+        { key: "diuretici", sev: "caution", why: "Ipotensione/creatinina ↑ in associazione.", monitor: ["PA", "Creatinina", "Diuresi"] },
+      ],
+    },
+    {
+      id: "spironolattone",
+      name: "Spironolattone",
+      group: "Diuretici",
+      interactions: [
+        { key: "acei", sev: "caution", why: "Somma rischio iperkaliemia (ACEi/ARB + risparmiatore K).", monitor: ["K sierico", "Segni iperkaliemia"] },
+        { key: "arb", sev: "caution", why: "Somma rischio iperkaliemia.", monitor: ["K sierico"] },
+      ],
+    },
+    {
+      id: "furosemide",
+      name: "Furosemide",
+      group: "Diuretici",
+      interactions: [
+        { key: "nefro", sev: "caution", why: "Rischio disidratazione/AKI con farmaci nefrotossici o ipovolemia.", monitor: ["Diuresi", "Creatinina", "PA"] },
+        { key: "digossina", sev: "caution", why: "Ipokaliemia può aumentare tossicità da digossina.", monitor: ["K/Mg", "Segni tossicità digossina", "ECG"] },
+      ],
+    },
+    {
+      id: "digossina",
+      name: "Digossina",
+      group: "Cardiovascolari",
+      interactions: [
+        { key: "amiodarone", sev: "avoid", why: "Aumenta livelli di digossina (P-gp) → tossicità.", monitor: ["ECG", "Segni tossicità (nausea, aritmie)", "Valuta livello se indicato"], alternatives: ["Valuta riduzione dose (decisione medico)"] },
+        { key: "macrolidi", sev: "caution", why: "Possibile aumento livelli e aritmie.", monitor: ["ECG", "Sintomi"] },
+      ],
+    },
+    {
+      id: "litio",
+      name: "Litio",
+      group: "Psichiatria",
+      interactions: [
+        { key: "diuretici", sev: "avoid", why: "Diuretici (specie tiazidici) aumentano livelli di litio.", monitor: ["Segni tossicità (tremore, confusione)", "Valuta livelli"] },
+        { key: "fans", sev: "avoid", why: "FANS possono aumentare livelli di litio.", monitor: ["Segni tossicità", "Valuta alternative analgesiche"] },
+        { key: "acei", sev: "caution", why: "ACEi possono aumentare livelli di litio.", monitor: ["Segni tossicità", "Valuta livelli"] },
+      ],
+    },
+    {
+      id: "metformina",
+      name: "Metformina",
+      group: "Antidiabetici",
+      interactions: [
+        { key: "nefro", sev: "caution", why: "Rischio accumulo in insufficienza renale (lattacidosi).", monitor: ["Creatinina/eGFR", "Segni acidosi lattica"] },
+      ],
+    },
+    {
+      id: "insulina",
+      name: "Insulina",
+      group: "Antidiabetici",
+      interactions: [
+        { key: "beta", sev: "caution", why: "Beta-bloccanti possono mascherare ipoglicemia.", monitor: ["Glicemie ravvicinate", "Educazione sintomi atipici"] },
+        { key: "cortico", sev: "caution", why: "Corticosteroidi aumentano glicemia → necessità aggiustamento.", monitor: ["Glicemie", "Schema insulinico"] },
+      ],
+    },
+    {
+      id: "tramadolo",
+      name: "Tramadolo",
+      group: "Analgesici",
+      interactions: [
+        { key: "serotonina", sev: "avoid", why: "Rischio sindrome serotoninergica con SSRI/SNRI/MAOI/linezolid.", monitor: ["Agitazione, iperreflessia, febbre", "Allerta medico"] },
+        { key: "cns", sev: "caution", why: "Depressione SNC con sedativi/oppiacei/benzodiazepine.", monitor: ["FR/SpO2", "Sedazione"] },
+      ],
+    },
+    {
+      id: "morfina",
+      name: "Morfina",
+      group: "Oppioidi",
+      interactions: [
+        { key: "cns", sev: "avoid", why: "Depressione respiratoria con benzodiazepine/altri sedativi.", monitor: ["FR/SpO2", "Sedazione", "Scala dolore"] },
+      ],
+    },
+
+
     // chiavi di gruppo “virtuali” (non selezionabili) usate come regole
     { id: "fans", name: "FANS (gruppo)", group: "GRP", interactions: [] },
     { id: "qt", name: "Farmaci QT-prolunganti (gruppo)", group: "GRP", interactions: [] },
@@ -855,6 +987,21 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
     { id: "beta", name: "Beta-bloccanti (gruppo)", group: "GRP", interactions: [] },
     { id: "calcio", name: "Calcio-antagonisti (gruppo)", group: "GRP", interactions: [] },
     { id: "macrolidi", name: "Macrolidi (gruppo)", group: "GRP", interactions: [] },
+    
+    { id: "doac", name: "DOAC (gruppo)", group: "GRP", interactions: [] },
+    { id: "anticoag", name: "Anticoagulanti (gruppo)", group: "GRP", interactions: [] },
+    { id: "antiagg", name: "Antiaggreganti (gruppo)", group: "GRP", interactions: [] },
+    { id: "acei", name: "ACE-inibitori (gruppo)", group: "GRP", interactions: [] },
+    { id: "arb", name: "ARB (gruppo)", group: "GRP", interactions: [] },
+    { id: "diuretici", name: "Diuretici (gruppo)", group: "GRP", interactions: [] },
+    { id: "k", name: "Farmaci che aumentano K (gruppo)", group: "GRP", interactions: [] },
+    { id: "nefro", name: "Nefrotossici/AKI risk (gruppo)", group: "GRP", interactions: [] },
+    { id: "serotonina", name: "Serotoninergici (gruppo)", group: "GRP", interactions: [] },
+    { id: "digossina", name: "Digossina (gruppo)", group: "GRP", interactions: [] },
+    { id: "ppi", name: "PPI (gruppo)", group: "GRP", interactions: [] },
+    { id: "cortico", name: "Corticosteroidi (gruppo)", group: "GRP", interactions: [] },
+    { id: "cns", name: "Depressori SNC (gruppo)", group: "GRP", interactions: [] },
+
     { id: "linezolid", name: "Linezolid", group: "Antibiotici", interactions: [] },
   ];
 
