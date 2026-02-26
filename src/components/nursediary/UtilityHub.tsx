@@ -2097,79 +2097,100 @@ function getSmartSuggestionsHybrid(firstDrug: string, premium: boolean){
 
 
 
-/* ===== PATCH 3 – UI smart suggestions + clinical filters ===== */
+/* ===== PATCH 4 – Visible smart assistant + tracking + filters ===== */
 
-type ClinicalFilter = "QT" | "BLEED" | "RENAL" | null;
+// --- tracking simple (local ML perceived) ---
+const LS_SMART = "nd_smart_usage_v1";
 
-function riskColor(risk: string){
-  if(risk==="alto") return "#ef4444";
-  return "#f59e0b";
+function trackInteraction(drug: string) {
+  try {
+    const raw = localStorage.getItem(LS_SMART);
+    const data = raw ? JSON.parse(raw) : {};
+    data[drug] = (data[drug] || 0) + 1;
+    localStorage.setItem(LS_SMART, JSON.stringify(data));
+  } catch {}
 }
 
-/* simple clinical filter scaffold */
-function filterInteractions(list:any[], filter:ClinicalFilter){
-  if(!filter) return list;
-  if(filter==="QT") return list.filter(x=>x.reason?.includes("QT"));
-  if(filter==="BLEED") return list.filter(x=>x.reason?.includes("sanguinamento"));
-  if(filter==="RENAL") return list.filter(x=>x.reason?.includes("K"));
+function getTopUsed(): string[] {
+  try {
+    const raw = localStorage.getItem(LS_SMART);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    return Object.keys(data).sort((a, b) => data[b] - data[a]);
+  } catch {
+    return [];
+  }
+}
+
+// --- clinical filters ---
+type FilterKey = "QT" | "BLEED" | "RENAL" | null;
+
+function applyClinicalFilter(list: any[], filter: FilterKey) {
+  if (!filter) return list;
+  if (filter === "QT") return list.filter(x => x.reason?.includes("QT"));
+  if (filter === "BLEED") return list.filter(x => x.reason?.includes("sanguinamento"));
+  if (filter === "RENAL") return list.filter(x => x.reason?.includes("K"));
   return list;
 }
 
-/* UI component ready */
-export function SmartSuggestionsUI({
+// --- visual assistant ---
+export function SmartAssistant({
   firstDrug,
-  premium,
-  filter
-}:{
-  firstDrug:string;
-  premium:boolean;
-  filter:ClinicalFilter;
-}){
+  premium
+}: {
+  firstDrug: string;
+  premium: boolean;
+}) {
+  const [filter, setFilter] = React.useState<FilterKey>(null);
 
-  const suggestions = filterInteractions(
-    getSmartSuggestionsHybrid(firstDrug, premium),
-    filter
-  );
+  if (!firstDrug) return null;
 
-  if(!firstDrug) return null;
+  const base = getSmartSuggestionsHybrid(firstDrug, premium);
+  const suggestions = applyClinicalFilter(base, filter);
 
   return (
-    <div style={{marginTop:12}}>
-      <div style={{fontWeight:700, marginBottom:6}}>⚠️ Interazioni rilevanti</div>
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontWeight: 800, marginBottom: 8 }}>
+        🧠 Assistente clinico
+      </div>
 
-      {suggestions.map((x,i)=>(
-        <div key={i}
-          style={{
-            display:"flex",
-            justifyContent:"space-between",
-            alignItems:"center",
-            padding:"8px 10px",
-            borderRadius:10,
-            background:"rgba(255,255,255,0.05)",
-            marginBottom:6,
-            border:"1px solid rgba(255,255,255,0.08)"
-          }}
-        >
-          <div>
-            <div style={{fontWeight:600}}>
-              {x.a} + {x.b}
-            </div>
-            <div style={{fontSize:12, opacity:0.7}}>
-              {x.reason}
-            </div>
-          </div>
-
-          <div
+      {/* filters */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        {["QT", "BLEED", "RENAL"].map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(filter === f ? null : (f as FilterKey))}
             style={{
-              padding:"3px 8px",
-              borderRadius:8,
-              background:riskColor(x.risk),
-              color:"#fff",
-              fontSize:11,
-              fontWeight:700
+              padding: "4px 10px",
+              borderRadius: 8,
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: filter === f ? "rgba(255,255,255,0.15)" : "transparent",
+              cursor: "pointer",
+              fontSize: 11
             }}
           >
-            {x.risk.toUpperCase()}
+            {f}
+          </button>
+        ))}
+      </div>
+
+      {/* suggestions */}
+      {suggestions.map((x, i) => (
+        <div
+          key={i}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.05)",
+            marginBottom: 6,
+            border: "1px solid rgba(255,255,255,0.08)"
+          }}
+        >
+          <div style={{ fontWeight: 600 }}>
+            {x.a} + {x.b}
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.7 }}>
+            {x.reason}
           </div>
         </div>
       ))}
@@ -2177,5 +2198,5 @@ export function SmartSuggestionsUI({
   );
 }
 
-/* ready for animation + tracking next patch */
+/* === END PATCH 4 === */
 
