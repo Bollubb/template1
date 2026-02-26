@@ -2095,3 +2095,87 @@ function getSmartSuggestionsHybrid(firstDrug: string, premium: boolean){
 
 /* UI hook ready: show after first drug selection */
 
+
+
+/* ===== PATCH 3 – UI smart suggestions + clinical filters ===== */
+
+type ClinicalFilter = "QT" | "BLEED" | "RENAL" | null;
+
+function riskColor(risk: string){
+  if(risk==="alto") return "#ef4444";
+  return "#f59e0b";
+}
+
+/* simple clinical filter scaffold */
+function filterInteractions(list:any[], filter:ClinicalFilter){
+  if(!filter) return list;
+  if(filter==="QT") return list.filter(x=>x.reason?.includes("QT"));
+  if(filter==="BLEED") return list.filter(x=>x.reason?.includes("sanguinamento"));
+  if(filter==="RENAL") return list.filter(x=>x.reason?.includes("K"));
+  return list;
+}
+
+/* UI component ready */
+export function SmartSuggestionsUI({
+  firstDrug,
+  premium,
+  filter
+}:{
+  firstDrug:string;
+  premium:boolean;
+  filter:ClinicalFilter;
+}){
+
+  const suggestions = filterInteractions(
+    getSmartSuggestionsHybrid(firstDrug, premium),
+    filter
+  );
+
+  if(!firstDrug) return null;
+
+  return (
+    <div style={{marginTop:12}}>
+      <div style={{fontWeight:700, marginBottom:6}}>⚠️ Interazioni rilevanti</div>
+
+      {suggestions.map((x,i)=>(
+        <div key={i}
+          style={{
+            display:"flex",
+            justifyContent:"space-between",
+            alignItems:"center",
+            padding:"8px 10px",
+            borderRadius:10,
+            background:"rgba(255,255,255,0.05)",
+            marginBottom:6,
+            border:"1px solid rgba(255,255,255,0.08)"
+          }}
+        >
+          <div>
+            <div style={{fontWeight:600}}>
+              {x.a} + {x.b}
+            </div>
+            <div style={{fontSize:12, opacity:0.7}}>
+              {x.reason}
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding:"3px 8px",
+              borderRadius:8,
+              background:riskColor(x.risk),
+              color:"#fff",
+              fontSize:11,
+              fontWeight:700
+            }}
+          >
+            {x.risk.toUpperCase()}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ready for animation + tracking next patch */
+
