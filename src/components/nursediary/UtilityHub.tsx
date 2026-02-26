@@ -2041,3 +2041,57 @@ function findInteractions(drug: string) {
 export function suggestSecondDrug(first: string): Interaction[] {
   return findInteractions(first);
 }
+
+
+/* ===== PATCH 2 – Smart suggestions + hybrid premium ===== */
+
+type RiskLevel = "alto" | "medio";
+
+type InteractionSmart = {
+  a: string;
+  b: string;
+  risk: RiskLevel;
+  reason: string;
+  premium?: boolean;
+};
+
+const DRUGS_SMART = [
+"Amiodarone","Sotalolo","Metoprololo","Bisoprololo",
+"Levofloxacina","Ciprofloxacina","Azitromicina",
+"Warfarin","ASA","Clopidogrel","Eparina","Enoxaparina",
+"Sertralina","Escitalopram","Venlafaxina",
+"Furosemide","Torasemide","Spironolattone",
+"Digossina",
+"Morfina","Ossicodone","Fentanil",
+"Midazolam","Diazepam","Lorazepam",
+"Haloperidolo","Quetiapina",
+"Ondansetron","Metoclopramide",
+"Valproato","Levetiracetam",
+"Ramipril","Enalapril","Losartan",
+"Idroclorotiazide",
+"Insulina","Metformina"
+];
+
+const INTERACTIONS_SMART: InteractionSmart[] = [
+{a:"Amiodarone",b:"Azitromicina",risk:"alto",reason:"↑ QT → torsioni"},
+{a:"Amiodarone",b:"Ondansetron",risk:"alto",reason:"↑ QT → torsioni"},
+{a:"Haloperidolo",b:"Ondansetron",risk:"alto",reason:"↑ QT → torsioni",premium:true},
+{a:"Warfarin",b:"Clopidogrel",risk:"alto",reason:"↑ sanguinamento"},
+{a:"Warfarin",b:"Enoxaparina",risk:"alto",reason:"↑ sanguinamento",premium:true},
+{a:"ASA",b:"Clopidogrel",risk:"alto",reason:"↑ sanguinamento"},
+{a:"Fentanil",b:"Midazolam",risk:"alto",reason:"depressione respiratoria"},
+{a:"Morfina",b:"Diazepam",risk:"alto",reason:"depressione respiratoria",premium:true},
+{a:"Ramipril",b:"Spironolattone",risk:"medio",reason:"↑ K → aritmie"},
+{a:"Losartan",b:"Spironolattone",risk:"medio",reason:"↑ K → aritmie",premium:true},
+];
+
+function getSmartSuggestionsHybrid(firstDrug: string, premium: boolean){
+  if(!firstDrug) return [];
+  return INTERACTIONS_SMART
+    .filter(x => (x.a === firstDrug || x.b === firstDrug))
+    .filter(x => premium ? true : !x.premium)
+    .sort((a,b)=> a.risk === "alto" ? -1 : 1);
+}
+
+/* UI hook ready: show after first drug selection */
+
