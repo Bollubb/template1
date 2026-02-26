@@ -76,38 +76,6 @@ function writeRecent(next: RecentItem[]) {
   } catch {}
 }
 
-
-async function copyToClipboard(text: string) {
-  try {
-    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {}
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.left = "-9999px";
-    ta.style.top = "-9999px";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
-  } catch {}
-  return false;
-}
-
-function clamp(n: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, n));
-}
-
-function numOrNull(v: any) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
 function dayKey(d = new Date()) {
   return d.toISOString().slice(0, 10);
 }
@@ -376,69 +344,71 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             </div>
 
             {query.trim() === "" && recent3.length > 0 && (
-              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2 }}>Recenti</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {recent3.map((id) => {
-                  const m = TOOL_META[id];
-                  if (!m) return null;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      className="nd-press"
-                      onClick={() => m.open()}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "8px 10px",
-                        borderRadius: 999,
-                        border: `1px solid ${m.accent.border}`,
-                        background: m.accent.soft,
-                        color: "rgba(255,255,255,0.92)",
-                        fontWeight: 950,
-                        fontSize: 12,
-                        letterSpacing: -0.2,
-                      }}>
-                      <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
-                      {m.label}
-                    </button>
-                  );
-                })}
-              </div>
-              </div>
+  <div style={{ marginTop: 12 }}>
+    <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2, marginBottom: 8 }}>Recenti</div>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {recent3.map((id) => {
+        const m = TOOL_META[id];
+        if (!m) return null;
+        return (
+          <button
+            key={id}
+            type="button"
+            className="nd-press"
+            onClick={() => m.open()}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "8px 10px",
+              borderRadius: 999,
+              border: `1px solid ${m.accent.border}`,
+              background: m.accent.soft,
+              color: "rgba(255,255,255,0.92)",
+              fontWeight: 900,
+            }}
+          >
+            <span style={{ opacity: 0.9 }}>{m.icon}</span>
+            <span style={{ whiteSpace: "nowrap" }}>{m.title}</span>
+          </button>
+        );
+      })}
+    </div>
+  </div>
+)}
 
             {query.trim() === "" && (
-              <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
                   <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2 }}>Preferiti</div>
                   {!premium && (
                     <button
                       type="button"
                       className="nd-press"
                       onClick={() =>
-                        openUpsell({
-                          title: "Preferiti Premium",
-                          subtitle: "Sblocca preferiti e accesso rapido ai tuoi tool più usati.",
-                          bullets: ["Preferiti illimitati", "Accesso rapido in Utility", "Storico avanzato"],
-                        })
+                        openUpsell(
+                          "Preferiti Premium",
+                          "Salva i tool che usi di più e ritrovali in 1 tap.",
+                          ["Preferiti illimitati", "Accesso rapido", "Tool avanzati"]
+                        )
                       }
                       style={{
                         padding: "6px 10px",
                         borderRadius: 999,
-                        border: "1px solid rgba(255,255,255,0.10)",
+                        border: "1px solid rgba(255,255,255,0.12)",
                         background: "rgba(255,255,255,0.05)",
-                        fontWeight: 950,
-                        fontSize: 12,
-                        color: "rgba(255,255,255,0.92)",
-                      }}>
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       Sblocca
                     </button>
                   )}
                 </div>
-
-                {favs.length > 0 ? (
+            
+                {premium && favs.length === 0 ? (
+                  <div style={{ opacity: 0.7, fontSize: 13 }}>Nessun preferito ancora. Tocca ☆ su un tool per salvarlo.</div>
+                ) : premium ? (
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {favs.slice(0, 8).map((id) => {
                       const m = TOOL_META[id];
@@ -456,27 +426,23 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                             padding: "8px 10px",
                             borderRadius: 999,
                             border: `1px solid ${m.accent.border}`,
-                            background: m.accent.soft,
+                            background: "rgba(255,255,255,0.03)",
                             color: "rgba(255,255,255,0.92)",
-                            fontWeight: 950,
-                            fontSize: 12,
-                            letterSpacing: -0.2,
-                          }}>
-                          <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: m.accent.solid }} />
-                          {m.label}
+                            fontWeight: 900,
+                          }}
+                        >
+                          <span style={{ opacity: 0.9 }}>{m.icon}</span>
+                          <span style={{ whiteSpace: "nowrap" }}>{m.title}</span>
                         </button>
                       );
                     })}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 12, opacity: 0.65, fontWeight: 800 }}>
-                    Aggiungi i tool che usi più spesso e trovali subito qui.
-                  </div>
+                  <div style={{ opacity: 0.7, fontSize: 13 }}>Con Premium puoi salvare e ritrovare i tool in 1 tap.</div>
                 )}
               </div>
             )}
-            )}
-            </div>
+                        </div>
           </div>
 
           <div style={{ display: "grid", gap: 12, paddingTop: 10 }}>
@@ -1234,6 +1200,32 @@ function ghostBtn(): React.CSSProperties {
  * ======================
  * Manteniamo i tool esistenti (Patch B li renderà “smart” in step successivo)
  */
+
+function copyTextToClipboard(text: string): boolean {
+  if (!isBrowser()) return false;
+  try {
+    const nav: any = navigator as any;
+    if (nav?.clipboard?.writeText) {
+      nav.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.top = "-9999px";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {}
+  return false;
+}
+
 function ToolRenderer({
   id,
   last,
@@ -1281,14 +1273,14 @@ function ToolMlH({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
   }, [vol, hours]);
 
   return (
-    <CalcShell title="Velocità infusione (ml/h)" subtitle="Da volume e tempo" out={out} onToast={onToast} onSave={() => {
+    <CalcShell title="Velocità infusione (ml/h)" subtitle="Da volume e tempo" onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "ml/h", ts: Date.now(), inputs: { vol, hours }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Volume (ml)" value={vol} setValue={setVol} min={1} max={5000} />
-      <NumRow label="Tempo (h)" value={hours} setValue={setHours} min={0.1} max={72} step={0.25} />
-      <CalcOut out={out} />
+      <NumRow label="Volume (ml)" value={vol} setValue={setVol} />
+      <NumRow label="Tempo (h)" value={hours} setValue={setHours} />
+      <CalcOut out={out} onToast={onToast} />
     </CalcShell>
   );
 }
@@ -1308,13 +1300,13 @@ function ToolGtt({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
   }, [vol, min, set]);
 
   return (
-    <CalcShell title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" out={out} onToast={onToast} onSave={() => {
+    <CalcShell title="Gocce/min" subtitle="Deflussore 20 o 60 gtt" onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "gtt/min", ts: Date.now(), inputs: { vol, min, set }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Volume (ml)" value={vol} setValue={setVol} min={1} max={5000} />
-      <NumRow label="Tempo (min)" value={min} setValue={setMin} min={1} max={24*60} />
+      <NumRow label="Volume (ml)" value={vol} setValue={setVol} />
+      <NumRow label="Tempo (min)" value={min} setValue={setMin} />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginTop: 10 }}>
         <div style={{ fontWeight: 850, opacity: 0.9 }}>Deflussore</div>
         <select value={set} onChange={(e) => setSet(Number(e.target.value))} style={selectStyle()}>
@@ -1322,7 +1314,7 @@ function ToolGtt({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
           <option value={60}>60 gtt/ml</option>
         </select>
       </div>
-      <CalcOut out={out} />
+      <CalcOut out={out} onToast={onToast} />
     </CalcShell>
   );
 }
@@ -1346,15 +1338,15 @@ function ToolMgKgMin({ last, onSave, onToast }: { last: UtilityHistoryItem | nul
   }, [dose, weight, conc]);
 
   return (
-    <CalcShell title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" out={out} onToast={onToast} onSave={() => {
+    <CalcShell title="Dose → ml/h" subtitle="mg/kg/min → ml/h (con concentrazione)" onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "mg/kg/min → ml/h", ts: Date.now(), inputs: { dose, weight, conc }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Dose (mg/kg/min)" value={dose} setValue={setDose} step={0.01} min={0.001} max={50} />
-      <NumRow label="Peso (kg)" value={weight} setValue={setWeight} min={1} max={300} />
-      <NumRow label="Concentrazione (mg/ml)" value={conc} setValue={setConc} step={0.1} min={0.001} max={1000} />
-      <CalcOut out={out} />
+      <NumRow label="Dose (mg/kg/min)" value={dose} setValue={setDose} step={0.01} />
+      <NumRow label="Peso (kg)" value={weight} setValue={setWeight} />
+      <NumRow label="Concentrazione (mg/ml)" value={conc} setValue={setConc} step={0.1} />
+      <CalcOut out={out} onToast={onToast} />
     </CalcShell>
   );
 }
@@ -1372,14 +1364,14 @@ function ToolMAP({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
   }, [sys, dia]);
 
   return (
-    <CalcShell title="MAP" subtitle="Pressione arteriosa media" out={out} onToast={onToast} onSave={() => {
+    <CalcShell title="MAP" subtitle="Pressione arteriosa media" onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "MAP", ts: Date.now(), inputs: { sys, dia }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Sistolica" value={sys} setValue={setSys} min={40} max={300} />
-      <NumRow label="Diastolica" value={dia} setValue={setDia} min={20} max={200} />
-      <CalcOut out={out} />
+      <NumRow label="Sistolica" value={sys} setValue={setSys} />
+      <NumRow label="Diastolica" value={dia} setValue={setDia} />
+      <CalcOut out={out} onToast={onToast} />
     </CalcShell>
   );
 }
@@ -1397,14 +1389,14 @@ function ToolBMI({ last, onSave, onToast }: { last: UtilityHistoryItem | null; o
   }, [kg, cm]);
 
   return (
-    <CalcShell title="BMI" subtitle="Indice massa corporea" out={out} onToast={onToast} onSave={() => {
+    <CalcShell title="BMI" subtitle="Indice massa corporea" onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "BMI", ts: Date.now(), inputs: { kg, cm }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Peso (kg)" value={kg} setValue={setKg} min={1} max={400} />
-      <NumRow label="Altezza (cm)" value={cm} setValue={setCm} min={50} max={250} />
-      <CalcOut out={out} />
+      <NumRow label="Peso (kg)" value={kg} setValue={setKg} />
+      <NumRow label="Altezza (cm)" value={cm} setValue={setCm} />
+      <CalcOut out={out} onToast={onToast} />
     </CalcShell>
   );
 }
@@ -1424,36 +1416,20 @@ function ToolDiuresi({ last, onSave, onToast }: { last: UtilityHistoryItem | nul
   }, [ml, hours, weight]);
 
   return (
-    <CalcShell title="Diuresi" subtitle="ml/kg/h" out={out} onToast={onToast} onSave={() => {
+    <CalcShell title="Diuresi" subtitle="ml/kg/h" onSave={() => {
       if (!out) return onToast("Compila i campi", "warning");
       onSave({ tool: "Diuresi", ts: Date.now(), inputs: { ml, hours, weight }, output: out });
       onToast("Salvato", "success");
     }}>
-      <NumRow label="Diuresi (ml)" value={ml} setValue={setMl} min={1} max={10000} />
-      <NumRow label="Tempo (h)" value={hours} setValue={setHours} min={0.1} max={72} step={0.25} />
-      <NumRow label="Peso (kg)" value={weight} setValue={setWeight} min={1} max={300} />
-      <CalcOut out={out} />
+      <NumRow label="Diuresi (ml)" value={ml} setValue={setMl} />
+      <NumRow label="Tempo (h)" value={hours} setValue={setHours} />
+      <NumRow label="Peso (kg)" value={weight} setValue={setWeight} />
+      <CalcOut out={out} onToast={onToast} />
     </CalcShell>
   );
 }
 
-function CalcShell({
-  title,
-  subtitle,
-  out,
-  children,
-  onSave,
-  onToast,
-}: {
-  title: string;
-  subtitle: string;
-  out: string;
-  children: React.ReactNode;
-  onSave: () => void;
-  onToast: (msg: string, type?: any) => void;
-}) {
-  const canCopy = Boolean(out);
-
+function CalcShell({ title, subtitle, children, onSave }: { title: string; subtitle: string; children: React.ReactNode; onSave: () => void }) {
   return (
     <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
       <div style={{ fontWeight: 950, fontSize: 15 }}>{title}</div>
@@ -1461,18 +1437,7 @@ function CalcShell({
 
       <div style={{ marginTop: 12 }}>{children}</div>
 
-      <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 10 }}>
-        <button
-          type="button"
-          onClick={async () => {
-            if (!canCopy) return onToast("Nessun risultato da copiare", "warning");
-            const ok = await copyToClipboard(out);
-            onToast(ok ? "Copiato" : "Copia non riuscita", ok ? "success" : "warning");
-          }}
-          style={primaryBtn(true)}
-          disabled={!canCopy}>
-          Copia
-        </button>
+      <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
         <button type="button" onClick={onSave} style={primaryBtn(false)}>
           Salva
         </button>
@@ -1501,18 +1466,17 @@ function NumRow({
       <div style={{ fontWeight: 850, opacity: 0.9 }}>{label}</div>
       <input
         type="number"
-        value={Number.isFinite(value) ? value : 0}
+        value={value}
         step={step}
         min={min}
         max={max}
         onChange={(e) => {
-          const raw = e.target.value;
-          if (raw === "") return setValue(0);
-          const n = Number(raw);
-          if (!Number.isFinite(n)) return;
-          // clamp to avoid negative / absurd values
-          const nn = typeof min === "number" || typeof max === "number" ? clamp(n, min ?? -1e9, max ?? 1e9) : n;
-          setValue(nn);
+          const raw = Number(e.target.value);
+          if (!Number.isFinite(raw)) return setValue(0);
+          let next = raw;
+          if (typeof min === "number") next = Math.max(min, next);
+          if (typeof max === "number") next = Math.min(max, next);
+          setValue(next);
         }}
         style={inputStyle()}
       />
@@ -1520,10 +1484,34 @@ function NumRow({
   );
 }
 
-function CalcOut({ out }: { out: string }) {
+function CalcOut({ out, onToast }: { out: string; onToast: (msg: string, type?: any) => void }) {
+  const canCopy = !!out;
   return (
     <div style={{ marginTop: 12, borderRadius: 14, padding: 12, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.12)" }}>
-      <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 900 }}>Risultato</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 900 }}>Risultato</div>
+        <button
+          type="button"
+          className="nd-press"
+          onClick={() => {
+            if (!canCopy) return;
+            const ok = copyTextToClipboard(out);
+            onToast(ok ? "Copiato" : "Impossibile copiare", ok ? "success" : "warning");
+          }}
+          style={{
+            padding: "6px 10px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,255,255,0.12)",
+            background: canCopy ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)",
+            opacity: canCopy ? 1 : 0.55,
+            fontWeight: 900,
+            cursor: canCopy ? "pointer" : "not-allowed",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Copia
+        </button>
+      </div>
       <div style={{ marginTop: 6, fontSize: 16, fontWeight: 950 }}>{out || "—"}</div>
     </div>
   );
