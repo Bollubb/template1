@@ -117,6 +117,26 @@ export default function ToolInfusions({
   useEffect(() => {
     onOpen?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+
+  async function shareResult(aName: string, bName: string, sev: string, title: string, note: string, extra?: string) {
+    const head = sev === "avoid" ? "❌" : sev === "caution" ? "⚠️" : "✅";
+    const modeLabel = mode === "y" ? "Y-site" : mode === "flush" ? "Flush" : "Linea dedicata";
+    const text = [
+      `💉 Infusioni EV — ${aName} + ${bName}`,
+      `${head} ${title} • Modalità: ${modeLabel}`,
+      `Nota: ${note}`,
+      extra ? `\n${extra}` : "",
+      "",
+      "— Nurse Diary",
+    ].filter(Boolean).join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      onToast("Copiato negli appunti", "success");
+    } catch {
+      onToast("Impossibile copiare", "error");
+    }
+  }
+
   }, []);
 
   const DB: Drug[] = [
@@ -518,8 +538,12 @@ export default function ToolInfusions({
               : "Modalità: Linea dedicata → preferibile in caso di incompatibilità o dati insufficienti."}
           </div>
 
+          <div style={{ marginTop: 10, padding: 12, borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(59,130,246,0.08)" }}>
+            <div style={{ fontWeight: 900 }}>Se incerto</div>
+            <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>Quando i dati non sono solidi o i farmaci sono ad alto rischio: <b>linea dedicata</b> + <b>flush</b> tra le infusioni (secondo protocollo).</div>
+          </div>
 
-          {outcome.flush && (
+{outcome.flush && (
             <div style={{ marginTop: 10, padding: 12, borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(245,158,11,0.08)" }}>
               <div style={{ fontWeight: 900 }}>Flush consigliato</div>
               <div style={{ marginTop: 6, fontSize: 13, opacity: 0.9 }}>Se non puoi usare linea dedicata: flush prima/dopo e riduci co-infusione di farmaci ad alto rischio.</div>
@@ -535,11 +559,35 @@ export default function ToolInfusions({
             </div>
           )}
 
+          {!premium && outcome.advanced?.length > 0 && (
+            <button
+              type="button"
+              className="nd-press"
+              onClick={() => onUpsell("Database ICU + dettagli avanzati", "Sblocca dettagli compatibilità avanzati, note ICU e ricerche illimitate.", ["Dettagli avanzati per farmaci ICU", "Ricerche illimitate", "Preferiti + recenti avanzati"])}
+              style={{
+                marginTop: 12,
+                textAlign: "left",
+                width: "100%",
+                borderRadius: 16,
+                padding: 12,
+                border: "1px solid rgba(245,158,11,0.28)",
+                background: "rgba(245,158,11,0.10)",
+                fontWeight: 900,
+              }}
+            >
+              🔒 Sblocca dettagli ICU (Premium)
+              <div style={{ marginTop: 6, fontSize: 13, opacity: 0.85, fontWeight: 800 }}>Note pratiche aggiuntive su concentrazioni/linee dedicate/filtri.</div>
+            </button>
+          )}
+
           <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <button type="button" className="nd-press" onClick={() => { setStep(2); setOutcome(null); }} style={ghostBtn()}>
               ← Modifica scelta
             </button>
-            <button type="button" className="nd-press" onClick={() => { onSave({ tool: "INFUSION", ts: Date.now(), inputs: { a: a.id, b: b.id }, output: `${a.name} + ${b.name}: ${outcome.title}${outcome.flush ? " (flush)" : ""}` }); onToast("Salvato in storico", "success"); }} style={primaryBtn(false)}>
+            <button type="button" className="nd-press" onClick={() => void shareResult(a.name, b.name, outcome.sev, outcome.title, outcome.note)} style={primaryBtn(false)}>
+              Condividi
+            </button>
+<button type="button" className="nd-press" onClick={() => { onSave({ tool: "INFUSION", ts: Date.now(), inputs: { a: a.id, b: b.id }, output: `${a.name} + ${b.name}: ${outcome.title}${outcome.flush ? " (flush)" : ""}` }); onToast("Salvato in storico", "success"); }} style={primaryBtn(false)}>
               Salva
             </button>
             <button type="button" onClick={() => { setStep(1); setOutcome(null); setA(null); setB(null); setQ1(""); setQ2(""); }} style={primaryBtn(false)}>
