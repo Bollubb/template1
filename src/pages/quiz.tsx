@@ -79,6 +79,7 @@ const LS = {
   concorsoUnlocksPrefix: "nd_quiz_concorso_unlocks_",
   challenges: "nd_quiz_challenges_v1",
   challengeInbox: "nd_quiz_challenge_inbox_v1",
+  activeRun: "nd_quiz_active_run_v1",
 };
 
 type ChallengePreset = "asl" | "regione" | "mega" | "mese";
@@ -751,6 +752,7 @@ export default function QuizPage(): JSX.Element {
   const [unlockModal, setUnlockModal] = useState<null | { kind: "daily" | "weekly" | "concorso"; remaining: number }>(null);
 
   const [runQuiz, setRunQuiz] = useState<QuizRun | null>(null);
+  const [pausedRun, setPausedRun] = useState<QuizRun | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [reveal, setReveal] = useState<null | { isCorrect: boolean | null; correctIdx: number | null; chosen: number }>(null);
   const [fxId, setFxId] = useState(0);
@@ -773,6 +775,7 @@ const [boardsOpen, setBoardsOpen] = useState(false);
 
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const timerDoneRef = useRef(false);
+  const actionLockRef = useRef(false);
 
   const [favs, setFavs] = useState<string[]>([]);
 
@@ -789,6 +792,18 @@ const [boardsOpen, setBoardsOpen] = useState(false);
       setConcorsoNoRepeat(readBool(LS.concorsoNoRepeat, true));
       const savedTab = (localStorage.getItem(LS.lastHomeTab) || "daily") as HomeTab;
       if (savedTab === "daily" || savedTab === "weekly" || savedTab === "concorso" || savedTab === "review") setHomeTab(savedTab);
+
+      // restore paused run (local-first)
+      try {
+        const rawRun = localStorage.getItem(LS.activeRun);
+        if (rawRun) {
+          const parsed = JSON.parse(rawRun) as QuizRun;
+          if (parsed && parsed.questions && Array.isArray(parsed.questions) && typeof parsed.idx === "number") {
+            // basic sanity
+            setPausedRun(parsed);
+          }
+        }
+      } catch {}
     } catch {}
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
@@ -813,6 +828,17 @@ const [boardsOpen, setBoardsOpen] = useState(false);
     if (typeof window === "undefined") return;
     writeBool(LS.concorsoNoRepeat, concorsoNoRepeat);
   }, [concorsoNoRepeat]);
+
+
+  // Persist / clear paused run
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const toSave = runQuiz ?? pausedRun;
+      if (toSave) localStorage.setItem(LS.activeRun, JSON.stringify(toSave));
+      else localStorage.removeItem(LS.activeRun);
+    } catch {}
+  }, [runQuiz, pausedRun]);
 // AUTO_FINISH_CONCORSO: timer + auto finish when time is up (only Concorsi)
 useEffect(() => {
   timerDoneRef.current = false;
@@ -905,6 +931,8 @@ useEffect(() => {
 
 
     setQuizResult(null);
+    setPausedRun(null);
+    try { localStorage.removeItem(LS.activeRun); } catch {}
     setLastReward(null);
     setSelected(null);
     setReveal(null);
@@ -1311,6 +1339,8 @@ function handleStartConcorso(presetId: typeof CONCORSO_PRESETS[number]["id"]) {
     if (!runQuiz) return;
     if (selected === null) return;
     if (reveal) return;
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
 
     const q = runQuiz.questions[runQuiz.idx];
     const answers = [...runQuiz.answers];
@@ -1351,6 +1381,8 @@ if (kind === "ok") {
 }
 setReveal({ isCorrect, correctIdx: hasKey ? q.answer : null, chosen: selected });
 
+window.setTimeout(() => { actionLockRef.current = false; }, 150);
+
 // Concorso UX: auto-advance after a short feedback flash.
 // This prevents rare "stuck" states on some mobile webviews and keeps the flow fast.
 if (runQuiz.mode === "concorso") {
@@ -1376,6 +1408,8 @@ if (runQuiz.mode === "concorso") {
   function omitAnswer() {
     if (!runQuiz) return;
     if (reveal) return;
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
 
     const answers = [...runQuiz.answers];
     answers[runQuiz.idx] = -1;
@@ -1389,6 +1423,7 @@ if (runQuiz.mode === "concorso") {
     setToast(null);
     setCombo(0);
     setQStageKey((k) => k + 1);
+    window.setTimeout(() => { actionLockRef.current = false; }, 150);
 
     if (nextIdx >= runQuiz.questions.length) {
       finish(next);
@@ -1400,6 +1435,8 @@ if (runQuiz.mode === "concorso") {
   function goNext() {
     if (!runQuiz) return;
     if (!reveal) return;
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
 
     const nextIdx = runQuiz.idx + 1;
     const next: QuizRun = { ...runQuiz, idx: nextIdx };
@@ -1409,6 +1446,7 @@ if (runQuiz.mode === "concorso") {
     setAnswerFx(null);
     setToast(null);
     setQStageKey((k) => k + 1);
+    window.setTimeout(() => { actionLockRef.current = false; }, 150);
 
     if (nextIdx >= runQuiz.questions.length) {
       finish(next);
@@ -1563,23 +1601,65 @@ if (runQuiz.mode === "concorso") {
 
 
 
+
+{pausedRun && (
+  <div style={{ marginTop: 12 }} className="nd-card nd-card-pad">
+    <div className="flex items-center justify-between gap-2">
+      <div style={{ fontWeight: 950 }}>⏳ Quiz in corso</div>
+      <span className="nd-pill nd-pill--sm">{pausedRun.mode === "concorso" ? "Concorso" : pausedRun.mode === "sim" ? "Simulazione" : pausedRun.mode}</span>
+    </div>
+    <div className="nd-help" style={{ marginTop: 4 }}>
+      {pausedRun.idx + 1}/{pausedRun.questions.length} • riprendi quando vuoi.
+    </div>
+    <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+      <button
+        type="button"
+        className="nd-btn nd-btn-primary nd-press"
+        style={btnStyle("primary")}
+        onClick={() => {
+          setRunQuiz(pausedRun);
+          setPausedRun(null);
+          setSelected(null);
+          setReveal(null);
+        }}
+      >
+        Riprendi
+      </button>
+      <button
+        type="button"
+        className="nd-btn nd-btn-ghost nd-press"
+        style={btnStyle("ghost")}
+        onClick={() => {
+          if (confirm("Vuoi abbandonare la sessione in corso?")) {
+            setPausedRun(null);
+            try { localStorage.removeItem(LS.activeRun); } catch {}
+          }
+        }}
+      >
+        Abbandona
+      </button>
+    </div>
+  </div>
+)}
+
+
 {/* Classifiche + Sfide (compatte) */}
 <div style={{ marginTop: 12 }}>
   <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
     <button
       type="button"
       className="nd-btn nd-btn-ghost nd-press"
-      style={{ ...btnStyle("ghost"), position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, padding: "14px 14px", minHeight: 56 }}
+      style={{ ...btnStyle("ghost"), position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, padding: "14px 14px", paddingRight: 124, minHeight: 56 }}
       onClick={() => setBoardsOpen(true)}
     >
       <span style={{ fontWeight: 950 }}>🏆 Classifiche</span>
-      <span className="nd-badge nd-badge-emerald" style={{ ...chipStyle("emerald"), position: "absolute", top: 8, right: 8, maxWidth: 112, textAlign: "center", whiteSpace: "normal", lineHeight: 1.05, padding: "6px 8px", fontSize: 11, pointerEvents: "none" }}>{leaderboard.tier}</span>
+      <span className="nd-badge nd-badge-emerald" style={{ ...chipStyle("emerald"), position: "absolute", top: 8, right: 8, maxWidth: 112, textAlign: "center", whiteSpace: "normal", lineHeight: 1.05, padding: "6px 8px", fontSize: 11, pointerEvents: "none" }}>Personale/Globale</span>
     </button>
 
     <button
       type="button"
       className="nd-btn nd-btn-sky nd-press"
-      style={{ ...btnStyle("sky"), display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 14px" }}
+      style={{ ...btnStyle("sky"), position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, padding: "14px 14px", paddingRight: 124, minHeight: 56 }}
       onClick={() => setChallengeOpen(true)}
     >
       <span style={{ fontWeight: 950 }}>⚔️ Sfide 1v1</span>
@@ -2101,6 +2181,7 @@ if (runQuiz.mode === "concorso") {
                 <button
                   type="button"
                   onClick={() => {
+                    if (runQuiz) setPausedRun(runQuiz);
                     setRunQuiz(null);
                     setReveal(null);
                     setSelected(null);
@@ -2108,7 +2189,7 @@ if (runQuiz.mode === "concorso") {
                   className="nd-btn-ghost nd-press"
                   style={ghostBtn()}
                 >
-                  Esci
+                  Pausa
                 </button>
 
                 {runQuiz.mode === "concorso" && !reveal && (
