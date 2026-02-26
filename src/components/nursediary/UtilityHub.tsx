@@ -1140,7 +1140,9 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
       why: worst.why,
       monitor: worst.monitor?.length ? worst.monitor : ["Valuta monitoraggio clinico/strumentale in base al paziente"],
       alternatives: worst.alternatives || [],
-      tags: inferTags(String(worst.key || ""), String(worst.why || ""), (worst.monitor || []) as any),
+      // "worst" is a reduced interaction object (sev/why/monitor/alternatives) and does not carry an id/key.
+      // Use the current pair (a,b) as tag seed to keep typing strict and avoid TS errors.
+      tags: inferTags(`${a} ${b}`.trim(), String(worst.why || ""), (worst.monitor || []) as any),
     };
   }, [a, b, byId]);
 
