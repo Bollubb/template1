@@ -1991,3 +1991,53 @@ function selectStyle(): React.CSSProperties {
     fontWeight: 850,
   };
 }
+
+
+/* ===== PATCH 1 – Clinical interactions engine ===== */
+
+type Drug = {
+  name: string;
+  tags: string[];
+  qt?: boolean;
+  renal?: boolean;
+  bleeding?: boolean;
+};
+
+type Interaction = {
+  a: string;
+  b: string;
+  risk: "alto" | "medio";
+  reason: string;
+};
+
+const DRUGS: Drug[] = [
+  { name: "Amiodarone", tags: ["aritmie"], qt: true },
+  { name: "Levofloxacina", tags: ["antibiotico"], qt: true },
+  { name: "Warfarin", tags: ["anticoagulante"], bleeding: true },
+  { name: "ASA", tags: ["antiaggregante"], bleeding: true },
+  { name: "Eparina", tags: ["anticoagulante"], bleeding: true },
+  { name: "Sertralina", tags: ["ssri"], bleeding: true },
+  { name: "Furosemide", tags: ["diuretico"], renal: true },
+  { name: "Digossina", tags: ["aritmie"], renal: true },
+  { name: "Morfina", tags: ["oppioide"] },
+  { name: "Midazolam", tags: ["sedativo"] },
+];
+
+const INTERACTIONS: Interaction[] = [
+  { a: "Amiodarone", b: "Levofloxacina", risk: "alto", reason: "↑ QT → torsioni" },
+  { a: "Warfarin", b: "ASA", risk: "alto", reason: "↑ sanguinamento" },
+  { a: "Eparina", b: "ASA", risk: "alto", reason: "↑ sanguinamento" },
+  { a: "Warfarin", b: "Sertralina", risk: "medio", reason: "↑ sanguinamento" },
+  { a: "Digossina", b: "Furosemide", risk: "medio", reason: "↓ K → tossicità" },
+  { a: "Morfina", b: "Midazolam", risk: "alto", reason: "depressione respiratoria" },
+];
+
+function findInteractions(drug: string) {
+  return INTERACTIONS.filter(
+    (x) => x.a === drug || x.b === drug
+  );
+}
+
+export function suggestSecondDrug(first: string): Interaction[] {
+  return findInteractions(first);
+}
