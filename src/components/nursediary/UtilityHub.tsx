@@ -1520,7 +1520,9 @@ function trigramSimilarity(a: string, b: string) {
   const A = trigramSet(a);
   const B = trigramSet(b);
   let inter = 0;
-  for (const t of A) if (B.has(t)) inter++;
+  A.forEach((t) => {
+    if (B.has(t)) inter++;
+  });
   const union = A.size + B.size - inter;
   return union ? inter / union : 0;
 }
