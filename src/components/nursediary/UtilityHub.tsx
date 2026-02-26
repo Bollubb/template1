@@ -138,7 +138,7 @@ const SECTIONS: { id: SectionId; title: string; subtitle: string; badge?: string
   { id: "infusion", title: "Compatibilità infusioni EV", subtitle: "Y-site / flush (ICU-ready)", badge: "ICU" },
   { id: "calculators", title: "Calcolatori clinici", subtitle: "Guidati, con alert (base)" },
   { id: "scales", title: "Scale cliniche", subtitle: "NEWS2 + Glasgow con interpretazione" },
-  { id: "checklists", title: "Checklist operative", subtitle: "Procedure step-by-step (in arrivo)" },
+  { id: "checklists", title: "Checklist operative", subtitle: "Procedure step-by-step (MVP)", badge: "NEW" },
 ];
 
 const ACCENTS: Record<SectionId, { solid: string; soft: string; border: string }> = {
@@ -344,7 +344,83 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
               )}
             </div>
 
-            {query.trim() === "" && recent3.length > 0 && (
+            
+            {query.trim() === "" && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2, marginBottom: 8 }}>
+                  Quick actions
+                </div>
+
+                <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                  {([
+                    { title: "Interazioni", icon: "💊", onClick: () => TOOL_META.INTERACTIONS.open(), accent: ACCENTS["interactions"], badge: "TOP" },
+                    { title: "Infusioni EV", icon: "💉", onClick: () => TOOL_META.INFUSION.open(), accent: ACCENTS["infusion"], badge: "ICU" },
+                    { title: "NEWS2", icon: "🩺", onClick: () => TOOL_META.NEWS2.open(), accent: ACCENTS["scales"], badge: "CORE" },
+                    { title: "Checklist", icon: "✓", onClick: () => { goSection("checklists"); }, accent: ACCENTS["checklists"], badge: "MVP" },
+                  ]).map((t) => (
+                    <button
+                      key={t.title}
+                      type="button"
+                      className="nd-press"
+                      onClick={() => t.onClick()}
+                      style={{
+                        borderRadius: 18,
+                        padding: 12,
+                        border: `1px solid ${t.accent.border}`,
+                        background: `linear-gradient(180deg, ${t.accent.soft}, rgba(255,255,255,0.02))`,
+                        minHeight: 62,
+                        textAlign: "left",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 10,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        <div
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 14,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: `1px solid ${t.accent.border}`,
+                            background: "rgba(0,0,0,0.20)",
+                            boxShadow: `0 0 0 3px ${t.accent.soft}`,
+                            fontWeight: 950,
+                          }}
+                        >
+                          {t.icon}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontWeight: 950, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {t.title}
+                          </div>
+                          <div style={{ fontSize: 12, opacity: 0.75, fontWeight: 850 }}>
+                            Apri in 1 tap
+                          </div>
+                        </div>
+                      </div>
+
+                      <span
+                        className="nd-badge"
+                        style={{
+                          fontSize: 11,
+                          borderColor: t.accent.border,
+                          background: t.accent.soft,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {t.badge}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+{query.trim() === "" && recent3.length > 0 && (
   <div style={{ marginTop: 12 }}>
     <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2, marginBottom: 8 }}>Recenti</div>
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1020,6 +1096,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   const [q2, setQ2] = useState("");
   const [a, setA] = useState<Entry | null>(null);
   const [b, setB] = useState<Entry | null>(null);
+  const [focusTag, setFocusTag] = useState<null | "qt" | "rene" | "bleed" | "snc">(null);
 
   const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
   const results2 = useMemo(() => searchDrugs(selectable, q2), [selectable, q2]);
@@ -1053,6 +1130,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
         why: "Nessuna interazione clinicamente rilevante presente nel database locale per questa coppia.",
         monitor: ["Monitoraggio clinico standard"],
         alternatives: [] as string[],
+        tags: [] as any[],
       };
     }
 
@@ -1062,8 +1140,43 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
       why: worst.why,
       monitor: worst.monitor?.length ? worst.monitor : ["Valuta monitoraggio clinico/strumentale in base al paziente"],
       alternatives: worst.alternatives || [],
+      tags: inferTags(String(worst.key || ""), String(worst.why || ""), (worst.monitor || []) as any),
     };
   }, [a, b, byId]);
+
+  function inferTags(key: string, why: string, monitor: string[]) {
+    const tags: { id: "qt" | "rene" | "bleed" | "snc"; label: string; icon: string }[] = [];
+    const hay = normalize([key, why, ...(monitor || [])].join(" "));
+    const push = (id: any, label: string, icon: string) => {
+      if (!tags.find((t) => t.id === id)) tags.push({ id, label, icon });
+    };
+    if (hay.includes("qt") || hay.includes("torsione") || hay.includes("aritmi")) push("qt", "QT", "⚡");
+    if (hay.includes("creatin") || hay.includes("diures") || hay.includes("aki") || hay.includes("nefro") || hay.includes("ren")) push("rene", "Rene", "🧪");
+    if (hay.includes("emorrag") || hay.includes("sangu") || hay.includes("inr") || hay.includes("piastrin")) push("bleed", "Sanguin.", "🩸");
+    if (hay.includes("snc") || hay.includes("sedaz") || hay.includes("depress") || hay.includes("respir") || hay.includes("coscien")) push("snc", "SNC", "🫁");
+    return tags.slice(0, 4);
+  }
+
+  async function shareOutcome() {
+    if (!a || !b || !outcome) return;
+    const tags = outcome.tags?.length ? ` (${outcome.tags.map((t:any) => t.label).join(", ")})` : "";
+    const text = [
+      `💊 Interazioni — ${a.name} + ${b.name}`,
+      `Esito: ${outcome.title}${tags}`,
+      `Motivo: ${outcome.why}`,
+      "",
+      "Monitoraggio:",
+      ...(outcome.monitor || []).map((m:any) => `• ${m}`),
+      "",
+      "— Nurse Diary",
+    ].join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.push("Copiato negli appunti", "success");
+    } catch {
+      toast.push("Impossibile copiare", "error");
+    }
+  }
 
   function resetAll() {
     setStep(1);
@@ -1156,12 +1269,42 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
             <span style={sevPill(outcome.sev)}>{outcome.title}</span>
           </div>
 
+          {outcome.tags && outcome.tags.length > 0 && (
+            <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {outcome.tags.map((t: any) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className="nd-press"
+                  onClick={() => setFocusTag((p) => (p === t.id ? null : t.id))}
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: focusTag === t.id ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.05)",
+                    fontSize: 12,
+                    fontWeight: 900,
+                    opacity: 0.95,
+                  }}
+                >
+                  {t.icon} {t.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9, lineHeight: 1.35 }}>{outcome.why}</div>
 
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>Monitoraggio consigliato</div>
             <ul style={{ margin: 0, paddingLeft: 18, opacity: 0.85, fontSize: 13 }}>
-              {outcome.monitor.map((m, i) => <li key={i} style={{ marginBottom: 4 }}>{m}</li>)}
+              {outcome.monitor.map((m, i) => {
+                const nm = normalize(String(m));
+                const match = !focusTag || (focusTag === "qt" ? nm.includes("ecg") || nm.includes("qt") : focusTag === "rene" ? nm.includes("creatin") || nm.includes("diures") : focusTag === "bleed" ? nm.includes("sangu") || nm.includes("inr") : focusTag === "snc" ? nm.includes("fr") || nm.includes("sp") || nm.includes("sedaz") : true);
+                return (
+                  <li key={i} style={{ marginBottom: 4, opacity: match ? 1 : 0.35 }}>{m}</li>
+                );
+              })}
             </ul>
           </div>
 
@@ -1264,8 +1407,28 @@ function StepPick({
   );
 }
 
+const DRUG_SYNONYMS: Record<string, string[]> = {
+  "coumadin": ["warfarin"],
+  "cardioaspirin": ["acido acetilsalicilico", "aspirina"],
+  "asa": ["acido acetilsalicilico", "aspirina"],
+  "plavix": ["clopidogrel"],
+  "seloken": ["metoprololo"],
+  "lasix": ["furosemide"],
+  "augmentin": ["amoxicillina", "amoxicillina acido clavulanico"],
+};
+
+function expandQuerySynonyms(nq: string) {
+  const out = new Set<string>([nq]);
+  for (const t of nq.split(" ")) {
+    const syn = DRUG_SYNONYMS[t];
+    if (syn) syn.forEach((s) => out.add(normalize(s)));
+  }
+  return Array.from(out).filter(Boolean);
+}
+
 function searchDrugs(list: { id: string; name: string; group: string; also?: string[] }[], q: string) {
   const nq = normalize(q);
+  const nqAll = expandQuerySynonyms(nq);
   if (!nq) {
     return list
       .slice()
@@ -1278,11 +1441,14 @@ function searchDrugs(list: { id: string; name: string; group: string; also?: str
     let score = 0;
 
     // strong matches
-    if (hay.startsWith(nq)) score += 100;
-    if (hay.includes(nq)) score += 60;
+    for (const qq of nqAll) {
+      if (!qq) continue;
+      if (hay.startsWith(qq)) score += 100;
+      if (hay.includes(qq)) score += 60;
+    }
 
     // token matches
-    for (const t of nq.split(" ")) {
+    for (const t of Array.from(new Set(nqAll.join(' ').split(' ')))) {
       if (!t) continue;
       if (hay.includes(t)) score += 15;
     }
