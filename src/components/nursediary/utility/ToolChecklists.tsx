@@ -291,11 +291,12 @@ export default function ToolChecklists({
 
   const shellStyle: React.CSSProperties = {
     display: "grid",
-    gap: 10,
-    padding: night ? 12 : 0,
-    borderRadius: night ? 18 : 0,
-    background: night ? "rgba(0,0,0,0.35)" : "transparent",
-    border: night ? "1px solid rgba(255,255,255,0.10)" : "none",
+    gap: 12,
+    padding: 14,
+    borderRadius: 20,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: night ? "rgba(0,0,0,0.38)" : "linear-gradient(180deg, rgba(14,18,30,0.92), rgba(14,18,30,0.78))",
+    boxShadow: "0 16px 44px rgba(0,0,0,0.44)",
   };
 
   if (!active) {
@@ -425,7 +426,7 @@ export default function ToolChecklists({
         </button>
       </div>
 
-      <div className="nd-card" style={{ padding: 14, borderRadius: 18, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)" }}>
+      <div className="nd-tile" style={{ padding: 14, borderRadius: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <div style={{ fontWeight: 950 }}>{active.title}</div>
           <span className="nd-badge nd-badge-emerald">

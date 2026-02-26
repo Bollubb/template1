@@ -396,7 +396,7 @@ export default function ToolInfusions({
   }
 
   return (
-    <div className="nd-card nd-card-pad nd-fade-in">
+    <div className="nd-card nd-card-pad nd-surface nd-fade-in">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5 flex-wrap">
           <div>
