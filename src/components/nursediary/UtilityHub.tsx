@@ -135,10 +135,10 @@ function useDailyLimit(key: string, limit: number) {
 
 const SECTIONS: { id: SectionId; title: string; subtitle: string; badge?: string }[] = [
   { id: "interactions", title: "Interazioni farmacologiche", subtitle: "Controllo rapido e guidato", badge: "TOP" },
-  { id: "infusion", title: "Compatibilità infusioni EV", subtitle: "Y-site / flush (ICU-ready)", badge: "ICU" },
-  { id: "calculators", title: "Calcolatori clinici", subtitle: "Guidati, con alert (base)" },
-  { id: "scales", title: "Scale cliniche", subtitle: "NEWS2 + Glasgow con interpretazione" },
-  { id: "checklists", title: "Checklist operative", subtitle: "Procedure step-by-step (MVP)", badge: "NEW" },
+  { id: "infusion", title: "Compatibilità infusioni EV", subtitle: "Y-site / flush / linea (ICU-ready)", badge: "ICU" },
+  { id: "checklists", title: "Checklist operative", subtitle: "Procedure step-by-step da turno", badge: "NEW" },
+  { id: "scales", title: "Scale cliniche", subtitle: "NEWS2 + Glasgow con interpretazione", badge: "CORE" },
+  { id: "calculators", title: "Calcolatori clinici", subtitle: "Dosaggi e conversioni guidate", badge: "BASE" },
 ];
 
 const ACCENTS: Record<SectionId, { solid: string; soft: string; border: string }> = {
@@ -151,11 +151,11 @@ const ACCENTS: Record<SectionId, { solid: string; soft: string; border: string }
 
 
 const SECTION_ICONS: Record<SectionId, string> = {
-  interactions: "↔",
-  infusion: "IV",
+  interactions: "💊",
+  infusion: "💉",
   calculators: "∑",
-  scales: "GCS",
-  checklists: "✓",
+  scales: "🩺",
+  checklists: "✅",
 };
 
 
@@ -298,11 +298,11 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
         <div>
           <div className="nd-sticky-header">
             {/* Contenitore per l'header Utility: rende il blocco superiore coerente/premium */}
-            <div className="nd-surface" style={{ padding: 14 }}>
+            <div className="nd-card nd-surface" style={{ padding: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                 <div style={{ fontSize: 18, fontWeight: 950, letterSpacing: -0.2 }}>Utility</div>
-                <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 800 }}>Tool rapidi, guidati e “safe”</div>
+                <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 800 }}>Strumenti rapidi da turno</div>
               </div>
             </div>
 
@@ -348,7 +348,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             {query.trim() === "" && (
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2, marginBottom: 8 }}>
-                  Quick actions
+                  Azioni rapide
                 </div>
 
                 <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
@@ -361,13 +361,14 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                     <button
                       key={t.title}
                       type="button"
-                      className="nd-press"
+                      className="nd-tile nd-press"
                       onClick={() => t.onClick()}
                       style={{
                         borderRadius: 18,
                         padding: 12,
                         border: `1px solid ${t.accent.border}`,
                         background: `linear-gradient(180deg, ${t.accent.soft}, rgba(255,255,255,0.02))`,
+                        boxShadow: `0 18px 44px rgba(0,0,0,0.46), 0 0 0 3px ${t.accent.soft}`,
                         minHeight: 62,
                         textAlign: "left",
                         display: "flex",
@@ -422,7 +423,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
 
 {query.trim() === "" && recent3.length > 0 && (
   <div style={{ marginTop: 12 }}>
-    <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2, marginBottom: 8 }}>Recenti</div>
+    <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2, marginBottom: 8 }}>Ultimi usati</div>
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       {recent3.map((id) => {
         const m = TOOL_META[id];
@@ -431,19 +432,9 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
           <button
             key={id}
             type="button"
-            className="nd-press"
+            className="nd-chip nd-press"
             onClick={() => m.open()}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 10px",
-              borderRadius: 999,
-              border: `1px solid ${m.accent.border}`,
-              background: m.accent.soft,
-              color: "rgba(255,255,255,0.92)",
-              fontWeight: 900,
-            }}
+            style={{ borderColor: m.accent.border, background: m.accent.soft }}
           >
             <span style={{ opacity: 0.9 }}>{m.icon}</span>
             <span style={{ whiteSpace: "nowrap" }}>{m.title}</span>
@@ -494,19 +485,9 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                         <button
                           key={id}
                           type="button"
-                          className="nd-press"
+                          className="nd-chip nd-press"
                           onClick={() => m.open()}
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "8px 10px",
-                            borderRadius: 999,
-                            border: `1px solid ${m.accent.border}`,
-                            background: "rgba(255,255,255,0.03)",
-                            color: "rgba(255,255,255,0.92)",
-                            fontWeight: 900,
-                          }}
+                          style={{ borderColor: m.accent.border }}
                         >
                           <span style={{ opacity: 0.9 }}>{m.icon}</span>
                           <span style={{ whiteSpace: "nowrap" }}>{m.title}</span>
@@ -528,13 +509,14 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 key={s.id}
                 type="button"
                 onClick={() => goSection(s.id)}
-                className="nd-press"
+                className="nd-tile nd-press"
                 style={{
                   textAlign: "left",
                   borderRadius: 18,
                   padding: 16,
                   border: `1px solid ${ACCENTS[s.id].border}`,
                   background: `linear-gradient(180deg, ${ACCENTS[s.id].soft}, rgba(255,255,255,0.02))`,
+                  boxShadow: `0 18px 44px rgba(0,0,0,0.46), 0 0 0 3px ${ACCENTS[s.id].soft}`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
@@ -762,13 +744,14 @@ function CalcCard({ title, subtitle, icon, onClick }: { title: string; subtitle:
     <button
       type="button"
       onClick={onClick}
-      className="nd-press"
+      className="nd-tile nd-press"
       style={{
         textAlign: "left",
         borderRadius: 18,
         padding: 14,
         border: `1px solid ${a.border}`,
         background: `linear-gradient(180deg, ${a.soft}, rgba(255,255,255,0.02))`,
+        boxShadow: `0 18px 44px rgba(0,0,0,0.46), 0 0 0 3px ${a.soft}`,
         cursor: "pointer",
         display: "flex",
         alignItems: "center",
@@ -1277,7 +1260,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
                 <button
                   key={t.id}
                   type="button"
-                  className="nd-press"
+                  className="nd-tile nd-press"
                   onClick={() => setFocusTag((p) => (p === t.id ? null : t.id))}
                   style={{
                     padding: "6px 10px",
