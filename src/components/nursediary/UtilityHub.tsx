@@ -903,46 +903,317 @@ function ComingSoon({ title, desc, onUpsell }: { title: string; desc: string; on
  * ==========================
  * Disclaimer: strumento educativo / supporto in reparto, non sostituisce RCP/SmPC o giudizio clinico.
  */
-function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryItem) => void; onUpsell: (t: string, d: string) => void }) {
+function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryItem) => void; onUpsell: (t: string, d: string, bullets?: string[]) => void }) {
   type Severity = "ok" | "caution" | "avoid";
   type Interaction = {
-    key: string; // other drug id or group key
+    key: string; // drug id OR tag/group key
     sev: Severity;
     why: string;
     monitor?: string[];
-    alternatives?: string[]; // premium-only
+    alternatives?: string[]; // premium-only details
   };
 
   type Entry = {
     id: string;
     name: string;
     group: string;
-    also?: string[];
+    also?: string[]; // brand / common aliases
+    tags: string[]; // semantic tags used for matching and UI
     interactions: Interaction[];
   };
 
-  // DB locale “medium”: abbastanza per value percepito + estensibile Patch B
+  const sevRank: Record<Severity, number> = { ok: 0, caution: 1, avoid: 2 };
+
+  const GROUP_META: Record<
+    string,
+    { label: string; tags: string[]; hint?: string; sevDefault?: Severity }
+  > = {
+    fans: { label: "FANS", tags: ["Sanguinamento", "Rene"] },
+    anticoag: { label: "Anticoagulanti", tags: ["Sanguinamento"] },
+    antiagg: { label: "Antiaggreganti", tags: ["Sanguinamento"] },
+    ssri: { label: "SSRI", tags: ["SNC", "Sanguinamento"] },
+    snri: { label: "SNRI", tags: ["SNC", "Sanguinamento"] },
+    serotonina: { label: "Serotonina", tags: ["SNC"] },
+    qt: { label: "QT lungo", tags: ["QT"] },
+    cyp3a4: { label: "CYP3A4/P-gp", tags: ["SNC"] },
+    beta: { label: "Beta-bloccanti", tags: ["SNC"] },
+    ccblocker: { label: "Calcio-antagonisti", tags: ["SNC"] },
+    digoxin: { label: "Digossina", tags: ["SNC"] },
+    nefrotox: { label: "Nefrotossicità", tags: ["Rene"] },
+    acei: { label: "ACE-inibitori", tags: ["Rene"] },
+    arb: { label: "Sartani", tags: ["Rene"] },
+    kplus: { label: "Potassio", tags: ["Rene"] },
+    loop: { label: "Diuretici dell'ansa", tags: ["Rene"] },
+    ksparing: { label: "Risparmiatori K+", tags: ["Rene"] },
+    oppioidi: { label: "Oppioidi", tags: ["SNC"] },
+    tramadolo: { label: "Tramadolo", tags: ["SNC", "Serotonina"] },
+    linezolid: { label: "Linezolid", tags: ["SNC", "Serotonina"] },
+    macrolidi: { label: "Macrolidi", tags: ["QT"] },
+    chinoloni: { label: "Fluorochinoloni", tags: ["QT"] },
+  };
+
+  // DB locale: “alta resa” per reparto. Estensibile con patch successive.
   const DB: Entry[] = [
     {
       id: "warfarin",
       name: "Warfarin",
       group: "Anticoagulanti",
       also: ["Coumadin"],
+      tags: ["anticoag"],
       interactions: [
         { key: "fans", sev: "avoid", why: "Aumenta rischio emorragico (effetto su coagulazione + mucosa gastrica).", monitor: ["Valuta gastroprotezione", "Controlla segni di sanguinamento", "INR più frequente"], alternatives: ["Paracetamolo (se appropriato)", "Valuta COX-2 selettivo con prudenza"] },
-        { key: "macrolidi", sev: "avoid", why: "Possibile aumento INR (inibizione metabolismo).", monitor: ["INR stretto 48–72h", "Valuta riduzione dose"], alternatives: ["Doxiciclina (se indicata)", "Azitromicina spesso meno impattante ma non sempre"] },
-        { key: "amiodarone", sev: "avoid", why: "Aumenta INR: spesso serve riduzione dose e monitoraggio stretto.", monitor: ["INR frequente", "Valuta riduzione dose"], alternatives: ["Valuta DOAC se indicato e non controindicato (decisione medico)"] },
+        { key: "macrolidi", sev: "avoid", why: "Possibile aumento INR (inibizione metabolismo).", monitor: ["INR stretto 48–72h", "Valuta aggiustamento dose"], alternatives: ["Doxiciclina (se indicata)", "Azitromicina spesso meno impattante ma non sempre"] },
+        { key: "amiodarone", sev: "avoid", why: "Aumenta INR: spesso serve riduzione dose e monitoraggio stretto.", monitor: ["INR frequente", "Valuta riduzione dose"], alternatives: ["Valuta DOAC se indicato (decisione medico)"] },
         { key: "ssri", sev: "caution", why: "Rischio sanguinamento aumentato (effetto piastrinico).", monitor: ["Valuta rischio/beneficio", "Educazione segni emorragia"] },
+      ],
+    },
+    {
+      id: "apixaban",
+      name: "Apixaban",
+      group: "DOAC",
+      tags: ["anticoag", "doac", "cyp3a4"],
+      interactions: [
+        { key: "fans", sev: "avoid", why: "Rischio emorragico aumentato (effetto additivo).", monitor: ["Segni di sanguinamento", "Valuta gastroprotezione"] },
+        { key: "antiagg", sev: "avoid", why: "Rischio emorragico aumentato con antiaggreganti.", monitor: ["Segni di sanguinamento", "Valuta indicazione clinica"] },
+        { key: "cyp3a4", sev: "caution", why: "Inibitori/induttori CYP3A4/P-gp possono alterare i livelli.", monitor: ["Segni di sanguinamento o inefficacia", "Valuta interazioni specifiche"], alternatives: ["Valuta molecola alternativa (decisione medico)"] },
+      ],
+    },
+    {
+      id: "rivaroxaban",
+      name: "Rivaroxaban",
+      group: "DOAC",
+      tags: ["anticoag", "doac", "cyp3a4"],
+      interactions: [
+        { key: "fans", sev: "avoid", why: "Rischio emorragico aumentato (effetto additivo).", monitor: ["Segni di sanguinamento", "Valuta gastroprotezione"] },
+        { key: "antiagg", sev: "avoid", why: "Rischio emorragico aumentato con antiaggreganti.", monitor: ["Segni di sanguinamento", "Valuta indicazione clinica"] },
+        { key: "cyp3a4", sev: "caution", why: "Interazioni via CYP3A4/P-gp: livelli variabili.", monitor: ["Segni di sanguinamento", "Valuta interazioni specifiche"] },
+      ],
+    },
+    {
+      id: "dabigatran",
+      name: "Dabigatran",
+      group: "DOAC",
+      tags: ["anticoag", "doac"],
+      interactions: [
+        { key: "fans", sev: "avoid", why: "Rischio emorragico aumentato (effetto additivo).", monitor: ["Segni di sanguinamento", "Valuta gastroprotezione"] },
+        { key: "antiagg", sev: "avoid", why: "Rischio emorragico aumentato con antiaggreganti.", monitor: ["Segni di sanguinamento", "Valuta indicazione clinica"] },
+        { key: "nefrotox", sev: "caution", why: "Peggioramento funzione renale aumenta esposizione.", monitor: ["Creatinina/diuresi", "Segni di sanguinamento"] },
+      ],
+    },
+    {
+      id: "eparina",
+      name: "Eparina (UFH)",
+      group: "Anticoagulanti",
+      tags: ["anticoag"],
+      interactions: [
+        { key: "fans", sev: "avoid", why: "Rischio emorragico aumentato.", monitor: ["Segni di sanguinamento", "Valuta gastroprotezione"] },
+        { key: "antiagg", sev: "avoid", why: "Rischio emorragico aumentato con antiaggreganti.", monitor: ["Segni di sanguinamento"] },
+      ],
+    },
+    {
+      id: "enoxaparina",
+      name: "Enoxaparina",
+      group: "Anticoagulanti",
+      tags: ["anticoag"],
+      interactions: [
+        { key: "fans", sev: "avoid", why: "Rischio emorragico aumentato.", monitor: ["Segni di sanguinamento", "Valuta gastroprotezione"] },
+        { key: "antiagg", sev: "avoid", why: "Rischio emorragico aumentato con antiaggreganti.", monitor: ["Segni di sanguinamento"] },
+      ],
+    },
+    {
+      id: "asa",
+      name: "Acido acetilsalicilico",
+      group: "Antiaggreganti",
+      also: ["Aspirina", "ASA"],
+      tags: ["antiagg"],
+      interactions: [
+        { key: "anticoag", sev: "avoid", why: "Rischio emorragico aumentato con anticoagulanti.", monitor: ["Segni di sanguinamento", "Valuta gastroprotezione"] },
+        { key: "fans", sev: "caution", why: "Somma rischio sanguinamento gastrointestinale.", monitor: ["Gastroprotezione se indicata", "Segni di sanguinamento"] },
+        { key: "ssri", sev: "caution", why: "Rischio sanguinamento aumentato (effetto piastrinico).", monitor: ["Segni di sanguinamento"] },
+      ],
+    },
+    {
+      id: "clopidogrel",
+      name: "Clopidogrel",
+      group: "Antiaggreganti",
+      tags: ["antiagg"],
+      interactions: [
+        { key: "anticoag", sev: "avoid", why: "Rischio emorragico aumentato con anticoagulanti.", monitor: ["Segni di sanguinamento", "Valuta indicazione clinica"] },
+        { key: "fans", sev: "caution", why: "Somma rischio sanguinamento GI.", monitor: ["Gastroprotezione se indicata"] },
+      ],
+    },
+    {
+      id: "ibuprofene",
+      name: "Ibuprofene",
+      group: "FANS",
+      tags: ["fans"],
+      interactions: [
+        { key: "anticoag", sev: "avoid", why: "Rischio emorragico aumentato (additivo).", monitor: ["Segni di sanguinamento", "Valuta gastroprotezione"] },
+        { key: "antiagg", sev: "caution", why: "Aumenta rischio sanguinamento GI.", monitor: ["Gastroprotezione se indicata"] },
+        { key: "acei", sev: "caution", why: "Possibile riduzione effetto antipertensivo e peggioramento funzione renale.", monitor: ["PA", "Creatinina/diuresi"] },
+        { key: "arb", sev: "caution", why: "Possibile peggioramento funzione renale.", monitor: ["Creatinina/diuresi"] },
+        { key: "nefrotox", sev: "caution", why: "Rischio renale additivo con altri nefrotossici.", monitor: ["Creatinina/diuresi"] },
+      ],
+    },
+    {
+      id: "paracetamolo",
+      name: "Paracetamolo",
+      group: "Analgesici",
+      also: ["Tachipirina"],
+      tags: [],
+      interactions: [
+        { key: "warfarin", sev: "caution", why: "A dosi elevate/prolungate può aumentare INR.", monitor: ["INR se uso prolungato o alte dosi"] },
       ],
     },
     {
       id: "amiodarone",
       name: "Amiodarone",
       group: "Anti-aritmici",
+      tags: ["qt", "cyp3a4"],
       interactions: [
         { key: "qt", sev: "avoid", why: "Somma rischio QT lungo/Torsione di punta.", monitor: ["ECG", "K/Mg", "Monitoraggio ritmo"], alternatives: ["Valuta alternativa non QT-prolungante (decisione medico)"] },
-        { key: "warfarin", sev: "avoid", why: "Aumenta INR per inibizione metabolismo.", monitor: ["INR stretto", "Aggiusta dose"], alternatives: ["Valuta DOAC se indicato (decisione medico)"] },
+        { key: "warfarin", sev: "avoid", why: "Aumenta INR per inibizione metabolismo.", monitor: ["INR stretto", "Aggiusta dose"] },
         { key: "beta", sev: "caution", why: "Bradicardia e blocchi AV (effetto additivo).", monitor: ["FC/PA", "ECG se sintomi"] },
+        { key: "digoxin", sev: "avoid", why: "Aumenta livelli di digossina (P-gp): rischio tossicità.", monitor: ["FC/ECG", "Segni tossicità (nausea, aritmie)", "Valuta livelli se disponibili"], alternatives: ["Riduzione dose digossina (decisione medico)"] },
+      ],
+    },
+    {
+      id: "metoprololo",
+      name: "Metoprololo",
+      group: "Beta-bloccanti",
+      tags: ["beta"],
+      interactions: [
+        { key: "ccblocker", sev: "caution", why: "Bradicardia/blocco AV con verapamil/diltiazem.", monitor: ["FC/PA", "ECG se sintomi"] },
+        { key: "amiodarone", sev: "caution", why: "Bradicardia e blocchi AV (additivo).", monitor: ["FC/PA"] },
+      ],
+    },
+    {
+      id: "verapamil",
+      name: "Verapamil",
+      group: "Calcio-antagonisti",
+      tags: ["ccblocker", "cyp3a4"],
+      interactions: [
+        { key: "beta", sev: "caution", why: "Bradicardia/blocco AV con beta-bloccanti.", monitor: ["FC/PA", "ECG se sintomi"] },
+        { key: "digoxin", sev: "avoid", why: "Aumenta livelli di digossina (P-gp): rischio tossicità.", monitor: ["FC/ECG", "Segni tossicità", "Valuta livelli se disponibili"] },
+      ],
+    },
+    {
+      id: "digossina",
+      name: "Digossina",
+      group: "Cardiovascolari",
+      tags: ["digoxin"],
+      interactions: [
+        { key: "loop", sev: "caution", why: "Ipokaliemia aumenta rischio tossicità da digossina.", monitor: ["K/Mg", "ECG", "Segni tossicità"] },
+        { key: "amiodarone", sev: "avoid", why: "Aumenta livelli di digossina: rischio tossicità.", monitor: ["FC/ECG", "Segni tossicità", "Valuta livelli se disponibili"] },
+        { key: "ccblocker", sev: "caution", why: "Con verapamil/diltiazem aumenta rischio bradicardia.", monitor: ["FC/ECG"] },
+      ],
+    },
+    {
+      id: "furosemide",
+      name: "Furosemide",
+      group: "Diuretici",
+      tags: ["loop"],
+      interactions: [
+        { key: "digoxin", sev: "caution", why: "Ipokaliemia aumenta rischio tossicità da digossina.", monitor: ["K/Mg", "Segni tossicità digossina"] },
+        { key: "nefrotox", sev: "caution", why: "Disidratazione/ipoVolemia può peggiorare funzione renale con nefrotossici.", monitor: ["Diuresi/creatinina"] },
+      ],
+    },
+    {
+      id: "spironolattone",
+      name: "Spironolattone",
+      group: "Diuretici",
+      tags: ["ksparing", "kplus"],
+      interactions: [
+        { key: "acei", sev: "avoid", why: "Rischio iperkaliemia aumentato con ACE-inibitori.", monitor: ["K+", "ECG se iperkaliemia", "Funzione renale"] },
+        { key: "arb", sev: "avoid", why: "Rischio iperkaliemia aumentato con sartani.", monitor: ["K+", "Funzione renale"] },
+        { key: "kplus", sev: "avoid", why: "Somma di potassio: rischio iperkaliemia.", monitor: ["K+", "ECG se rischio"] },
+      ],
+    },
+    {
+      id: "ramipril",
+      name: "Ramipril",
+      group: "ACE-inibitori",
+      tags: ["acei"],
+      interactions: [
+        { key: "ksparing", sev: "avoid", why: "Rischio iperkaliemia aumentato con risparmiatori di K+.", monitor: ["K+", "Creatinina"] },
+        { key: "kplus", sev: "avoid", why: "Supplementi K+ aumentano rischio iperkaliemia.", monitor: ["K+", "Creatinina"] },
+        { key: "fans", sev: "caution", why: "Possibile riduzione effetto e rischio renale (triade: ACEi/diuretico/FANS).", monitor: ["PA", "Creatinina/diuresi"] },
+      ],
+    },
+    {
+      id: "losartan",
+      name: "Losartan",
+      group: "Sartani",
+      tags: ["arb"],
+      interactions: [
+        { key: "ksparing", sev: "avoid", why: "Rischio iperkaliemia aumentato con risparmiatori di K+.", monitor: ["K+", "Creatinina"] },
+        { key: "kplus", sev: "avoid", why: "Supplementi K+ aumentano rischio iperkaliemia.", monitor: ["K+", "Creatinina"] },
+        { key: "fans", sev: "caution", why: "Rischio renale aumentato (ARB + diuretico + FANS).", monitor: ["Creatinina/diuresi", "PA"] },
+      ],
+    },
+    {
+      id: "kcl",
+      name: "Potassio (KCl)",
+      group: "Elettroliti",
+      tags: ["kplus"],
+      interactions: [
+        { key: "acei", sev: "avoid", why: "Rischio iperkaliemia con ACE-inibitori.", monitor: ["K+", "ECG se rischio"] },
+        { key: "arb", sev: "avoid", why: "Rischio iperkaliemia con sartani.", monitor: ["K+", "ECG se rischio"] },
+        { key: "ksparing", sev: "avoid", why: "Rischio iperkaliemia con risparmiatori di K+.", monitor: ["K+"] },
+      ],
+    },
+    {
+      id: "sertralina",
+      name: "Sertralina",
+      group: "SSRI",
+      tags: ["ssri", "serotonina"],
+      interactions: [
+        { key: "anticoag", sev: "caution", why: "Rischio sanguinamento aumentato (effetto piastrinico).", monitor: ["Segni di sanguinamento"] },
+        { key: "linezolid", sev: "avoid", why: "Rischio sindrome serotoninergica (linezolid).", monitor: ["Agitazione, iperreflessia, febbre", "Valuta sospensione/alternativa (decisione medico)"] },
+        { key: "tramadolo", sev: "caution", why: "Aumenta rischio sindrome serotoninergica e convulsioni.", monitor: ["Stato mentale", "Tremori/iperreflessia"] },
+      ],
+    },
+    {
+      id: "escitalopram",
+      name: "Escitalopram",
+      group: "SSRI",
+      tags: ["ssri", "serotonina", "qt"],
+      interactions: [
+        { key: "qt", sev: "avoid", why: "Rischio QT lungo (additivo con altri farmaci QT).", monitor: ["ECG se rischio", "Correggi elettroliti"] },
+        { key: "anticoag", sev: "caution", why: "Rischio sanguinamento aumentato.", monitor: ["Segni di sanguinamento"] },
+        { key: "linezolid", sev: "avoid", why: "Rischio sindrome serotoninergica.", monitor: ["Agitazione, iperreflessia, febbre"] },
+      ],
+    },
+    {
+      id: "venlafaxina",
+      name: "Venlafaxina",
+      group: "SNRI",
+      tags: ["snri", "serotonina"],
+      interactions: [
+        { key: "anticoag", sev: "caution", why: "Rischio sanguinamento aumentato.", monitor: ["Segni di sanguinamento"] },
+        { key: "linezolid", sev: "avoid", why: "Rischio sindrome serotoninergica.", monitor: ["Agitazione, iperreflessia, febbre"] },
+      ],
+    },
+    {
+      id: "tramadolo",
+      name: "Tramadolo",
+      group: "Analgesici",
+      tags: ["tramadolo", "serotonina", "oppioidi"],
+      interactions: [
+        { key: "ssri", sev: "caution", why: "Aumenta rischio sindrome serotoninergica e convulsioni.", monitor: ["Stato mentale", "Tremori/iperreflessia"] },
+        { key: "snri", sev: "caution", why: "Aumenta rischio sindrome serotoninergica e convulsioni.", monitor: ["Stato mentale", "Tremori/iperreflessia"] },
+        { key: "linezolid", sev: "avoid", why: "Rischio elevato di sindrome serotoninergica.", monitor: ["Sintomi neurovegetativi", "Valuta alternativa (decisione medico)"] },
+      ],
+    },
+    {
+      id: "linezolid",
+      name: "Linezolid",
+      group: "Antibiotici",
+      tags: ["linezolid", "serotonina"],
+      interactions: [
+        { key: "ssri", sev: "avoid", why: "Rischio sindrome serotoninergica con SSRI.", monitor: ["Agitazione, iperreflessia, febbre", "Monitoraggio stretto"] },
+        { key: "snri", sev: "avoid", why: "Rischio sindrome serotoninergica con SNRI.", monitor: ["Agitazione, iperreflessia, febbre"] },
+        { key: "tramadolo", sev: "avoid", why: "Rischio sindrome serotoninergica.", monitor: ["Stato mentale", "Iperreflessia"] },
       ],
     },
     {
@@ -950,655 +1221,478 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
       name: "Claritromicina",
       group: "Macrolidi",
       also: ["Macrolidi"],
+      tags: ["macrolidi", "qt", "cyp3a4"],
       interactions: [
-        { key: "cyp3a4", sev: "avoid", why: "Inibitore CYP3A4: aumenta livelli di molti farmaci.", monitor: ["Valuta interazioni specifiche", "Sorveglia tossicità"], alternatives: ["Azitromicina (minor inibizione)", "Doxiciclina (se indicata)"] },
+        { key: "cyp3a4", sev: "avoid", why: "Inibitore CYP3A4/P-gp: aumenta livelli di molti farmaci.", monitor: ["Valuta interazioni specifiche", "Sorveglia tossicità"], alternatives: ["Azitromicina (minor inibizione)", "Doxiciclina (se indicata)"] },
         { key: "qt", sev: "avoid", why: "Rischio QT lungo.", monitor: ["ECG se rischio elevato", "Correggi elettroliti"] },
+        { key: "digoxin", sev: "avoid", why: "Aumenta livelli di digossina (P-gp).", monitor: ["Segni tossicità digossina", "FC/ECG"] },
+        { key: "doac", sev: "caution", why: "Possibile aumento livelli DOAC (P-gp/CYP).", monitor: ["Segni sanguinamento"] },
       ],
     },
     {
-      id: "metoprololo",
-      name: "Metoprololo",
-      group: "Beta-bloccanti",
-      also: ["Betabloccanti"],
+      id: "ciprofloxacina",
+      name: "Ciprofloxacina",
+      group: "Fluorochinoloni",
+      also: ["Chinoloni"],
+      tags: ["chinoloni", "qt"],
       interactions: [
-        { key: "calcio", sev: "caution", why: "Somma effetto su conduzione/FC (rischio bradicardia/ipotensione).", monitor: ["FC/PA", "ECG se sintomi"] },
-        { key: "amiodarone", sev: "caution", why: "Bradicardia/blocco AV (effetto additivo).", monitor: ["FC/PA", "ECG"] },
+        { key: "qt", sev: "avoid", why: "Può prolungare QT: rischio additivo.", monitor: ["ECG se rischio", "Correggi elettroliti"] },
       ],
     },
     {
-      id: "verapamil",
-      name: "Verapamil",
-      group: "Calcio-antagonisti",
-      also: ["Calcioantagonisti"],
+      id: "ondansetron",
+      name: "Ondansetron",
+      group: "Antiemetici",
+      tags: ["qt"],
       interactions: [
-        { key: "beta", sev: "avoid", why: "Somma effetto su nodo AV → bradicardia/blocco AV.", monitor: ["FC/PA", "ECG"] , alternatives: ["Diltiazem (non sempre migliore)", "Valuta altra strategia (decisione medico)"]},
-        { key: "cyp3a4", sev: "caution", why: "Substrato/inibitore: possibile aumento livelli di farmaci co-somministrati.", monitor: ["Sorveglia effetti"] },
+        { key: "qt", sev: "avoid", why: "Prolunga QT: rischio additivo con altri farmaci QT.", monitor: ["ECG se rischio", "K/Mg"] },
+        { key: "serotonina", sev: "caution", why: "Raro: contributo a quadro serotoninergico in combinazioni multiple.", monitor: ["Stato mentale", "Tremori/iperreflessia"] },
       ],
     },
     {
-      id: "sertralina",
-      name: "Sertralina",
-      group: "SSRI",
+      id: "haloperidolo",
+      name: "Haloperidolo",
+      group: "Antipsicotici",
+      tags: ["qt", "cns"],
       interactions: [
-        { key: "warfarin", sev: "caution", why: "Rischio sanguinamento aumentato (piastrine).", monitor: ["Sorveglia sanguinamenti", "Valuta INR se variabilità"] },
-        { key: "linezolid", sev: "avoid", why: "Rischio sindrome serotoninergica.", monitor: ["Ipertermia, rigidità, agitazione"], alternatives: ["Valuta alternativa antibiotica (decisione medico)", "Sospensione SSRI se indicata e pianificata"] },
-      ],
-    },
-
-    
-    // ---- Estensione DB (alta resa infermieristica) ----
-    {
-      id: "apixaban",
-      name: "Apixaban",
-      group: "DOAC",
-      interactions: [
-        { key: "antiagg", sev: "avoid", why: "Somma rischio emorragico con antiaggreganti.", monitor: ["Valuta segni di sanguinamento", "Valuta indicazione clinica"], alternatives: ["Monoterapia se appropriata (decisione medico)"] },
-        { key: "fans", sev: "avoid", why: "Aumenta rischio emorragico (mucosa + piastrine).", monitor: ["Educazione segni di sanguinamento", "Valuta gastroprotezione"] },
-        { key: "cyp3a4", sev: "caution", why: "Interazioni metaboliche possibili (CYP3A4/P-gp).", monitor: ["Sorveglia sanguinamenti", "Valuta farmaci concomitanti"] },
+        { key: "qt", sev: "avoid", why: "Prolunga QT: rischio additivo.", monitor: ["ECG", "K/Mg"] },
+        { key: "oppioidi", sev: "caution", why: "Sedazione/dep respiratoria additiva.", monitor: ["FR/SaO2", "Stato di vigilanza"] },
       ],
     },
     {
-      id: "enoxaparina",
-      name: "Enoxaparina",
-      group: "Eparine",
+      id: "quetiapina",
+      name: "Quetiapina",
+      group: "Antipsicotici",
+      tags: ["qt", "cns"],
       interactions: [
-        { key: "antiagg", sev: "avoid", why: "Somma rischio emorragico (eparina + antiaggregante).", monitor: ["Controlla ematomi/sanguinamenti", "Valuta Hb se indicato"] },
-        { key: "fans", sev: "avoid", why: "Somma rischio emorragico.", monitor: ["Segni emorragia", "Valuta gastroprotezione"] },
+        { key: "qt", sev: "avoid", why: "Può prolungare QT: rischio additivo.", monitor: ["ECG se rischio", "K/Mg"] },
+        { key: "oppioidi", sev: "caution", why: "Sedazione additiva.", monitor: ["Stato di vigilanza", "FR"] },
       ],
     },
     {
-      id: "aspirina",
-      name: "Acido acetilsalicilico",
-      group: "Antiaggreganti",
-      also: ["ASA"],
+      id: "vancomicina",
+      name: "Vancomicina",
+      group: "Antibiotici",
+      tags: ["nefrotox"],
       interactions: [
-        { key: "anticoag", sev: "avoid", why: "Somma rischio emorragico con anticoagulanti.", monitor: ["Segni sanguinamento", "Valuta Hb/ematocrito se indicato"] },
-        { key: "fans", sev: "avoid", why: "Somma gastrolesività e rischio emorragico.", monitor: ["Valuta gastroprotezione"] },
+        { key: "nefrotox", sev: "caution", why: "Somma rischio nefrotossicità con altri nefrotossici.", monitor: ["Creatinina/diuresi", "Livelli se disponibili"] },
+        { key: "gentamicina", sev: "avoid", why: "Rischio nefro/ototossicità aumentato (additivo).", monitor: ["Creatinina/diuresi", "Udito", "Livelli se disponibili"] },
       ],
     },
     {
-      id: "clopidogrel",
-      name: "Clopidogrel",
-      group: "Antiaggreganti",
+      id: "gentamicina",
+      name: "Gentamicina",
+      group: "Aminoglicosidi",
+      tags: ["nefrotox"],
       interactions: [
-        { key: "ppi", sev: "caution", why: "Alcuni PPI possono ridurre attivazione (CYP2C19).", monitor: ["Valuta scelta PPI", "Sorveglia efficacia antiaggregante secondo indicazione"] },
-        { key: "anticoag", sev: "avoid", why: "Somma rischio emorragico.", monitor: ["Segni sanguinamento"] },
+        { key: "nefrotox", sev: "avoid", why: "Rischio nefro/ototossicità additivo.", monitor: ["Creatinina/diuresi", "Udito", "Livelli se disponibili"] },
+        { key: "vancomicina", sev: "avoid", why: "Rischio nefro/ototossicità aumentato.", monitor: ["Creatinina/diuresi", "Udito"] },
       ],
     },
-    {
-      id: "ramipril",
-      name: "Ramipril",
-      group: "ACE-inibitori",
-      interactions: [
-        { key: "k", sev: "caution", why: "Rischio iperkaliemia (specie con risparmiatori di K).", monitor: ["K sierico", "ECG se K elevato"] },
-        { key: "diuretici", sev: "caution", why: "Ipotensione/insufficienza renale in associazione.", monitor: ["PA", "Creatinina", "Diuresi"] },
-      ],
-    },
-    {
-      id: "losartan",
-      name: "Losartan",
-      group: "ARB",
-      interactions: [
-        { key: "k", sev: "caution", why: "Rischio iperkaliemia.", monitor: ["K sierico", "Monitoraggio ECG se rischio"] },
-        { key: "diuretici", sev: "caution", why: "Ipotensione/creatinina ↑ in associazione.", monitor: ["PA", "Creatinina", "Diuresi"] },
-      ],
-    },
-    {
-      id: "spironolattone",
-      name: "Spironolattone",
-      group: "Diuretici",
-      interactions: [
-        { key: "acei", sev: "caution", why: "Somma rischio iperkaliemia (ACEi/ARB + risparmiatore K).", monitor: ["K sierico", "Segni iperkaliemia"] },
-        { key: "arb", sev: "caution", why: "Somma rischio iperkaliemia.", monitor: ["K sierico"] },
-      ],
-    },
-    {
-      id: "furosemide",
-      name: "Furosemide",
-      group: "Diuretici",
-      interactions: [
-        { key: "nefro", sev: "caution", why: "Rischio disidratazione/AKI con farmaci nefrotossici o ipovolemia.", monitor: ["Diuresi", "Creatinina", "PA"] },
-        { key: "digossina", sev: "caution", why: "Ipokaliemia può aumentare tossicità da digossina.", monitor: ["K/Mg", "Segni tossicità digossina", "ECG"] },
-      ],
-    },
-    {
-      id: "digossina",
-      name: "Digossina",
-      group: "Cardiovascolari",
-      interactions: [
-        { key: "amiodarone", sev: "avoid", why: "Aumenta livelli di digossina (P-gp) → tossicità.", monitor: ["ECG", "Segni tossicità (nausea, aritmie)", "Valuta livello se indicato"], alternatives: ["Valuta riduzione dose (decisione medico)"] },
-        { key: "macrolidi", sev: "caution", why: "Possibile aumento livelli e aritmie.", monitor: ["ECG", "Sintomi"] },
-      ],
-    },
-    {
-      id: "litio",
-      name: "Litio",
-      group: "Psichiatria",
-      interactions: [
-        { key: "diuretici", sev: "avoid", why: "Diuretici (specie tiazidici) aumentano livelli di litio.", monitor: ["Segni tossicità (tremore, confusione)", "Valuta livelli"] },
-        { key: "fans", sev: "avoid", why: "FANS possono aumentare livelli di litio.", monitor: ["Segni tossicità", "Valuta alternative analgesiche"] },
-        { key: "acei", sev: "caution", why: "ACEi possono aumentare livelli di litio.", monitor: ["Segni tossicità", "Valuta livelli"] },
-      ],
-    },
-    {
-      id: "metformina",
-      name: "Metformina",
-      group: "Antidiabetici",
-      interactions: [
-        { key: "nefro", sev: "caution", why: "Rischio accumulo in insufficienza renale (lattacidosi).", monitor: ["Creatinina/eGFR", "Segni acidosi lattica"] },
-      ],
-    },
-    {
-      id: "insulina",
-      name: "Insulina",
-      group: "Antidiabetici",
-      interactions: [
-        { key: "beta", sev: "caution", why: "Beta-bloccanti possono mascherare ipoglicemia.", monitor: ["Glicemie ravvicinate", "Educazione sintomi atipici"] },
-        { key: "cortico", sev: "caution", why: "Corticosteroidi aumentano glicemia → necessità aggiustamento.", monitor: ["Glicemie", "Schema insulinico"] },
-      ],
-    },
-    {
-      id: "tramadolo",
-      name: "Tramadolo",
-      group: "Analgesici",
-      interactions: [
-        { key: "serotonina", sev: "avoid", why: "Rischio sindrome serotoninergica con SSRI/SNRI/MAOI/linezolid.", monitor: ["Agitazione, iperreflessia, febbre", "Allerta medico"] },
-        { key: "cns", sev: "caution", why: "Depressione SNC con sedativi/oppiacei/benzodiazepine.", monitor: ["FR/SpO2", "Sedazione"] },
-      ],
-    },
-    {
-      id: "morfina",
-      name: "Morfina",
-      group: "Oppioidi",
-      interactions: [
-        { key: "cns", sev: "avoid", why: "Depressione respiratoria con benzodiazepine/altri sedativi.", monitor: ["FR/SpO2", "Sedazione", "Scala dolore"] },
-      ],
-    },
-
-
-    // chiavi di gruppo “virtuali” (non selezionabili) usate come regole
-    { id: "fans", name: "FANS (gruppo)", group: "GRP", interactions: [] },
-    { id: "qt", name: "Farmaci QT-prolunganti (gruppo)", group: "GRP", interactions: [] },
-    { id: "cyp3a4", name: "Substrati CYP3A4 (gruppo)", group: "GRP", interactions: [] },
-    { id: "beta", name: "Beta-bloccanti (gruppo)", group: "GRP", interactions: [] },
-    { id: "calcio", name: "Calcio-antagonisti (gruppo)", group: "GRP", interactions: [] },
-    { id: "macrolidi", name: "Macrolidi (gruppo)", group: "GRP", interactions: [] },
-    
-    { id: "doac", name: "DOAC (gruppo)", group: "GRP", interactions: [] },
-    { id: "anticoag", name: "Anticoagulanti (gruppo)", group: "GRP", interactions: [] },
-    { id: "antiagg", name: "Antiaggreganti (gruppo)", group: "GRP", interactions: [] },
-    { id: "acei", name: "ACE-inibitori (gruppo)", group: "GRP", interactions: [] },
-    { id: "arb", name: "ARB (gruppo)", group: "GRP", interactions: [] },
-    { id: "diuretici", name: "Diuretici (gruppo)", group: "GRP", interactions: [] },
-    { id: "k", name: "Farmaci che aumentano K (gruppo)", group: "GRP", interactions: [] },
-    { id: "nefro", name: "Nefrotossici/AKI risk (gruppo)", group: "GRP", interactions: [] },
-    { id: "serotonina", name: "Serotoninergici (gruppo)", group: "GRP", interactions: [] },
-    { id: "digossina", name: "Digossina (gruppo)", group: "GRP", interactions: [] },
-    { id: "ppi", name: "PPI (gruppo)", group: "GRP", interactions: [] },
-    { id: "cortico", name: "Corticosteroidi (gruppo)", group: "GRP", interactions: [] },
-    { id: "cns", name: "Depressori SNC (gruppo)", group: "GRP", interactions: [] },
-
-    { id: "linezolid", name: "Linezolid", group: "Antibiotici", interactions: [] },
   ];
 
-  const limit = useDailyLimit(LS.interactionsDaily, 3);
-  const toast = useToast();
+  const isBrowser = () => typeof window !== "undefined";
 
-  const selectable = useMemo(() => DB.filter((e) => e.group !== "GRP"), []);
+  function norm(s: string) {
+    return s
+      .toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9+ ]/g, " ")
+      .replace(/\s+/g, " ");
+  }
+
   const byId = useMemo(() => {
     const m = new Map<string, Entry>();
-    for (const e of DB) m.set(e.id, e);
+    DB.forEach((e) => m.set(e.id, e));
     return m;
   }, []);
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [q1, setQ1] = useState("");
-  const [q2, setQ2] = useState("");
+  const searchIndex = useMemo(() => {
+    const out: { id: string; text: string }[] = [];
+    DB.forEach((e) => {
+      const parts = [e.name, e.id, e.group, ...(e.also || [])];
+      out.push({ id: e.id, text: norm(parts.join(" ")) });
+    });
+    return out;
+  }, []);
+
+  // UI state
   const [a, setA] = useState<Entry | null>(null);
   const [b, setB] = useState<Entry | null>(null);
-  const [focusTag, setFocusTag] = useState<null | "qt" | "rene" | "bleed" | "snc">(null);
+  const [qa, setQa] = useState("");
+  const [qb, setQb] = useState("");
 
-  const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
-  const results2 = useMemo(() => searchDrugs(selectable, q2), [selectable, q2]);
+  const [showAlt, setShowAlt] = useState(false);
 
-  const outcome = useMemo(() => {
-    if (!a || !b) return null;
-
-    // match rules either direction
-    const match = (x: Entry, y: Entry) => {
-      const keys = new Set<string>([y.id, normalize(y.group)]);
-      const also = (y.also || []).map((s) => normalize(s));
-      for (const s of also) keys.add(s);
-
-      for (const r of x.interactions) {
-        if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
-        // allow group keys like "beta", "qt" etc: match by group name too
-        const ry = byId.get(r.key);
-        if (ry && (ry.id === y.id || normalize(ry.name) === normalize(y.name))) return r;
-      }
-      return null;
-    };
-
-    const r1 = match(a, b);
-    const r2 = match(b, a);
-    const worst = pickWorst(r1, r2);
-
-    if (!worst) {
-      return {
-        sev: "ok" as Severity,
-        title: "Compatibile",
-        why: "Nessuna interazione clinicamente rilevante presente nel database locale per questa coppia.",
-        monitor: ["Monitoraggio clinico standard"],
-        alternatives: [] as string[],
-        tags: [] as any[],
-      };
-    }
-
-    return {
-      sev: worst.sev,
-      title: worst.sev === "avoid" ? "Evitare" : worst.sev === "caution" ? "Attenzione" : "Compatibile",
-      why: worst.why,
-      monitor: worst.monitor?.length ? worst.monitor : ["Valuta monitoraggio clinico/strumentale in base al paziente"],
-      alternatives: worst.alternatives || [],
-      // "worst" is a reduced interaction object (sev/why/monitor/alternatives) and does not carry an id/key.
-      // Use the current pair (a,b) as tag seed to keep typing strict and avoid TS errors.
-      tags: inferTags(`${a} ${b}`.trim(), String(worst.why || ""), (worst.monitor || []) as any),
-    };
-  }, [a, b, byId]);
-
-  function inferTags(key: string, why: string, monitor: string[]) {
-    const tags: { id: "qt" | "rene" | "bleed" | "snc"; label: string; icon: string }[] = [];
-    const hay = normalize([key, why, ...(monitor || [])].join(" "));
-    const push = (id: any, label: string, icon: string) => {
-      if (!tags.find((t) => t.id === id)) tags.push({ id, label, icon });
-    };
-    if (hay.includes("qt") || hay.includes("torsione") || hay.includes("aritmi")) push("qt", "QT", "⚡");
-    if (hay.includes("creatin") || hay.includes("diures") || hay.includes("aki") || hay.includes("nefro") || hay.includes("ren")) push("rene", "Rene", "🧪");
-    if (hay.includes("emorrag") || hay.includes("sangu") || hay.includes("inr") || hay.includes("piastrin")) push("bleed", "Sanguin.", "🩸");
-    if (hay.includes("snc") || hay.includes("sedaz") || hay.includes("depress") || hay.includes("respir") || hay.includes("coscien")) push("snc", "SNC", "🫁");
-    return tags.slice(0, 4);
-  }
-
-  async function shareOutcome() {
-    if (!a || !b || !outcome) return;
-    const tags = outcome.tags?.length ? ` (${outcome.tags.map((t:any) => t.label).join(", ")})` : "";
-    const text = [
-      `💊 Interazioni — ${a.name} + ${b.name}`,
-      `Esito: ${outcome.title}${tags}`,
-      `Motivo: ${outcome.why}`,
-      "",
-      "Monitoraggio:",
-      ...(outcome.monitor || []).map((m:any) => `• ${m}`),
-      "",
-      "— Nurse Diary",
-    ].join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.push("Copiato negli appunti", "success");
-    } catch {
-      toast.push("Impossibile copiare", "error");
-    }
-  }
-
-  function resetAll() {
-    setStep(1);
-    setQ1("");
-    setQ2("");
+  function clearAll() {
     setA(null);
     setB(null);
+    setQa("");
+    setQb("");
+    setShowAlt(false);
   }
 
-  function confirm() {
-    if (!a || !b || !outcome) return;
+  function swap() {
+    setA((prevA) => {
+      const nextA = b;
+      setB(prevA);
+      return nextA;
+    });
+  }
 
-    if (!limit.canUse()) {
-      toast.push("Limite raggiunto", "warning");
-      onUpsell("Sblocca ricerche illimitate", "Hai esaurito le 3 ricerche gratuite di oggi. Con Premium hai ricerche illimitate e alternative terapeutiche.");
-      return;
-    }
+  function matches(e: Entry, q: string) {
+    const nq = norm(q);
+    if (!nq) return true;
+    const hit = searchIndex.find((x) => x.id === e.id);
+    if (!hit) return false;
+    // allow multi-token match
+    return nq.split(" ").every((t) => hit.text.includes(t));
+  }
 
-    limit.inc();
+  const listA = useMemo(() => {
+    const q = qa.trim();
+    if (!q) return DB.slice(0, 18);
+    return DB.filter((e) => matches(e, q)).slice(0, 24);
+  }, [qa]);
 
-    onSave({
-      tool: "Interazioni farmacologiche",
-      ts: Date.now(),
-      inputs: { farmaco1: a.name, farmaco2: b.name },
-      output: `${a.name} + ${b.name}: ${outcome.title}`,
+  const listB = useMemo(() => {
+    const q = qb.trim();
+    if (!q) return DB.slice(0, 18);
+    return DB.filter((e) => matches(e, q)).slice(0, 24);
+  }, [qb]);
+
+  function getMatches(from: Entry, other: Entry): Interaction[] {
+    const otherKeys = new Set<string>([other.id, ...(other.tags || [])]);
+    // also match groups by tags: if key is present in other.tags, it matches
+    const hits: Interaction[] = [];
+    from.interactions.forEach((it) => {
+      if (otherKeys.has(it.key)) hits.push(it);
+    });
+    return hits;
+  }
+
+  function inferTags(seedA: string, seedB: string, why: string, monitor: string[]) {
+    const s = `${seedA} ${seedB} ${why} ${monitor.join(" ")}`.toLowerCase();
+    const tags: string[] = [];
+    const push = (t: string) => {
+      if (!tags.includes(t)) tags.push(t);
+    };
+    if (s.includes("qt")) push("QT");
+    if (s.includes("torsione") || s.includes("ecg")) push("QT");
+    if (s.includes("creatin") || s.includes("diuresi") || s.includes("ren")) push("Rene");
+    if (s.includes("sanguin") || s.includes("emorrag") || s.includes("inr")) push("Sanguinamento");
+    if (s.includes("sedaz") || s.includes("convuls") || s.includes("stato mentale") || s.includes("seroton")) push("SNC");
+    return tags;
+  }
+
+  const result = useMemo(() => {
+    if (!a || !b) return null;
+
+    const hitsAB = getMatches(a, b);
+    const hitsBA = getMatches(b, a);
+    const all = [...hitsAB, ...hitsBA];
+
+    let worst: Interaction | null = null;
+    all.forEach((it) => {
+      if (!worst || sevRank[it.sev] > sevRank[worst.sev]) worst = it;
     });
 
-    setStep(3);
+    const sev: Severity = worst?.sev || "ok";
+    const why =
+      worst?.why ||
+      "Nessuna interazione clinicamente rilevante presente nel database locale per questa coppia.";
+    const monitor =
+      worst?.monitor?.length
+        ? worst.monitor
+        : ["Monitoraggio clinico standard in base al paziente e al contesto."];
+    const alternatives = worst?.alternatives || [];
+
+    // Collect UI tags from matched keys + heuristic
+    const uiTags: string[] = [];
+    const matchedKeys = new Set<string>();
+    all.forEach((it) => matchedKeys.add(it.key));
+    matchedKeys.forEach((k) => {
+      const meta = GROUP_META[k];
+      if (meta?.tags?.length) meta.tags.forEach((t) => (uiTags.includes(t) ? null : uiTags.push(t)));
+    });
+    inferTags(a.id, b.id, why, monitor).forEach((t) => (uiTags.includes(t) ? null : uiTags.push(t)));
+
+    return {
+      sev,
+      why,
+      monitor,
+      alternatives,
+      tags: uiTags,
+      title:
+        sev === "avoid" ? "Da evitare" : sev === "caution" ? "Attenzione" : "Compatibile",
+    };
+  }, [a, b]);
+
+  const sevStyle = (sev: Severity) => {
+    if (sev === "avoid")
+      return { bg: "rgba(244,63,94,0.16)", br: "rgba(244,63,94,0.45)", text: "rgba(255,255,255,0.96)" };
+    if (sev === "caution")
+      return { bg: "rgba(245,158,11,0.14)", br: "rgba(245,158,11,0.40)", text: "rgba(255,255,255,0.96)" };
+    return { bg: "rgba(16,185,129,0.14)", br: "rgba(16,185,129,0.40)", text: "rgba(255,255,255,0.96)" };
+  };
+
+  async function share(text: string) {
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return true;
+      }
+    } catch {}
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {}
+    return false;
   }
 
+  function saveToHistory() {
+    if (!a || !b || !result) return;
+    const out = `${a.name} + ${b.name}: ${result.title}\n- ${result.why}\nMonitoraggio: ${result.monitor.join("; ")}`;
+    onSave({
+      tool: "INTERACTIONS",
+      ts: Date.now(),
+      inputs: { a: a.id, b: b.id },
+      output: out,
+    });
+  }
+
+  const premium = isPremium();
+
+  const pill = (label: string, tone: "muted" | "ok" | "caution" | "avoid" = "muted") => {
+    const base = { borderRadius: 999, padding: "6px 10px", fontSize: 12, fontWeight: 950 as const, letterSpacing: -0.2 };
+    const toneStyle =
+      tone === "avoid"
+        ? { border: "1px solid rgba(244,63,94,0.35)", background: "rgba(244,63,94,0.12)" }
+        : tone === "caution"
+        ? { border: "1px solid rgba(245,158,11,0.35)", background: "rgba(245,158,11,0.10)" }
+        : tone === "ok"
+        ? { border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.10)" }
+        : { border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.06)" };
+    return <span style={{ ...base, ...toneStyle }}>{label}</span>;
+  };
+
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
-        <div style={{ fontSize: 14, fontWeight: 900 }}>Modalità guidata</div>
-        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
+    <div className="nd-surface" style={{ padding: 14, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div>
+          <div style={{ fontWeight: 1000, fontSize: 18, letterSpacing: -0.4 }}>Interazioni farmacologiche</div>
+          <div style={{ opacity: 0.72, fontSize: 12, marginTop: 2 }}>Seleziona 2 farmaci: risposta immediata (database locale).</div>
+        </div>
+        <button
+          type="button"
+          className="nd-btn nd-btn-ghost nd-press"
+          style={{ borderRadius: 999, padding: "8px 12px" }}
+          onClick={() =>
+            onUpsell(
+              "Utility Premium",
+              "Sblocca alternative terapeutiche e preferiti avanzati.",
+              ["Alternative quando presenti", "Preferiti riordinabili", "Aggiornamenti database"]
+            )
+          }
+        >
+          Premium
+        </button>
       </div>
 
-      {step === 1 && (
-        <StepPick
-          title="Step 1 — Seleziona farmaco 1"
-          query={q1}
-          setQuery={setQ1}
-          results={results1}
-          onPick={(e) => {
-            setA(e);
-            setStep(2);
-            setQ2("");
-            setB(null);
-          }}
-        />
-      )}
-
-      {step === 2 && (
-        <StepPick
-          title="Step 2 — Seleziona farmaco 2"
-          query={q2}
-          setQuery={setQ2}
-          results={results2}
-          onPick={(e) => setB(e)}
-          footer={
-            <div style={{ display: "flex", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setStep(1);
-                  setQ2("");
-                  setB(null);
-                }}
-                style={ghostBtn()}
-              >
-                ← Cambia farmaco 1
-              </button>
-
-              <button type="button" onClick={confirm} disabled={!a || !b} style={primaryBtn(!a || !b)}>
-                Verifica interazione
-              </button>
-            </div>
-          }
-        />
-      )}
-
-      {step === 3 && outcome && a && b && (
-        <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-            <div>
-              <div style={{ fontWeight: 950, fontSize: 15 }}>{a.name} + {b.name}</div>
-              <div style={{ opacity: 0.75, marginTop: 4, fontSize: 13 }}>{a.group} • {b.group}</div>
-            </div>
-
-            <span style={sevPill(outcome.sev)}>{outcome.title}</span>
+      <div style={{ marginTop: 12, display: "grid", gap: 10, gridTemplateColumns: "1fr" }}>
+        {/* Picker A */}
+        <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 16, padding: 12, background: "rgba(0,0,0,0.20)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontWeight: 950, fontSize: 13, opacity: 0.9 }}>Farmaco 1</div>
+            {a ? <button type="button" className="nd-btn nd-btn-ghost nd-press" style={{ padding: "6px 10px", borderRadius: 999 }} onClick={() => setA(null)}>Cambia</button> : null}
           </div>
 
-          {outcome.tags && outcome.tags.length > 0 && (
-            <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {outcome.tags.map((t: any) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className="nd-tile nd-press"
-                  onClick={() => setFocusTag((p) => (p === t.id ? null : t.id))}
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: focusTag === t.id ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.05)",
-                    fontSize: 12,
-                    fontWeight: 900,
-                    opacity: 0.95,
-                  }}
-                >
-                  {t.icon} {t.label}
-                </button>
-              ))}
+          {a ? (
+            <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ fontWeight: 1000 }}>{a.name}</div>
+                <div style={{ opacity: 0.7, fontSize: 12 }}>{a.group}</div>
+              </div>
             </div>
+          ) : (
+            <>
+              <input
+                value={qa}
+                onChange={(e) => setQa(e.target.value)}
+                placeholder="Cerca farmaco..."
+                style={{ width: "100%", marginTop: 8, padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
+              />
+              <div style={{ marginTop: 8, maxHeight: 220, overflow: "auto", borderRadius: 12 }}>
+                {listA.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    className="nd-press"
+                    onClick={() => { setA(e); setQa(""); }}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "10px 12px",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 12,
+                      background: "rgba(255,255,255,0.03)",
+                      marginBottom: 8,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ fontWeight: 950 }}>{e.name}</div>
+                    <div style={{ opacity: 0.7, fontSize: 12 }}>{e.group}</div>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
+        </div>
 
-          <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9, lineHeight: 1.35 }}>{outcome.why}</div>
-
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>Monitoraggio consigliato</div>
-            <ul style={{ margin: 0, paddingLeft: 18, opacity: 0.85, fontSize: 13 }}>
-              {outcome.monitor.map((m, i) => {
-                const nm = normalize(String(m));
-                const match = !focusTag || (focusTag === "qt" ? nm.includes("ecg") || nm.includes("qt") : focusTag === "rene" ? nm.includes("creatin") || nm.includes("diures") : focusTag === "bleed" ? nm.includes("sangu") || nm.includes("inr") : focusTag === "snc" ? nm.includes("fr") || nm.includes("sp") || nm.includes("sedaz") : true);
-                return (
-                  <li key={i} style={{ marginBottom: 4, opacity: match ? 1 : 0.35 }}>{m}</li>
-                );
-              })}
-            </ul>
+        {/* Picker B */}
+        <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 16, padding: 12, background: "rgba(0,0,0,0.20)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontWeight: 950, fontSize: 13, opacity: 0.9 }}>Farmaco 2</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              {(a && b) ? (
+                <button type="button" className="nd-btn nd-btn-ghost nd-press" style={{ padding: "6px 10px", borderRadius: 999 }} onClick={swap}>↔</button>
+              ) : null}
+              {b ? <button type="button" className="nd-btn nd-btn-ghost nd-press" style={{ padding: "6px 10px", borderRadius: 999 }} onClick={() => setB(null)}>Cambia</button> : null}
+            </div>
           </div>
 
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>Alternative terapeutiche</div>
-            {limit.premium ? (
-              <div style={{ fontSize: 13, opacity: 0.85 }}>
-                {outcome.alternatives.length ? (
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {outcome.alternatives.map((x, i) => <li key={i} style={{ marginBottom: 4 }}>{x}</li>)}
+          {b ? (
+            <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ fontWeight: 1000 }}>{b.name}</div>
+                <div style={{ opacity: 0.7, fontSize: 12 }}>{b.group}</div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <input
+                value={qb}
+                onChange={(e) => setQb(e.target.value)}
+                placeholder="Cerca farmaco..."
+                style={{ width: "100%", marginTop: 8, padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(0,0,0,0.25)", color: "rgba(255,255,255,0.92)" }}
+              />
+              <div style={{ marginTop: 8, maxHeight: 220, overflow: "auto", borderRadius: 12 }}>
+                {listB.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    className="nd-press"
+                    onClick={() => { setB(e); setQb(""); }}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "10px 12px",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 12,
+                      background: "rgba(255,255,255,0.03)",
+                      marginBottom: 8,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ fontWeight: 950 }}>{e.name}</div>
+                    <div style={{ opacity: 0.7, fontSize: 12 }}>{e.group}</div>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Result */}
+        {a && b && result ? (
+          <div style={{ border: "1px solid rgba(255,255,255,0.10)", borderRadius: 18, padding: 14, background: "rgba(255,255,255,0.03)" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
+              <div>
+                <div style={{ fontWeight: 1000, fontSize: 15, letterSpacing: -0.2 }}>{a.name} + {b.name}</div>
+                <div style={{ opacity: 0.68, fontSize: 12, marginTop: 2 }}>{a.group} • {b.group}</div>
+              </div>
+              <div style={{ borderRadius: 999, padding: "6px 10px", border: `1px solid ${sevStyle(result.sev).br}`, background: sevStyle(result.sev).bg, fontWeight: 1000, fontSize: 12 }}>
+                {result.title}
+              </div>
+            </div>
+
+            {result.tags?.length ? (
+              <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {result.tags.slice(0, 4).map((t) => pill(t, result.sev === "avoid" ? "avoid" : result.sev === "caution" ? "caution" : "ok"))}
+              </div>
+            ) : null}
+
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 950 }}>Perché</div>
+              <div style={{ marginTop: 4, opacity: 0.92, lineHeight: 1.35 }}>{result.why}</div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 950 }}>Monitoraggio consigliato</div>
+              <ul style={{ marginTop: 6, paddingLeft: 18, opacity: 0.92, lineHeight: 1.35 }}>
+                {result.monitor.slice(0, 5).map((m, i) => <li key={i}>{m}</li>)}
+              </ul>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 950 }}>Alternative terapeutiche</div>
+                {!premium && result.alternatives.length ? (
+                  <button type="button" className="nd-btn nd-btn-ghost nd-press" style={{ padding: "6px 10px", borderRadius: 999 }} onClick={() => onUpsell("Alternative (Premium)", "Sblocca alternative e note aggiuntive.", ["Alternative quando presenti", "Aggiornamenti database"])}>
+                    Sblocca
+                  </button>
+                ) : null}
+              </div>
+
+              {result.alternatives.length ? (
+                premium ? (
+                  <ul style={{ marginTop: 6, paddingLeft: 18, opacity: 0.92, lineHeight: 1.35 }}>
+                    {result.alternatives.slice(0, 4).map((m, i) => <li key={i}>{m}</li>)}
                   </ul>
                 ) : (
-                  <div style={{ opacity: 0.8 }}>Nessuna alternativa specifica presente per questa coppia. Valuta strategie alternative caso per caso.</div>
-                )}
-              </div>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                <div style={{ fontSize: 13, opacity: 0.75 }}>Disponibile con Premium (ricerche illimitate + alternative).</div>
-                <button type="button" onClick={() => onUpsell("Sblocca Alternative", "Con Premium vedi alternative terapeutiche e dettagli avanzati.")} style={ghostBtn()}>
-                  Sblocca
-                </button>
-              </div>
-            )}
-          </div>
+                  <div style={{ marginTop: 6, opacity: 0.78 }}>
+                    {pill("Disponibili (Premium)", "muted")}
+                  </div>
+                )
+              ) : (
+                <div style={{ marginTop: 6, opacity: 0.78 }}>Nessuna alternativa specifica presente per questa coppia.</div>
+              )}
+            </div>
 
-          <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button type="button" onClick={resetAll} style={ghostBtn()}>Nuova ricerca</button>
-            {!limit.premium && (
-              <button type="button" onClick={() => onUpsell("Ricerche illimitate", "Con Premium ricerche illimitate e contenuti avanzati in Utility.")} style={ghostBtn()}>
-                Passa a Premium
+            <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button type="button" className="nd-btn nd-btn-primary nd-press" style={{ borderRadius: 999, padding: "10px 14px" }} onClick={saveToHistory}>
+                Salva
               </button>
-            )}
+              <button
+                type="button"
+                className="nd-btn nd-btn-ghost nd-press"
+                style={{ borderRadius: 999, padding: "10px 14px" }}
+                onClick={async () => {
+                  const out = `${a.name} + ${b.name}: ${result.title}\nPerché: ${result.why}\nMonitoraggio: ${result.monitor.join("; ")}`;
+                  const ok = await share(out);
+                  // no toast here (Tool is inside UtilityHub, use onUpsell for now is heavy). Silent.
+                  if (!ok) {
+                    try { /* noop */ } catch {}
+                  }
+                }}
+              >
+                Condividi
+              </button>
+              <button type="button" className="nd-btn nd-btn-ghost nd-press" style={{ borderRadius: 999, padding: "10px 14px" }} onClick={clearAll}>
+                Nuova ricerca
+              </button>
+            </div>
+
+            <div style={{ marginTop: 10, opacity: 0.55, fontSize: 11 }}>
+              Nota: database locale educativo. In caso di dubbio, verifica su fonti ufficiali e considera condizioni del paziente.
+            </div>
           </div>
-        </div>
-      )}
-
-      <div style={{ opacity: 0.6, fontSize: 12 }}>
-        Nota: database locale educazionale. In caso di dubbio, verifica su fonti ufficiali e considera condizioni del paziente.
+        ) : null}
       </div>
     </div>
   );
-}
-
-function StepPick({
-  title,
-  query,
-  setQuery,
-  results,
-  onPick,
-  footer,
-}: {
-  title: string;
-  query: string;
-  setQuery: (v: string) => void;
-  results: { e: any; label: string }[];
-  onPick: (e: any) => void;
-  footer?: React.ReactNode;
-}) {
-  return (
-    <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
-      <div style={{ fontSize: 14, fontWeight: 900 }}>{title}</div>
-
-      <input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Cerca farmaco…"
-        style={{
-          width: "100%",
-          marginTop: 10,
-          borderRadius: 14,
-          padding: "12px 12px",
-          border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(0,0,0,0.15)",
-          outline: "none",
-        }}
-      />
-
-      <div style={{ marginTop: 10, display: "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
-        {results.slice(0, 20).map((r, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onPick(r.e)}
-            style={{
-              textAlign: "left",
-              borderRadius: 14,
-              padding: 12,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.02)",
-              cursor: "pointer",
-            }}>
-            <div style={{ fontWeight: 900, fontSize: 13 }}>{r.e.name}</div>
-            <div style={{ opacity: 0.75, fontSize: 12, marginTop: 3 }}>{r.label}</div>
-          </button>
-        ))}
-      </div>
-
-      {footer}
-    </div>
-  );
-}
-
-const DRUG_SYNONYMS: Record<string, string[]> = {
-  "coumadin": ["warfarin"],
-  "cardioaspirin": ["acido acetilsalicilico", "aspirina"],
-  "asa": ["acido acetilsalicilico", "aspirina"],
-  "plavix": ["clopidogrel"],
-  "seloken": ["metoprololo"],
-  "lasix": ["furosemide"],
-  "augmentin": ["amoxicillina", "amoxicillina acido clavulanico"],
-};
-
-function expandQuerySynonyms(nq: string) {
-  const out = new Set<string>([nq]);
-  for (const t of nq.split(" ")) {
-    const syn = DRUG_SYNONYMS[t];
-    if (syn) syn.forEach((s) => out.add(normalize(s)));
-  }
-  return Array.from(out).filter(Boolean);
-}
-
-function searchDrugs(list: { id: string; name: string; group: string; also?: string[] }[], q: string) {
-  const nq = normalize(q);
-  const nqAll = expandQuerySynonyms(nq);
-  if (!nq) {
-    return list
-      .slice()
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((e) => ({ e, label: e.group }));
-  }
-
-  const scored = list.map((e) => {
-    const hay = [e.name, e.group, ...(e.also || [])].map(normalize).join(" | ");
-    let score = 0;
-
-    // strong matches
-    for (const qq of nqAll) {
-      if (!qq) continue;
-      if (hay.startsWith(qq)) score += 100;
-      if (hay.includes(qq)) score += 60;
-    }
-
-    // token matches
-    for (const t of Array.from(new Set(nqAll.join(' ').split(' ')))) {
-      if (!t) continue;
-      if (hay.includes(t)) score += 15;
-    }
-
-    // slight bonus for shorter distance to start
-    const idx = hay.indexOf(nq);
-    if (idx >= 0) score += Math.max(0, 20 - idx);
-
-    return { e, score, label: e.group + (e.also?.length ? ` • alias: ${e.also.join(", ")}` : "") };
-  });
-
-  return scored
-    .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score || a.e.name.localeCompare(b.e.name))
-    .map(({ e, label }) => ({ e, label }));
-}
-
-function pickWorst(
-  a: { sev: "ok" | "caution" | "avoid"; why?: string; monitor?: string[]; alternatives?: string[] } | null,
-  b: { sev: "ok" | "caution" | "avoid"; why?: string; monitor?: string[]; alternatives?: string[] } | null
-) {
-  const rank = (s: "ok" | "caution" | "avoid") => (s === "avoid" ? 2 : s === "caution" ? 1 : 0);
-  if (!a && !b) return null;
-  if (a && !b) return a;
-  if (!a && b) return b;
-  return rank(a!.sev) >= rank(b!.sev) ? a! : b!;
-}
-
-function sevPill(sev: "ok" | "caution" | "avoid") {
-  const base: React.CSSProperties = { fontSize: 12, fontWeight: 950, padding: "6px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.16)" };
-  if (sev === "avoid") return { ...base, background: "rgba(255,0,0,0.14)" };
-  if (sev === "caution") return { ...base, background: "rgba(255,165,0,0.12)" };
-  return { ...base, background: "rgba(0,255,120,0.10)" };
-}
-
-function primaryBtn(disabled: boolean): React.CSSProperties {
-  return {
-    borderRadius: 999,
-    padding: "10px 14px",
-    border: "1px solid rgba(255,255,255,0.14)",
-                    background: disabled ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.10)",
-    fontWeight: 950,
-    cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.6 : 1,
-  };
-}
-
-function ghostBtn(): React.CSSProperties {
-  return {
-    borderRadius: 999,
-    padding: "10px 14px",
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025))",
-    fontWeight: 900,
-    cursor: "pointer",
-  };
-}
-
-/**
- * ======================
- * Calcolatori (base)
- * ======================
- * Manteniamo i tool esistenti (Patch B li renderà “smart” in step successivo)
- */
-
-function copyTextToClipboard(text: string): boolean {
-  if (!isBrowser()) return false;
-  try {
-    const nav: any = navigator as any;
-    if (nav?.clipboard?.writeText) {
-      nav.clipboard.writeText(text);
-      return true;
-    }
-  } catch {}
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.left = "-9999px";
-    ta.style.top = "-9999px";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
-  } catch {}
-  return false;
 }
 
 function ToolRenderer({
