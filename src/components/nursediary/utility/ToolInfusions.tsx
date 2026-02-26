@@ -117,26 +117,6 @@ export default function ToolInfusions({
   useEffect(() => {
     onOpen?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-
-  async function shareResult(aName: string, bName: string, sev: string, title: string, note: string, extra?: string) {
-    const head = sev === "avoid" ? "❌" : sev === "caution" ? "⚠️" : "✅";
-    const modeLabel = mode === "y" ? "Y-site" : mode === "flush" ? "Flush" : "Linea dedicata";
-    const text = [
-      `💉 Infusioni EV — ${aName} + ${bName}`,
-      `${head} ${title} • Modalità: ${modeLabel}`,
-      `Nota: ${note}`,
-      extra ? `\n${extra}` : "",
-      "",
-      "— Nurse Diary",
-    ].filter(Boolean).join("\n");
-    try {
-      await navigator.clipboard.writeText(text);
-      onToast("Copiato negli appunti", "success");
-    } catch {
-      onToast("Impossibile copiare", "error");
-    }
-  }
-
   }, []);
 
   const DB: Drug[] = [
@@ -344,6 +324,35 @@ export default function ToolInfusions({
     const db = DB.find((x) => x.id === bId);
     if (!da || !db) return null;
     return da.compat.find((c) => c.with === bId) || db.compat.find((c) => c.with === aId) || null;
+  }
+
+  async function shareResult(aName: string, bName: string, sev: "ok" | "caution" | "avoid", title: string, note: string) {
+    const head = sev === "avoid" ? "❌" : sev === "caution" ? "⚠️" : "✅";
+    const modeLabel = mode === "y" ? "Y-site" : mode === "flush" ? "Flush" : "Linea dedicata";
+    const text = [
+      `💉 Infusioni EV — ${aName} + ${bName}`,
+      `${head} ${title} • Modalità: ${modeLabel}`,
+      note ? `Nota: ${note}` : "",
+      "",
+      "— Nurse Diary",
+    ].filter(Boolean).join("\n");
+
+    try {
+      if (typeof navigator !== "undefined" && (navigator as any).share) {
+        await (navigator as any).share({ title: "Infusioni EV", text });
+        onToast("Condiviso", "success");
+        return;
+      }
+    } catch {
+      // fallback
+    }
+
+    try {
+      await navigator.clipboard.writeText(text);
+      onToast("Copiato negli appunti", "success");
+    } catch {
+      onToast("Impossibile copiare", "error");
+    }
   }
 
   function confirm() {
