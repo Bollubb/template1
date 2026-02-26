@@ -180,6 +180,8 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   });
 
   const [favs, setFavs] = useState<UtilityToolId[]>(() => readFavs());
+  const [editFavs, setEditFavs] = useState(false);
+  const [dragFav, setDragFav] = useState<UtilityToolId | null>(null);
   const [recent, setRecent] = useState<RecentItem[]>(() => readRecent());
 
   const lastByTool = useMemo(() => {
@@ -224,6 +226,40 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
       const next = removing ? prev.filter((x) => x !== tool) : [tool, ...prev];
       writeFavs(next);
       toast.push(removing ? "Rimosso dai preferiti" : "Aggiunto ai preferiti", "success");
+      return next;
+    });
+  }
+
+  function setFavsPersist(next: UtilityToolId[]) {
+    setFavs(next);
+    writeFavs(next);
+  }
+
+  function moveFav(tool: UtilityToolId, dir: -1 | 1) {
+    setFavs((prev) => {
+      const idx = prev.indexOf(tool);
+      if (idx < 0) return prev;
+      const nextIdx = idx + dir;
+      if (nextIdx < 0 || nextIdx >= prev.length) return prev;
+      const next = prev.slice();
+      const tmp = next[idx];
+      next[idx] = next[nextIdx];
+      next[nextIdx] = tmp;
+      writeFavs(next);
+      return next;
+    });
+  }
+
+  function reorderFavs(from: UtilityToolId, to: UtilityToolId) {
+    if (from === to) return;
+    setFavs((prev) => {
+      const a = prev.indexOf(from);
+      const b = prev.indexOf(to);
+      if (a < 0 || b < 0) return prev;
+      const next = prev.slice();
+      next.splice(a, 1);
+      next.splice(b, 0, from);
+      writeFavs(next);
       return next;
     });
   }
@@ -345,86 +381,20 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             </div>
 
             
-            {query.trim() === "" && (
-              <div style={{ marginTop: 12 }}>
-                <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2, marginBottom: 8 }}>
-                  Azioni rapide
-                </div>
-
-                <div style={{ display: "grid", gap: 8, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-                  {([
-                    { title: "Interazioni", icon: "💊", onClick: () => TOOL_META.INTERACTIONS.open(), accent: ACCENTS["interactions"], badge: "TOP" },
-                    { title: "Infusioni EV", icon: "💉", onClick: () => TOOL_META.INFUSION.open(), accent: ACCENTS["infusion"], badge: "ICU" },
-                    { title: "NEWS2", icon: "🩺", onClick: () => TOOL_META.NEWS2.open(), accent: ACCENTS["scales"], badge: "CORE" },
-                    { title: "Checklist", icon: "✓", onClick: () => { goSection("checklists"); }, accent: ACCENTS["checklists"], badge: "MVP" },
-                  ]).map((t) => (
-                    <button
-                      key={t.title}
-                      type="button"
-                      className="nd-tile nd-press"
-                      onClick={() => t.onClick()}
-                      style={{
-                        borderRadius: 18,
-                        padding: 12,
-                        border: `1px solid ${t.accent.border}`,
-                        background: `linear-gradient(180deg, ${t.accent.soft}, rgba(255,255,255,0.02))`,
-                        boxShadow: `0 18px 44px rgba(0,0,0,0.46), 0 0 0 3px ${t.accent.soft}`,
-                        minHeight: 62,
-                        textAlign: "left",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 10,
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                        <div
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: 14,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            border: `1px solid ${t.accent.border}`,
-                            background: "rgba(0,0,0,0.20)",
-                            boxShadow: `0 0 0 3px ${t.accent.soft}`,
-                            fontWeight: 950,
-                          }}
-                        >
-                          {t.icon}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 950, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                            {t.title}
-                          </div>
-                          <div style={{ fontSize: 12, opacity: 0.75, fontWeight: 850 }}>
-                            Apri in 1 tap
-                          </div>
-                        </div>
-                      </div>
-
-                      <span
-                        className="nd-badge"
-                        style={{
-                          fontSize: 11,
-                          borderColor: t.accent.border,
-                          background: t.accent.soft,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {t.badge}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            {/* Removed "Azioni rapide" tiles: they duplicated the main list and added noise on mobile */}
 {query.trim() === "" && recent3.length > 0 && (
   <div style={{ marginTop: 12 }}>
     <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2, marginBottom: 8 }}>Ultimi usati</div>
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+    <div
+      style={{
+        display: "flex",
+        gap: 8,
+        flexWrap: "nowrap",
+        overflowX: "auto",
+        paddingBottom: 2,
+        WebkitOverflowScrolling: "touch",
+      }}
+    >
       {recent3.map((id) => {
         const m = TOOL_META[id];
         if (!m) return null;
@@ -434,7 +404,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
             type="button"
             className="nd-chip nd-press"
             onClick={() => m.open()}
-            style={{ borderColor: m.accent.border, background: m.accent.soft }}
+            style={{ borderColor: m.accent.border, background: m.accent.soft, flex: "0 0 auto" }}
           >
             <span style={{ opacity: 0.9 }}>{m.icon}</span>
             <span style={{ whiteSpace: "nowrap" }}>{m.title}</span>
@@ -449,6 +419,23 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
               <div style={{ marginTop: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
                   <div style={{ fontSize: 12, opacity: 0.72, fontWeight: 950, letterSpacing: -0.2 }}>Preferiti</div>
+                  {premium && favs.length > 1 && (
+                    <button
+                      type="button"
+                      className="nd-press"
+                      onClick={() => setEditFavs((v) => !v)}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 999,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        background: editFavs ? "rgba(16,185,129,0.14)" : "rgba(255,255,255,0.05)",
+                        fontWeight: 900,
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {editFavs ? "Fine" : "Modifica"}
+                    </button>
+                  )}
                   {!premium && (
                     <button
                       type="button"
@@ -477,21 +464,111 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 {premium && favs.length === 0 ? (
                   <div style={{ opacity: 0.7, fontSize: 13 }}>Nessun preferito ancora. Tocca ☆ su un tool per salvarlo.</div>
                 ) : premium ? (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {favs.slice(0, 8).map((id) => {
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 8,
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                    }}
+                  >
+                    {favs.slice(0, 12).map((id) => {
                       const m = TOOL_META[id];
                       if (!m) return null;
+                      const canUp = favs.indexOf(id) > 0;
+                      const canDown = favs.indexOf(id) < favs.length - 1;
                       return (
-                        <button
-                          key={id}
-                          type="button"
-                          className="nd-chip nd-press"
-                          onClick={() => m.open()}
-                          style={{ borderColor: m.accent.border }}
-                        >
-                          <span style={{ opacity: 0.9 }}>{m.icon}</span>
-                          <span style={{ whiteSpace: "nowrap" }}>{m.title}</span>
-                        </button>
+                        <div key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <button
+                            type="button"
+                            className="nd-chip nd-press"
+                            draggable={editFavs}
+                            onDragStart={(e) => {
+                              if (!editFavs) return;
+                              setDragFav(id);
+                              try {
+                                e.dataTransfer.setData("text/plain", id);
+                                e.dataTransfer.effectAllowed = "move";
+                              } catch {}
+                            }}
+                            onDragOver={(e) => {
+                              if (!editFavs) return;
+                              e.preventDefault();
+                              try {
+                                e.dataTransfer.dropEffect = "move";
+                              } catch {}
+                            }}
+                            onDrop={(e) => {
+                              if (!editFavs) return;
+                              e.preventDefault();
+                              const from = ((): UtilityToolId | null => {
+                                const dt = (() => {
+                                  try {
+                                    return e.dataTransfer.getData("text/plain");
+                                  } catch {
+                                    return "";
+                                  }
+                                })();
+                                if (isUtilityToolId(dt)) return dt;
+                                return dragFav;
+                              })();
+                              if (from && isUtilityToolId(from)) reorderFavs(from, id);
+                              setDragFav(null);
+                            }}
+                            onDragEnd={() => setDragFav(null)}
+                            onClick={() => (editFavs ? undefined : m.open())}
+                            style={{
+                              borderColor: m.accent.border,
+                              opacity: editFavs ? 0.95 : 1,
+                              cursor: editFavs ? "grab" : "pointer",
+                            }}
+                            title={editFavs ? "Trascina per riordinare" : undefined}
+                          >
+                            <span style={{ opacity: 0.9 }}>{m.icon}</span>
+                            <span style={{ whiteSpace: "nowrap" }}>{m.title}</span>
+                          </button>
+
+                          {editFavs && (
+                            <div style={{ display: "inline-flex", gap: 4 }}>
+                              <button
+                                type="button"
+                                className="nd-press"
+                                disabled={!canUp}
+                                onClick={() => moveFav(id, -1)}
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: 10,
+                                  border: "1px solid rgba(255,255,255,0.12)",
+                                  background: "rgba(255,255,255,0.05)",
+                                  opacity: canUp ? 1 : 0.35,
+                                  fontWeight: 950,
+                                }}
+                                aria-label="Sposta su"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                className="nd-press"
+                                disabled={!canDown}
+                                onClick={() => moveFav(id, 1)}
+                                style={{
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: 10,
+                                  border: "1px solid rgba(255,255,255,0.12)",
+                                  background: "rgba(255,255,255,0.05)",
+                                  opacity: canDown ? 1 : 0.35,
+                                  fontWeight: 950,
+                                }}
+                                aria-label="Sposta giù"
+                              >
+                                ↓
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       );
                     })}
                   </div>
