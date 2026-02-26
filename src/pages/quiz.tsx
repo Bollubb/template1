@@ -1652,21 +1652,31 @@ if (runQuiz.mode === "concorso") {
     <button
       type="button"
       className="nd-btn nd-btn-ghost nd-press"
-      style={{ ...btnStyle("ghost"), position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, padding: "14px 14px", paddingRight: 124, minHeight: 56 }}
+      style={{ ...btnStyle("ghost"), display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "14px 14px", minHeight: 56, overflow: "hidden" }}
       onClick={() => setBoardsOpen(true)}
     >
-      <span style={{ fontWeight: 950 }}>🏆 Classifiche</span>
-      <span className="nd-badge nd-badge-emerald" style={{ ...chipStyle("emerald"), position: "absolute", top: 8, right: 8, maxWidth: 112, textAlign: "center", whiteSpace: "normal", lineHeight: 1.05, padding: "6px 8px", fontSize: 11, pointerEvents: "none" }}>Personale/Globale</span>
+      <span className="truncate" style={{ fontWeight: 950, minWidth: 0 }}>🏆 Classifiche</span>
+      <span
+        className="nd-badge nd-badge-emerald"
+        style={{ ...chipStyle("emerald"), flexShrink: 0, maxWidth: 124, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "6px 8px", fontSize: 11, lineHeight: 1.05 }}
+      >
+        Personale/Globale
+      </span>
     </button>
 
     <button
       type="button"
       className="nd-btn nd-btn-sky nd-press"
-      style={{ ...btnStyle("sky"), position: "relative", display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 10, padding: "14px 14px", paddingRight: 124, minHeight: 56 }}
+      style={{ ...btnStyle("sky"), display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "14px 14px", minHeight: 56, overflow: "hidden" }}
       onClick={() => setChallengeOpen(true)}
     >
-      <span style={{ fontWeight: 950 }}>⚔️ Sfide 1v1</span>
-      <span className="nd-badge nd-badge-slate" style={{ ...chipStyle("slate"), position: "absolute", top: 8, right: 8, maxWidth: 112, textAlign: "center", whiteSpace: "normal", lineHeight: 1.05, padding: "6px 8px", fontSize: 11, pointerEvents: "none" }}>Settimana {weeklyBoard.wk.split("-W")[1]}</span>
+      <span className="truncate" style={{ fontWeight: 950, minWidth: 0 }}>⚔️ Sfide 1v1</span>
+      <span
+        className="nd-badge nd-badge-slate"
+        style={{ ...chipStyle("slate"), flexShrink: 0, maxWidth: 124, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", padding: "6px 8px", fontSize: 11, lineHeight: 1.05 }}
+      >
+        Settimana {weeklyBoard.wk.split("-W")[1]}
+      </span>
     </button>
   </div>
 </div>
@@ -2007,7 +2017,7 @@ if (runQuiz.mode === "concorso") {
                         return;
                       }
                       const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
-                      start("review", { questions: pickAdaptiveQuestions(bank, 10) });
+                      start("review", { questions: pickMistakeReviewQuestions(bank, 10) });
                     }}
                     className="mt-3 nd-btn nd-btn-ghost nd-press"
                     style={btnStyle("ghost")}
@@ -2221,6 +2231,16 @@ if (runQuiz.mode === "concorso") {
           <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
             <div className="nd-card nd-card-pad" style={card()}>
               <div style={{ fontWeight: 950, fontSize: 16 }}>Risultato</div>
+              <div style={{ marginTop: 6, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                <div style={{ fontWeight: 950, fontSize: 30, letterSpacing: -0.6 }}>
+                  {quizResult.total ? `${Math.round((quizResult.correct / quizResult.total) * 100)}%` : "—"}
+                </div>
+                {quizResult.mode === "concorso" && typeof quizResult.passMark === "number" ? (
+                  <span className="nd-pill nd-pill--sm" style={{ fontWeight: 950 }}>
+                    {quizResult.correct >= quizResult.passMark ? "✅ IDONEO" : "❌ NON IDONEO"}
+                  </span>
+                ) : null}
+              </div>
               {lastReward && (
                 <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <span className="nd-pill nd-pill--sm">+{lastReward.xp} XP</span>
@@ -2306,13 +2326,13 @@ if (runQuiz.mode === "concorso") {
                       <div style={{ padding: 10, borderRadius: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
                         <div className="nd-help" style={{ fontWeight: 900, opacity: 0.8 }}>Confronto utenti</div>
                         <div style={{ marginTop: 4, fontWeight: 950 }}>{`Top ${Math.max(1, 100 - resultProfile.communityEstimate)}%`}</div>
-                        <div className="nd-help" style={{ marginTop: 2, opacity: 0.72 }}>stima (analytics Fase 6)</div>
+                        <div className="nd-help" style={{ marginTop: 2, opacity: 0.72 }}>stima locale</div>
                       </div>
                     </div>
                   )}
 
                   <div className="nd-help" style={{ marginTop: 10, opacity: 0.72 }}>
-                    Percentile e confronto sono stime locali finché non attiviamo Analytics (Fase 6).
+                    Percentile e confronto sono stime locali: miglioreranno con la classifica globale.
                   </div>
                 </div>
               )}
@@ -2375,27 +2395,67 @@ if (runQuiz.mode === "concorso") {
               )}
 
               </div>
-              <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
-                <button type="button" onClick={() => setQuizResult(null)} className="nd-btn-ghost nd-press">
-                  Chiudi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (quizResult.mode === "daily") start("daily");
-                    else if (quizResult.mode === "weekly") start("weekly");
-                    else if (quizResult.mode === "concorso") start("concorso", { presetId: "asl", timeLimitMs: (CONCORSO_PRESETS[0].min * 60 * 1000) });
-                    else if (quizResult.mode === "sim") start("sim");
-                    else {
-                      const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
-                      start("review", { questions: pickAdaptiveQuestions(bank, 10) });
-                    }
-                  }}
-                  className="nd-btn-primary nd-press"
-                >
-                  Rifai
-                </button>
-              </div>
+              <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+  <button type="button" onClick={() => setQuizResult(null)} className="nd-btn-ghost nd-press">
+    Chiudi
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+      // nuova sessione (nuove domande)
+      if (quizResult.mode === "daily") start("daily");
+      else if (quizResult.mode === "weekly") start("weekly");
+      else if (quizResult.mode === "concorso") start("concorso", { presetId: "asl", timeLimitMs: quizResult.timeLimitMs ?? (CONCORSO_PRESETS[0].min * 60 * 1000) });
+      else if (quizResult.mode === "sim") start("sim");
+      else {
+        const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+        start("review", { questions: pickMistakeReviewQuestions(bank, 10) });
+      }
+    }}
+    className="nd-btn nd-btn-ghost nd-press"
+    style={btnStyle("ghost")}
+  >
+    Nuova
+  </button>
+
+  {quizResult.wrong.length > 0 ? (
+    <button
+      type="button"
+      onClick={() => {
+        const uniq = new Map<string, QuizQuestion>();
+        quizResult.wrong.forEach((w) => {
+          if (w?.q?.id) uniq.set(w.q.id, w.q);
+        });
+        const qs = Array.from(uniq.values()).slice(0, 20);
+        setQuizResult(null);
+        start("review", { questions: qs.length ? qs : pickMistakeReviewQuestions([...QUIZ_BANK, ...QUIZ_BANK_CONCORSO], 10) });
+      }}
+      className="nd-btn nd-btn-sky nd-press"
+      style={btnStyle("sky")}
+    >
+      Rivedi errori
+    </button>
+  ) : null}
+
+  <button
+    type="button"
+    onClick={() => {
+      // rifai stesso formato (stessa sensazione, nuove domande)
+      if (quizResult.mode === "daily") start("daily");
+      else if (quizResult.mode === "weekly") start("weekly");
+      else if (quizResult.mode === "concorso") start("concorso", { presetId: "asl", timeLimitMs: (CONCORSO_PRESETS[0].min * 60 * 1000) });
+      else if (quizResult.mode === "sim") start("sim");
+      else {
+        const bank = [...QUIZ_BANK, ...QUIZ_BANK_CONCORSO];
+        start("review", { questions: pickMistakeReviewQuestions(bank, 10) });
+      }
+    }}
+    className="nd-btn-primary nd-press"
+  >
+    Rifai
+  </button>
+</div>
             </div>
 
             {quizResult.wrong.length > 0 && (
