@@ -9,6 +9,7 @@ type UtilityHistoryItem = {
 };
 
 const LS_INFUSIONS_DAILY = "nd_utility_infusions_daily_v1";
+const LS_INFUSION_PAIRS = "nd_utility_infusion_pairs_v1";
 
 function safeJson<T>(raw: string | null, fallback: T): T {
   if (!raw) return fallback;
@@ -20,6 +21,22 @@ function safeJson<T>(raw: string | null, fallback: T): T {
 }
 
 const isBrowser = () => typeof window !== "undefined" && typeof localStorage !== "undefined";
+
+
+type PairItem = { a: string; b: string; mode: string; ts: number };
+
+function readPairs(): PairItem[] {
+  if (!isBrowser()) return [];
+  const raw = safeJson<PairItem[]>(localStorage.getItem(LS_INFUSION_PAIRS), []);
+  return Array.isArray(raw) ? raw.filter((x) => x && typeof x.a === "string" && typeof x.b === "string").slice(0, 8) : [];
+}
+
+function writePairs(next: PairItem[]) {
+  if (!isBrowser()) return;
+  try {
+    localStorage.setItem(LS_INFUSION_PAIRS, JSON.stringify(next.slice(0, 8)));
+  } catch {}
+}
 
 function dayKey(d = new Date()) {
   return d.toISOString().slice(0, 10);
@@ -285,7 +302,9 @@ export default function ToolInfusions({
   const [q2, setQ2] = useState("");
   const [a, setA] = useState<Drug | null>(null);
   const [b, setB] = useState<Drug | null>(null);
+  type Mode = "y" | "flush" | "line";
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [mode, setMode] = useState<Mode>("y");
   const [outcome, setOutcome] = useState<{ sev: Sev; title: string; note: string; flush: boolean; advanced: string[] } | null>(null);
 
   const results1 = useMemo(() => {
@@ -336,6 +355,14 @@ export default function ToolInfusions({
       });
     }
 
+    // salva coppia recente (local-first)
+    try {
+      const cur = readPairs();
+      const key = `${a.id}::${b.id}::${mode}`;
+      const filtered = cur.filter((p) => `${p.a}::${p.b}::${p.mode}` !== key);
+      writePairs([{ a: a.id, b: b.id, mode, ts: Date.now() }, ...filtered]);
+    } catch {}
+
     setStep(3);
   }
 
@@ -357,8 +384,20 @@ export default function ToolInfusions({
               )}
             </div>
           <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
-            Y-site / flush • Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/5 controlli disponibili oggi`}
+            {mode === "y" ? "Y-site" : mode === "flush" ? "Flush" : "Linea dedicata"} • Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/5 controlli disponibili oggi`}
           </div>
+          <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button type="button" className={`nd-press rounded-full px-3 py-1.5 text-xs font-extrabold border border-white/12 ${mode==="y" ? "bg-white/10" : "bg-white/5"} text-white/90`} onClick={() => setMode("y")}>
+              Y-site
+            </button>
+            <button type="button" className={`nd-press rounded-full px-3 py-1.5 text-xs font-extrabold border border-white/12 ${mode==="flush" ? "bg-white/10" : "bg-white/5"} text-white/90`} onClick={() => setMode("flush")}>
+              Flush
+            </button>
+            <button type="button" className={`nd-press rounded-full px-3 py-1.5 text-xs font-extrabold border border-white/12 ${mode==="line" ? "bg-white/10" : "bg-white/5"} text-white/90`} onClick={() => setMode("line")}>
+              Linea dedicata
+            </button>
+          </div>
+
           </div>
         </div>
         <button
@@ -369,6 +408,50 @@ export default function ToolInfusions({
           ICU Boost
         </button>
       </div>
+      {step === 1 && (() => {
+        const pairs = readPairs();
+        if (!pairs.length) return null;
+        return (
+          <div className="nd-fade-in" style={{ marginTop: 12 }}>
+            <div className="nd-help" style={{ marginBottom: 8, opacity: 0.8 }}>Coppie recenti</div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {pairs.map((p) => {
+                const da = DB.find((x) => x.id === p.a);
+                const db = DB.find((x) => x.id === p.b);
+                if (!da || !db) return null;
+                return (
+                  <button
+                    key={`${p.a}-${p.b}-${p.mode}-${p.ts}`}
+                    type="button"
+                    className="nd-press"
+                    onClick={() => {
+                      setA(da);
+                      setB(db);
+                      setQ1("");
+                      setQ2("");
+                      setMode((p.mode as any) || "y");
+                      setStep(2);
+                      setOutcome(null);
+                    }}
+                    style={{
+                      borderRadius: 999,
+                      padding: "8px 10px",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.04)",
+                      fontSize: 12,
+                      fontWeight: 850,
+                      opacity: 0.92,
+                    }}
+                  >
+                    {da.name} + {db.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
 
       {!limit.premium && limit.usedLeft() <= 1 && (
         <div className="nd-fade-in" style={{ marginTop: 10, borderRadius: 14, padding: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)", opacity: 0.95 }}>
@@ -426,6 +509,15 @@ export default function ToolInfusions({
           </div>
 
           <div style={{ marginTop: 10, fontSize: 13.5, lineHeight: 1.35, opacity: 0.95 }}>{outcome.note}</div>
+
+          <div className="nd-help" style={{ marginTop: 8, opacity: 0.85 }}>
+            {mode === "y"
+              ? "Modalità: Y-site → osserva sempre precipitati/torbidità e verifica concentrazioni/diluente."
+              : mode === "flush"
+              ? "Modalità: Flush → esegui flush tra i farmaci secondo protocollo, valuta linea dedicata per farmaci ad alto rischio."
+              : "Modalità: Linea dedicata → preferibile in caso di incompatibilità o dati insufficienti."}
+          </div>
+
 
           {outcome.flush && (
             <div style={{ marginTop: 10, padding: 12, borderRadius: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(245,158,11,0.08)" }}>
