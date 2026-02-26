@@ -164,10 +164,16 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   const toast = useToast();
 
   type FavPair = { a: string; b: string; ts: number };
-  const [favPairs, setFavPairs] = useState<FavPair[]>(() => safeJson<FavPair[]>(localStorage.getItem(LS.interactionsPairs as any), []));
+  const [favPairs, setFavPairs] = useState<FavPair[]>(() => {
+    if (!isBrowser()) return [];
+    return safeJson<FavPair[]>(localStorage.getItem(LS.interactionsPairs as any), []);
+  });
   const writeFavPairs = (next: FavPair[]) => {
     setFavPairs(next);
-    try { localStorage.setItem(LS.interactionsPairs as any, JSON.stringify(next.slice(0, 30))); } catch {}
+    if (!isBrowser()) return;
+    try {
+      localStorage.setItem(LS.interactionsPairs as any, JSON.stringify(next.slice(0, 30)));
+    } catch {}
   };
   const pairKey = (x: string, y: string) => (x < y ? `${x}__${y}` : `${y}__${x}`);
   const hasPair = (x: string, y: string) => favPairs.some((p) => pairKey(p.a, p.b) === pairKey(x, y));
@@ -1165,10 +1171,16 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   const toast = useToast();
 
   type FavPair = { a: string; b: string; ts: number };
-  const [favPairs, setFavPairs] = useState<FavPair[]>(() => safeJson<FavPair[]>(localStorage.getItem(LS.interactionsPairs as any), []));
+  const [favPairs, setFavPairs] = useState<FavPair[]>(() => {
+    if (!isBrowser()) return [];
+    return safeJson<FavPair[]>(localStorage.getItem(LS.interactionsPairs as any), []);
+  });
   const writeFavPairs = (next: FavPair[]) => {
     setFavPairs(next);
-    try { localStorage.setItem(LS.interactionsPairs as any, JSON.stringify(next.slice(0, 30))); } catch {}
+    if (!isBrowser()) return;
+    try {
+      localStorage.setItem(LS.interactionsPairs as any, JSON.stringify(next.slice(0, 30)));
+    } catch {}
   };
   const pairKey = (x: string, y: string) => (x < y ? `${x}__${y}` : `${y}__${x}`);
   const hasPair = (x: string, y: string) => favPairs.some((p) => pairKey(p.a, p.b) === pairKey(x, y));
@@ -1520,9 +1532,7 @@ function trigramSimilarity(a: string, b: string) {
   const A = trigramSet(a);
   const B = trigramSet(b);
   let inter = 0;
-  A.forEach((t) => {
-    if (B.has(t)) inter++;
-  });
+  for (const t of A) if (B.has(t)) inter++;
   const union = A.size + B.size - inter;
   return union ? inter / union : 0;
 }
