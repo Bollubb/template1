@@ -1167,10 +1167,58 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
     { id: "linezolid", name: "Linezolid", group: "Antibiotici", interactions: [] },
   
     // ===== PATCH 6 – Expanded drug DB (high-yield) =====
-    { id: "rivaroxaban", name: "Rivaroxaban", group: "DOAC", interactions: [] },
-    { id: "dabigatran", name: "Dabigatran", group: "DOAC", interactions: [] },
-    { id: "edoxaban", name: "Edoxaban", group: "DOAC", interactions: [] },
-    { id: "acenocumarolo", name: "Acenocumarolo", group: "Anticoagulanti", interactions: [] },
+    {
+      id: "rivaroxaban",
+      name: "Rivaroxaban",
+      group: "DOAC",
+      also: ["Xarelto"],
+      interactions: [
+        { key: "cyp3a4", sev: "avoid", why: "Inibitori/induttori CYP/P-gp possono alterare esposizione." , monitor: ["Valuta interazioni", "Segni sanguinamento"], alternatives: ["Valuta anticoagulante alternativo (decisione medico)"] },
+        { key: "antiagg", sev: "avoid", why: "Somma rischio emorragico con antiaggreganti.", monitor: ["Segni sanguinamento"], alternatives: [] },
+        { key: "fans", sev: "avoid", why: "Aumenta rischio sanguinamento.", monitor: ["Gastroprotezione se indicata"], alternatives: ["Paracetamolo (se appropriato)"] },
+        { key: "azoli", sev: "avoid", why: "Azoli possono aumentare esposizione (P-gp/CYP).", monitor: ["Segni sanguinamento"], alternatives: [] },
+        { key: "macrolidi", sev: "caution", why: "Macrolidi possono aumentare esposizione (P-gp/CYP).", monitor: ["Segni sanguinamento"], alternatives: [] },
+      ],
+    },
+    {
+      id: "dabigatran",
+      name: "Dabigatran",
+      group: "DOAC",
+      also: ["Pradaxa"],
+      interactions: [
+        { key: "cyp3a4", sev: "avoid", why: "Inibitori/induttori CYP/P-gp possono alterare esposizione." , monitor: ["Valuta interazioni", "Segni sanguinamento"], alternatives: ["Valuta anticoagulante alternativo (decisione medico)"] },
+        { key: "antiagg", sev: "avoid", why: "Somma rischio emorragico con antiaggreganti.", monitor: ["Segni sanguinamento"], alternatives: [] },
+        { key: "fans", sev: "avoid", why: "Aumenta rischio sanguinamento.", monitor: ["Gastroprotezione se indicata"], alternatives: ["Paracetamolo (se appropriato)"] },
+        { key: "azoli", sev: "avoid", why: "Azoli possono aumentare esposizione (P-gp/CYP).", monitor: ["Segni sanguinamento"], alternatives: [] },
+        { key: "macrolidi", sev: "caution", why: "Macrolidi possono aumentare esposizione (P-gp/CYP).", monitor: ["Segni sanguinamento"], alternatives: [] },
+      ],
+    },
+    {
+      id: "edoxaban",
+      name: "Edoxaban",
+      group: "DOAC",
+      also: ["Lixiana"],
+      interactions: [
+        { key: "cyp3a4", sev: "avoid", why: "Inibitori/induttori CYP/P-gp possono alterare esposizione." , monitor: ["Valuta interazioni", "Segni sanguinamento"], alternatives: ["Valuta anticoagulante alternativo (decisione medico)"] },
+        { key: "antiagg", sev: "avoid", why: "Somma rischio emorragico con antiaggreganti.", monitor: ["Segni sanguinamento"], alternatives: [] },
+        { key: "fans", sev: "avoid", why: "Aumenta rischio sanguinamento.", monitor: ["Gastroprotezione se indicata"], alternatives: ["Paracetamolo (se appropriato)"] },
+        { key: "azoli", sev: "avoid", why: "Azoli possono aumentare esposizione (P-gp/CYP).", monitor: ["Segni sanguinamento"], alternatives: [] },
+        { key: "macrolidi", sev: "caution", why: "Macrolidi possono aumentare esposizione (P-gp/CYP).", monitor: ["Segni sanguinamento"], alternatives: [] },
+      ],
+    },
+    {
+      id: "acenocumarolo",
+      name: "Acenocumarolo",
+      group: "Anticoagulanti",
+      also: ["Sintrom"],
+      interactions: [
+        { key: "antiagg", sev: "avoid", why: "Somma rischio emorragico con antiaggreganti.", monitor: ["Controlla segni di sanguinamento", "Valuta INR/assetto coagulativo"], alternatives: ["Valuta strategia alternativa (decisione medico)"] },
+        { key: "fans", sev: "avoid", why: "Aumenta rischio emorragico (mucosa gastrica + coagulazione).", monitor: ["Gastroprotezione se indicata", "Valuta alternative"], alternatives: ["Paracetamolo (se appropriato)"] },
+        { key: "macrolidi", sev: "avoid", why: "Possibile aumento effetto anticoagulante (interazioni metabolismo).", monitor: ["INR più frequente 48–72h"], alternatives: ["Valuta antibiotico alternativo (decisione medico)"] },
+        { key: "azoli", sev: "avoid", why: "Inibizione metabolismo → ↑ INR/bleeding.", monitor: ["INR stretto"], alternatives: ["Valuta alternativa (decisione medico)"] },
+        { key: "serotonina", sev: "caution", why: "SSRI/SNRI possono aumentare rischio sanguinamento.", monitor: ["Segni emorragici"], alternatives: ["Valuta scelta antidepressivo (decisione medico)"] },
+      ],
+    },
     { id: "ticagrelor", name: "Ticagrelor", group: "Antiaggreganti", interactions: [] },
     { id: "prasugrel", name: "Prasugrel", group: "Antiaggreganti", interactions: [] },
     { id: "ibuprofene", name: "Ibuprofene", group: "FANS", interactions: [] },
@@ -1231,6 +1279,144 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
     { id: "ipratropio", name: "Ipratropio", group: "Broncodilatatori", interactions: [] },
     { id: "prednisone", name: "Prednisone", group: "Corticosteroidi", interactions: [] },
     { id: "desametasone", name: "Desametasone", group: "Corticosteroidi", interactions: [] },
+    { id: "azoli", name: "Azoli (antimicotici) (gruppo)", group: "GRP", interactions: [] },
+    { id: "fluorochinoloni", name: "Fluorochinoloni (gruppo)", group: "GRP", interactions: [] },
+    { id: "benzodiazepine", name: "Benzodiazepine (gruppo)", group: "GRP", interactions: [] },
+    { id: "oppioidi", name: "Oppioidi (gruppo)", group: "GRP", interactions: [] },
+    { id: "antiemetici", name: "Antiemetici (gruppo)", group: "GRP", interactions: [] },
+    { id: "antipsicotici", name: "Antipsicotici (gruppo)", group: "GRP", interactions: [] },
+    { id: "statine", name: "Statine (gruppo)", group: "GRP", interactions: [] },
+    { id: "anticonvulsivanti", name: "Antiepilettici/anticonvulsivanti (gruppo)", group: "GRP", interactions: [] },
+    {
+      id: "eritromicina",
+      name: "Eritromicina",
+      group: "Macrolidi",
+      also: ["Erythrocin"],
+      interactions: [
+        { key: "qt", sev: "avoid", why: "Somma rischio QT lungo.", monitor: ["ECG"], alternatives: [] },
+        { key: "cyp3a4", sev: "avoid", why: "Inibitore CYP3A4: aumenta livelli di molti farmaci.", monitor: ["Valuta interazioni"], alternatives: [] },
+        { key: "acenocumarolo", sev: "avoid", why: "Possibile ↑ INR (monitor).", monitor: ["INR"], alternatives: [] }
+      ],
+    },
+    {
+      id: "levofloxacina",
+      name: "Levofloxacina",
+      group: "Fluorochinoloni",
+      also: ["Tavanic"],
+      interactions: [
+        { key: "qt", sev: "avoid", why: "Somma rischio QT lungo.", monitor: ["ECG", "K/Mg"], alternatives: [] },
+        { key: "fluorochinoloni", sev: "ok", why: "Tag: fluorochinolone.", monitor: [], alternatives: [] },
+        { key: "warfarin", sev: "caution", why: "Possibile ↑ INR (monitor).", monitor: ["INR"], alternatives: [] }
+      ],
+    },
+    {
+      id: "moxifloxacina",
+      name: "Moxifloxacina",
+      group: "Fluorochinoloni",
+      also: ["Avelox"],
+      interactions: [
+        { key: "qt", sev: "avoid", why: "Alto rischio QT (torsioni) con altri QT-prolunganti.", monitor: ["ECG", "K/Mg"], alternatives: [] },
+        { key: "fluorochinoloni", sev: "ok", why: "Tag: fluorochinolone.", monitor: [], alternatives: [] }
+      ],
+    },
+    {
+      id: "itraconazolo",
+      name: "Itraconazolo",
+      group: "Azoli",
+      also: ["Sporanox"],
+      interactions: [
+        { key: "azoli", sev: "ok", why: "Tag: azolo.", monitor: [], alternatives: [] },
+        { key: "cyp3a4", sev: "avoid", why: "Forte inibitore CYP3A4.", monitor: ["Valuta interazioni"], alternatives: [] },
+        { key: "doac", sev: "avoid", why: "↑ esposizione DOAC.", monitor: ["Segni sanguinamento"], alternatives: [] },
+        { key: "statine", sev: "avoid", why: "↑ rischio miopatia con statine (CYP3A4).", monitor: ["Dolore muscolare", "CK se indicato"], alternatives: ["Valuta statina non CYP3A4 (decisione medico)"] }
+      ],
+    },
+    {
+      id: "voriconazolo",
+      name: "Voriconazolo",
+      group: "Azoli",
+      also: ["Vfend"],
+      interactions: [
+        { key: "azoli", sev: "ok", why: "Tag: azolo.", monitor: [], alternatives: [] },
+        { key: "cyp3a4", sev: "avoid", why: "Forte inibizione CYP.", monitor: ["Valuta interazioni"], alternatives: [] },
+        { key: "doac", sev: "avoid", why: "↑ esposizione DOAC.", monitor: ["Segni sanguinamento"], alternatives: [] },
+        { key: "qt", sev: "caution", why: "Possibile QT.", monitor: ["ECG se rischio"], alternatives: [] }
+      ],
+    },
+    {
+      id: "risperidone",
+      name: "Risperidone",
+      group: "Antipsicotici",
+      also: ["Risperdal"],
+      interactions: [
+        { key: "antipsicotici", sev: "ok", why: "Tag: antipsicotico.", monitor: [], alternatives: [] },
+        { key: "qt", sev: "caution", why: "Possibile QT: attenzione con altri QT-prolunganti.", monitor: ["ECG se rischio"], alternatives: [] }
+      ],
+    },
+    {
+      id: "alprazolam",
+      name: "Alprazolam",
+      group: "Benzodiazepine",
+      also: ["Xanax"],
+      interactions: [
+        { key: "benzodiazepine", sev: "ok", why: "Tag: benzodiazepina.", monitor: [], alternatives: [] },
+        { key: "cns", sev: "avoid", why: "Depressione SNC con altri sedativi/oppiodi.", monitor: ["FR/SpO2"], alternatives: [] },
+        { key: "cyp3a4", sev: "avoid", why: "Inibitori CYP3A4 aumentano sedazione.", monitor: ["Monitor sedazione"], alternatives: [] }
+      ],
+    },
+    {
+      id: "buprenorfina",
+      name: "Buprenorfina",
+      group: "Oppioidi",
+      also: ["Temgesic", "Subutex"],
+      interactions: [
+        { key: "oppioidi", sev: "ok", why: "Tag: oppioide.", monitor: [], alternatives: [] },
+        { key: "cns", sev: "avoid", why: "Depressione respiratoria con sedativi.", monitor: ["FR/SpO2"], alternatives: [] },
+        { key: "benzodiazepine", sev: "avoid", why: "Somma depressione respiratoria.", monitor: ["FR/SpO2"], alternatives: [] }
+      ],
+    },
+    {
+      id: "fenitoina",
+      name: "Fenitoina",
+      group: "Antiepilettici",
+      also: ["Dintoina"],
+      interactions: [
+        { key: "anticonvulsivanti", sev: "ok", why: "Tag: antiepilettico (induttore).", monitor: [], alternatives: [] },
+        { key: "cyp3a4", sev: "avoid", why: "Induttore CYP: riduce efficacia di molti farmaci.", monitor: ["Valuta interazioni"], alternatives: [] },
+        { key: "doac", sev: "avoid", why: "Riduce livelli DOAC.", monitor: ["Valuta alternativa"], alternatives: [] }
+      ],
+    },
+    {
+      id: "citalopram",
+      name: "Citalopram",
+      group: "SSRI",
+      also: ["Seropram"],
+      interactions: [
+        { key: "serotonina", sev: "ok", why: "Tag: serotoninergico.", monitor: [], alternatives: [] },
+        { key: "qt", sev: "caution", why: "Possibile QT: attenzione con altri QT.", monitor: ["ECG se rischio"], alternatives: [] },
+        { key: "antiagg", sev: "caution", why: "↑ rischio sanguinamento con antiaggreganti/anticoag.", monitor: ["Segni emorragici"], alternatives: [] }
+      ],
+    },
+    {
+      id: "loperamide",
+      name: "Loperamide",
+      group: "GI",
+      also: ["Imodium"],
+      interactions: [
+        { key: "qt", sev: "caution", why: "A dosi alte può prolungare QT (raro).", monitor: ["ECG se rischio"], alternatives: [] }
+      ],
+    },
+    {
+      id: "trimetoprim_smx",
+      name: "Cotrimossazolo",
+      group: "Antibiotici",
+      also: ["Bactrim"],
+      interactions: [
+        { key: "warfarin", sev: "avoid", why: "↑ INR/bleeding (monitor stretto).", monitor: ["INR"], alternatives: [] },
+        { key: "nefro", sev: "caution", why: "Possibile nefrotossicità/↑ K.", monitor: ["Creatinina", "K"], alternatives: [] }
+      ],
+    },
+
 ];
 
   const limit = useDailyLimit(LS.interactionsDaily, 3);
@@ -1299,16 +1485,31 @@ const assistSuggestions = useMemo(() => {
   if (!a) return [] as { other: Entry; sev: Severity; why: string }[];
 
   const match = (x: Entry, y: Entry) => {
-    const keys = new Set<string>([y.id, normalize(y.group)]);
-    const also = (y.also || []).map((s) => normalize(s));
-    for (const s of also) keys.add(s);
-    for (const r of x.interactions) {
-      if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
-      const ry = byId.get(r.key);
-      if (ry && (ry.id === y.id || normalize(ry.name) === normalize(y.name))) return r;
-    }
-    return null;
-  };
+      const keys = new Set<string>([y.id, normalize(y.group)]);
+      const also = (y.also || []).map((s) => normalize(s));
+      for (const s of also) keys.add(s);
+
+      const hasTag = (tag: string) => y.interactions?.some((rr) => normalize(rr.key) === normalize(tag));
+
+      for (const r of x.interactions) {
+        // direct id/group/alias match
+        if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
+
+        // id lookup: allow both exact-drug and GRP-tag matching
+        const ry = byId.get(r.key);
+        if (ry) {
+          // exact drug key (by id/name)
+          if (ry.id === y.id || normalize(ry.name) === normalize(y.name)) return r;
+
+          // GRP tags: e.g. qt / cns / antiagg / anticoag / cyp3a4 / nefro / k / serotonina...
+          if (ry.group === "GRP" && (hasTag(ry.id) || keys.has(ry.id) || keys.has(normalize(ry.id)))) return r;
+        }
+
+        // fallback: if the other drug declares the same tag key, match it
+        if (hasTag(r.key)) return r;
+      }
+      return null;
+    };
 
   const scored = selectable
     .filter((e) => e.id !== a.id)
