@@ -1668,7 +1668,15 @@ const assistSuggestions = useMemo(() => {
     <div style={{ display: "grid", gap: 12 }}>
       <div style={{ borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
         <div style={{ fontSize: 14, fontWeight: 900 }}>Modalità guidata</div>
-        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
+        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>
+          Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}
+        </div>
+      </div>
+
+{/* Step 1 suggested: most used by you (local, private) */}
+    {!q1.trim() && (
+      <div style={{ marginTop: 10, borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)" }}>
+        <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8 }}>⭐ Più usati da te</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {topUsedEntries.slice(0, 10).map((e) => (
             <button
@@ -1699,8 +1707,6 @@ const assistSuggestions = useMemo(() => {
         </div>
       </div>
     )}
-
-remium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
       </div>
 
       
