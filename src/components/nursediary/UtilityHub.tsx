@@ -353,6 +353,9 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   }, [query]);
 
   // NOTE: Nessuna utility genera XP (evita spam classifica)
+
+  
+  const stepSubtitle = limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`;
 return (
     <div>
       {!section && (
@@ -1319,7 +1322,9 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
     setStep(3);
   }
 
-  return (
+    const stepSubtitle = limit.premium ? "Premium" : String(limit.usedLeft()) + "/3 ricerche disponibili oggi";
+
+return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={{ borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
         <div style={{ fontSize: 14, fontWeight: 900 }}>Modalità guidata</div>
