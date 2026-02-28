@@ -353,9 +353,6 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   }, [query]);
 
   // NOTE: Nessuna utility genera XP (evita spam classifica)
-
-  
-  const stepSubtitle = limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`;
 return (
     <div>
       {!section && (
@@ -1205,68 +1202,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   }, []);
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  
-  // ===== Guided mode UX helpers (Step 1 suggestions + "most used") =====
-  const LS_DRUG_USE = "nd_drug_use_v1";
-
-  const bumpUse = (id: string) => {
-    if (!isBrowser()) return;
-    try {
-      const raw = localStorage.getItem(LS_DRUG_USE);
-      const data = raw ? (JSON.parse(raw) as Record<string, number>) : {};
-      data[id] = (data[id] || 0) + 1;
-      localStorage.setItem(LS_DRUG_USE, JSON.stringify(data));
-    } catch {}
-  };
-
-  const topUsedEntries = useMemo(() => {
-    if (!isBrowser()) return [] as Entry[];
-    try {
-      const raw = localStorage.getItem(LS_DRUG_USE);
-      if (!raw) return [] as Entry[];
-      const data = JSON.parse(raw) as Record<string, number>;
-      return Object.keys(data)
-        .sort((a, b) => (data[b] || 0) - (data[a] || 0))
-        .map((id) => byId.get(id))
-        .filter(Boolean) as Entry[];
-    } catch {
-      return [] as Entry[];
-    }
-  }, [byId]);
-
-  const step1Suggestions = useMemo(() => {
-    if (!a) return [] as Entry[];
-    // Take the highest severity rules on drug A and map them to likely candidates
-    const severe = (a.interactions || [])
-      .filter((r) => r && (r.sev === "avoid" || r.sev === "caution"))
-      .slice(0, 30);
-
-    const out: Entry[] = [];
-    const push = (e?: Entry | null) => {
-      if (!e) return;
-      if (e.id === a.id) return;
-      if (out.some((x) => x.id === e.id)) return;
-      out.push(e);
-    };
-
-    for (const r of severe) {
-      const direct = byId.get(r.key);
-      if (direct && direct.group !== "GRP") {
-        push(direct);
-        continue;
-      }
-      // GRP/tag: include a few drugs that declare this tag
-      const tagId = direct?.group === "GRP" ? direct.id : r.key;
-      const tagged = DB.filter((e) =>
-        (e.interactions || []).some((rr) => normalize(rr.key) === normalize(tagId))
-      ).slice(0, 6);
-      for (const e of tagged) push(e);
-    }
-
-    return out.slice(0, 10);
-  }, [a, byId]);
-
-const [q1, setQ1] = useState("");
+  const [q1, setQ1] = useState("");
   const [q2, setQ2] = useState("");
   const [a, setA] = useState<Entry | null>(null);
   const [b, setB] = useState<Entry | null>(null);
@@ -1390,128 +1326,19 @@ const [q1, setQ1] = useState("");
         <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {stepSubtitle}</div>
       </div>
 
-      
       {step === 1 && (
-        <>
-          <StepPick
-            title="Step 1 — Seleziona farmaco 1"
-            query={q1}
-            setQuery={setQ1}
-            results={results1}
-            onPick={(e) => {
-              setA(e);
-              bumpUse(e.id);
-              // Stay on step 1 to show smart suggestions. User continues manually.
-              setQ2("");
-              setB(null);
-            }}
-          />
-
-          {/* Step 1 suggested: most used by you (local, private) */}
-          {!q1.trim() && topUsedEntries.length > 0 && (
-            <div
-              style={{
-                marginTop: 10,
-                borderRadius: 18,
-                padding: 14,
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.03)",
-              }}
-            >
-              <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8 }}>⭐ Più usati da te</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {topUsedEntries.slice(0, 10).map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={() => {
-                      setA(e);
-                      bumpUse(e.id);
-                      setQ1(e.name);
-                      setQ2("");
-                      setB(null);
-                    }}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.06)",
-                      fontSize: 12,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {e.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {a && (
-            <div
-              style={{
-                marginTop: 12,
-                borderRadius: 18,
-                padding: 14,
-                border: "1px solid rgba(255,255,255,0.10)",
-                background: "rgba(255,255,255,0.03)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 900 }}>🧠 Suggerimenti automatici</div>
-                  <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
-                    Basati su rischio clinico (QT, sanguinamento, SNC, rene) e uso comune.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setStep(2)}
-                  style={{
-                    padding: "8px 12px",
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    background: "rgba(255,255,255,0.08)",
-                    fontWeight: 900,
-                    cursor: "pointer",
-                  }}
-                >
-                  Continua →
-                </button>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                {step1Suggestions.slice(0, 10).map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={() => {
-                      setB(e);
-                      bumpUse(e.id);
-                      setQ2(e.name);
-                      setStep(2);
-                    }}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.06)",
-                      fontSize: 12,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {e.name}
-                  </button>
-                ))}
-                {step1Suggestions.length === 0 && (
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>
-                    Nessun suggerimento rapido per questo farmaco (per ora). Puoi comunque continuare.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </>
+        <StepPick
+          title="Step 1 — Seleziona farmaco 1"
+          query={q1}
+          setQuery={setQ1}
+          results={results1}
+          onPick={(e) => {
+            setA(e);
+            setStep(2);
+            setQ2("");
+            setB(null);
+          }}
+        />
       )}
 
       {step === 2 && (
