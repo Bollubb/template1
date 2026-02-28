@@ -955,6 +955,8 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
       group: "Anticoagulanti",
       also: ["Coumadin"],
       interactions: [
+        { key: "antiagg", sev: "avoid", why: "Somma rischio emorragico con antiaggreganti (ASA, clopidogrel ecc.).", monitor: ["Segni sanguinamento", "INR più frequente"], alternatives: [] },
+
         { key: "fans", sev: "avoid", why: "Aumenta rischio emorragico (effetto su coagulazione + mucosa gastrica).", monitor: ["Valuta gastroprotezione", "Controlla segni di sanguinamento", "INR più frequente"], alternatives: ["Paracetamolo (se appropriato)", "Valuta COX-2 selettivo con prudenza"] },
         { key: "macrolidi", sev: "avoid", why: "Possibile aumento INR (inibizione metabolismo).", monitor: ["INR stretto 48–72h", "Valuta riduzione dose"], alternatives: ["Doxiciclina (se indicata)", "Azitromicina spesso meno impattante ma non sempre"] },
         { key: "amiodarone", sev: "avoid", why: "Aumenta INR: spesso serve riduzione dose e monitoraggio stretto.", monitor: ["INR frequente", "Valuta riduzione dose"], alternatives: ["Valuta DOAC se indicato e non controindicato (decisione medico)"] },
@@ -1038,6 +1040,8 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
       group: "Antiaggreganti",
       also: ["ASA"],
       interactions: [
+        { key: "warfarin", sev: "avoid", why: "Somma rischio emorragico (antiaggregante + VKA).", monitor: ["Segni sanguinamento", "Valuta INR"], alternatives: [] },
+
         { key: "anticoag", sev: "avoid", why: "Somma rischio emorragico con anticoagulanti.", monitor: ["Segni sanguinamento", "Valuta Hb/ematocrito se indicato"] },
         { key: "fans", sev: "avoid", why: "Somma gastrolesività e rischio emorragico.", monitor: ["Valuta gastroprotezione"] },
       ],
@@ -1478,38 +1482,59 @@ const bump = (key: string, storeKey: string) => {
   } catch {}
 };
 
+
+
+const topUsedEntries = useMemo(() => {
+  if (!isBrowser()) return [] as Entry[];
+  try {
+    const raw = localStorage.getItem(LS_DRUG_USE);
+    if (!raw) return [] as Entry[];
+    const data = JSON.parse(raw) as Record<string, number>;
+    return Object.keys(data)
+      .sort((a, b) => (data[b] || 0) - (data[a] || 0))
+      .map((id) => byId.get(id))
+      .filter(Boolean) as Entry[];
+  } catch {
+    return [] as Entry[];
+  }
+}, [byId]);
+
+
+
+// Shared rule matcher (used by both suggestions + final result) to avoid discrepancies
+const matchRule = (x: Entry, y: Entry) => {
+  const keys = new Set<string>([y.id, normalize(y.group)]);
+  const also = (y.also || []).map((s) => normalize(s));
+  for (const s of also) keys.add(s);
+
+  const hasTag = (tag: string) => y.interactions?.some((rr) => normalize(rr.key) === normalize(tag));
+
+  for (const r of x.interactions) {
+    // direct id/group/alias match
+    if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
+
+    // id lookup: allow both exact-drug and GRP-tag matching
+    const ry = byId.get(r.key);
+    if (ry) {
+      // exact drug key (by id/name)
+      if (ry.id === y.id || normalize(ry.name) === normalize(y.name)) return r;
+
+      // GRP tags: e.g. qt / cns / antiagg / anticoag / cyp3a4 / nefro / k / serotonina...
+      if (ry.group === "GRP" && (hasTag(ry.id) || keys.has(ry.id) || keys.has(normalize(ry.id)))) return r;
+    }
+
+    // fallback: if the other drug declares the same tag key, match it
+    if (hasTag(r.key)) return r;
+  }
+  return null;
+};
 const assistFilterLabel = (id: "qt" | "rene" | "bleed" | "snc") =>
   id === "qt" ? "QT" : id === "rene" ? "Rene" : id === "bleed" ? "Sanguin." : "SNC";
 
 const assistSuggestions = useMemo(() => {
   if (!a) return [] as { other: Entry; sev: Severity; why: string }[];
 
-  const match = (x: Entry, y: Entry) => {
-      const keys = new Set<string>([y.id, normalize(y.group)]);
-      const also = (y.also || []).map((s) => normalize(s));
-      for (const s of also) keys.add(s);
-
-      const hasTag = (tag: string) => y.interactions?.some((rr) => normalize(rr.key) === normalize(tag));
-
-      for (const r of x.interactions) {
-        // direct id/group/alias match
-        if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
-
-        // id lookup: allow both exact-drug and GRP-tag matching
-        const ry = byId.get(r.key);
-        if (ry) {
-          // exact drug key (by id/name)
-          if (ry.id === y.id || normalize(ry.name) === normalize(y.name)) return r;
-
-          // GRP tags: e.g. qt / cns / antiagg / anticoag / cyp3a4 / nefro / k / serotonina...
-          if (ry.group === "GRP" && (hasTag(ry.id) || keys.has(ry.id) || keys.has(normalize(ry.id)))) return r;
-        }
-
-        // fallback: if the other drug declares the same tag key, match it
-        if (hasTag(r.key)) return r;
-      }
-      return null;
-    };
+  const match = matchRule;
 
   const scored = selectable
     .filter((e) => e.id !== a.id)
@@ -1544,19 +1569,7 @@ const assistSuggestions = useMemo(() => {
     if (!a || !b) return null;
 
     // match rules either direction
-    const match = (x: Entry, y: Entry) => {
-      const keys = new Set<string>([y.id, normalize(y.group)]);
-      const also = (y.also || []).map((s) => normalize(s));
-      for (const s of also) keys.add(s);
-
-      for (const r of x.interactions) {
-        if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
-        // allow group keys like "beta", "qt" etc: match by group name too
-        const ry = byId.get(r.key);
-        if (ry && (ry.id === y.id || normalize(ry.name) === normalize(y.name))) return r;
-      }
-      return null;
-    };
+    const match = matchRule;
 
     const r1 = match(a, b);
     const r2 = match(b, a);
@@ -1655,7 +1668,44 @@ const assistSuggestions = useMemo(() => {
     <div style={{ display: "grid", gap: 12 }}>
       <div style={{ borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
         <div style={{ fontSize: 14, fontWeight: 900 }}>Modalità guidata</div>
-        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
+        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "P
+
+    {/* Step 1 suggested: most used by you (local, private) */}
+    {!q1.trim() && (
+      <div style={{ marginTop: 10, borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)" }}>
+        <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8 }}>⭐ Più usati da te</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {topUsedEntries.slice(0, 10).map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              onClick={() => {
+                setA(e);
+                bump(e.id, LS_DRUG_USE);
+                setQ1(e.name);
+                setQ2("");
+                setB(null);
+              }}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.12)",
+                background: "rgba(255,255,255,0.06)",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              {e.name}
+            </button>
+          ))}
+          {topUsedEntries.length === 0 && (
+            <div style={{ fontSize: 12, opacity: 0.7 }}>Inizia a usare lo strumento e qui compariranno i tuoi farmaci più cercati.</div>
+          )}
+        </div>
+      </div>
+    )}
+
+remium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
       </div>
 
       
