@@ -1204,6 +1204,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [q1, setQ1] = useState("");
   const [q2, setQ2] = useState("");
+  const [pick1Collapsed, setPick1Collapsed] = useState(false);
   const [a, setA] = useState<Entry | null>(null);
   const [b, setB] = useState<Entry | null>(null);
   const [focusTag, setFocusTag] = useState<null | "qt" | "rene" | "bleed" | "snc">(null);
@@ -1411,19 +1412,60 @@ return (
 
       {step === 1 && (
         <>
-          <StepPick
-            title="Step 1 — Seleziona farmaco 1"
-            query={q1}
-            setQuery={setQ1}
-            results={results1}
-            onPick={(e) => {
-              setA(e);
-              bumpUse(e.id);
-              // stay on step 1 to show suggestions
-              setQ2("");
-              setB(null);
-            }}
-          />
+          {!pick1Collapsed ? (
+  <StepPick
+    title="Step 1 — Seleziona farmaco 1"
+    query={q1}
+    setQuery={setQ1}
+    results={results1}
+    onPick={(e) => {
+      setA(e);
+      bumpUse(e.id);
+      setQ1(e.name);
+      setPick1Collapsed(true);
+      // stay on step 1 to show suggestions
+      setQ2("");
+      setB(null);
+    }}
+  />
+) : (
+  <div
+    style={{
+      borderRadius: 18,
+      padding: 14,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: "rgba(255,255,255,0.04)",
+    }}
+  >
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <div>
+        <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 900 }}>Farmaco 1 selezionato</div>
+        <div style={{ fontSize: 15, fontWeight: 950, marginTop: 2 }}>{a?.name}</div>
+        <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>{a?.group}</div>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          setPick1Collapsed(false);
+          setA(null);
+          setQ1("");
+          setFocusTag(null);
+        }}
+        style={{
+          padding: "10px 12px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.08)",
+          fontWeight: 950,
+          cursor: "pointer",
+        }}
+      >
+        Cambia
+      </button>
+    </div>
+  </div>
+)}
+
 
           {/* Step 1 suggested: most used by you (local, private) */}
           {!q1.trim() && (
@@ -1446,6 +1488,7 @@ return (
                       setA(e);
                       bumpUse(e.id);
                       setQ1(e.name);
+                      setPick1Collapsed(true);
                       setQ2("");
                       setB(null);
                     }}
