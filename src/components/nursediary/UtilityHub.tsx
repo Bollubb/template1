@@ -1208,6 +1208,102 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   const [b, setB] = useState<Entry | null>(null);
   const [focusTag, setFocusTag] = useState<null | "qt" | "rene" | "bleed" | "snc">(null);
 
+  // local-only usage tracking (privacy: nothing leaves device)
+  const LS_DRUG_USE = "nd_ih_drug_use_v1";
+
+  const bumpUse = (id: string) => {
+    if (!isBrowser()) return;
+    try {
+      const raw = localStorage.getItem(LS_DRUG_USE);
+      const data = raw ? (JSON.parse(raw) as Record<string, number>) : {};
+      data[id] = (data[id] || 0) + 1;
+      localStorage.setItem(LS_DRUG_USE, JSON.stringify(data));
+    } catch {}
+  };
+
+  const topUsedEntries = useMemo(() => {
+    if (!isBrowser()) return [] as Entry[];
+    try {
+      const raw = localStorage.getItem(LS_DRUG_USE);
+      if (!raw) return [] as Entry[];
+      const data = JSON.parse(raw) as Record<string, number>;
+      return Object.keys(data)
+        .sort((a, b) => (data[b] || 0) - (data[a] || 0))
+        .map((id) => byId.get(id))
+        .filter(Boolean) as Entry[];
+    } catch {
+      return [] as Entry[];
+    }
+  }, [byId]);
+
+  // Shared matcher (used for both suggestions + final outcome) to avoid discrepancies
+  const matchRule = (x: Entry, y: Entry) => {
+    const keys = new Set<string>([y.id, normalize(y.group)]);
+    const also = (y.also || []).map((s) => normalize(s));
+    for (const s of also) keys.add(s);
+
+    const hasTag = (tag: string) => (y.interactions || []).some((rr) => normalize(rr.key) === normalize(tag));
+
+    for (const r of x.interactions || []) {
+      if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
+
+      const ry = byId.get(r.key);
+      if (ry) {
+        if (ry.id === y.id || normalize(ry.name) === normalize(y.name)) return r;
+        if (ry.group === "GRP" && (hasTag(ry.id) || keys.has(ry.id) || keys.has(normalize(ry.id)))) return r;
+      }
+      if (hasTag(r.key)) return r;
+    }
+    return null;
+  };
+
+  const step1Suggestions = useMemo(() => {
+    if (!a) return [] as Entry[];
+
+    const tagForFocus: Record<string, string[]> = {
+      qt: ["qt"],
+      rene: ["nefro", "rene", "k"],
+      bleed: ["antiagg", "anticoag", "fans", "warfarin"],
+      snc: ["cns", "oppioidi", "benzodiazepine"],
+    };
+
+    const focusTags = focusTag ? tagForFocus[focusTag] || [] : [];
+
+    const severeRules = (a.interactions || [])
+      .filter((r) => (r.sev === "avoid" || r.sev === "caution"))
+      .filter((r) => (focusTags.length ? focusTags.some((t) => normalize(r.key) === normalize(t)) : true))
+      .slice(0, 40);
+
+    const out: Entry[] = [];
+    const push = (e?: Entry | null) => {
+      if (!e) return;
+      if (e.id === a.id) return;
+      if (out.some((x) => x.id === e.id)) return;
+      out.push(e);
+    };
+
+    // direct targets + tag expansions
+    for (const r of severeRules) {
+      const direct = byId.get(r.key);
+      if (direct && direct.group !== "GRP") {
+        push(direct);
+        continue;
+      }
+      const tagId = direct?.group === "GRP" ? direct.id : r.key;
+      const tagged = DB.filter((e) => (e.interactions || []).some((rr) => normalize(rr.key) === normalize(tagId)))
+        .filter((e) => e.group !== "GRP")
+        .slice(0, 8);
+      for (const e of tagged) push(e);
+    }
+
+    // fallback: show some top used if no matches
+    if (out.length === 0) {
+      for (const e of topUsedEntries.slice(0, 8)) push(e);
+    }
+
+    return out.slice(0, 10);
+  }, [a, byId, focusTag, topUsedEntries]);
+
   const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
   const results2 = useMemo(() => searchDrugs(selectable, q2), [selectable, q2]);
 
@@ -1215,19 +1311,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
     if (!a || !b) return null;
 
     // match rules either direction
-    const match = (x: Entry, y: Entry) => {
-      const keys = new Set<string>([y.id, normalize(y.group)]);
-      const also = (y.also || []).map((s) => normalize(s));
-      for (const s of also) keys.add(s);
-
-      for (const r of x.interactions) {
-        if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
-        // allow group keys like "beta", "qt" etc: match by group name too
-        const ry = byId.get(r.key);
-        if (ry && (ry.id === y.id || normalize(ry.name) === normalize(y.name))) return r;
-      }
-      return null;
-    };
+    const match = matchRule;
 
     const r1 = match(a, b);
     const r2 = match(b, a);
@@ -1326,18 +1410,143 @@ return (
       </div>
 
       {step === 1 && (
-        <StepPick
-          title="Step 1 — Seleziona farmaco 1"
-          query={q1}
-          setQuery={setQ1}
-          results={results1}
-          onPick={(e) => {
-            setA(e);
-            setStep(2);
-            setQ2("");
-            setB(null);
-          }}
-        />
+        <>
+          <StepPick
+            title="Step 1 — Seleziona farmaco 1"
+            query={q1}
+            setQuery={setQ1}
+            results={results1}
+            onPick={(e) => {
+              setA(e);
+              bumpUse(e.id);
+              // stay on step 1 to show suggestions
+              setQ2("");
+              setB(null);
+            }}
+          />
+
+          {/* Step 1 suggested: most used by you (local, private) */}
+          {!q1.trim() && (
+            <div
+              style={{
+                marginTop: 10,
+                borderRadius: 18,
+                padding: 14,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8 }}>⭐ Più usati da te</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {topUsedEntries.slice(0, 10).map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => {
+                      setA(e);
+                      bumpUse(e.id);
+                      setQ1(e.name);
+                      setQ2("");
+                      setB(null);
+                    }}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.06)",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {e.name}
+                  </button>
+                ))}
+                {topUsedEntries.length === 0 && (
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>
+                    Inizia a usare lo strumento e qui compariranno i tuoi farmaci più usati.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {a && (
+            <div
+              style={{
+                marginTop: 12,
+                borderRadius: 18,
+                padding: 14,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 900 }}>🧠 Suggerimenti automatici</div>
+                  <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+                    Basati su rischio clinico. Seleziona un filtro per rendere i suggerimenti più mirati.
+                  </div>
+                </div>
+
+                <button type="button" onClick={() => setStep(2)} style={primaryBtn(false)}>
+                  Continua →
+                </button>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                {(["qt", "bleed", "rene", "snc"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setFocusTag((prev) => (prev === t ? null : t))}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: focusTag === t ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.06)",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      fontWeight: 900,
+                    }}
+                  >
+                    {t === "qt" ? "QT" : t === "bleed" ? "Sanguin." : t === "rene" ? "Rene" : "SNC"}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                {step1Suggestions.slice(0, 10).map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => {
+                      setB(e);
+                      bumpUse(e.id);
+                      setQ2(e.name);
+                      setStep(2);
+                    }}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.06)",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {e.name}
+                  </button>
+                ))}
+
+                {step1Suggestions.length === 0 && (
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>
+                    Nessun suggerimento rapido per questo farmaco (per ora). Puoi comunque continuare.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {step === 2 && (
