@@ -354,9 +354,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
 
   // NOTE: Nessuna utility genera XP (evita spam classifica)
 
-  
-  const stepSubtitle = limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`;
-return (
+  return (
     <div>
       {!section && (
         <div>
@@ -1326,7 +1324,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
     <div style={{ display: "grid", gap: 12 }}>
       <div style={{ borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
         <div style={{ fontSize: 14, fontWeight: 900 }}>Modalità guidata</div>
-        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {stepSubtitle}</div>
+        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
       </div>
 
       {step === 1 && (
@@ -2043,3 +2041,57 @@ function findInteractions(drug: string) {
 export function suggestSecondDrug(first: string): Interaction[] {
   return findInteractions(first);
 }
+
+
+/* ===== PATCH 2 – Smart suggestions + hybrid premium ===== */
+
+type RiskLevel = "alto" | "medio";
+
+type InteractionSmart = {
+  a: string;
+  b: string;
+  risk: RiskLevel;
+  reason: string;
+  premium?: boolean;
+};
+
+const DRUGS_SMART = [
+"Amiodarone","Sotalolo","Metoprololo","Bisoprololo",
+"Levofloxacina","Ciprofloxacina","Azitromicina",
+"Warfarin","ASA","Clopidogrel","Eparina","Enoxaparina",
+"Sertralina","Escitalopram","Venlafaxina",
+"Furosemide","Torasemide","Spironolattone",
+"Digossina",
+"Morfina","Ossicodone","Fentanil",
+"Midazolam","Diazepam","Lorazepam",
+"Haloperidolo","Quetiapina",
+"Ondansetron","Metoclopramide",
+"Valproato","Levetiracetam",
+"Ramipril","Enalapril","Losartan",
+"Idroclorotiazide",
+"Insulina","Metformina"
+];
+
+const INTERACTIONS_SMART: InteractionSmart[] = [
+{a:"Amiodarone",b:"Azitromicina",risk:"alto",reason:"↑ QT → torsioni"},
+{a:"Amiodarone",b:"Ondansetron",risk:"alto",reason:"↑ QT → torsioni"},
+{a:"Haloperidolo",b:"Ondansetron",risk:"alto",reason:"↑ QT → torsioni",premium:true},
+{a:"Warfarin",b:"Clopidogrel",risk:"alto",reason:"↑ sanguinamento"},
+{a:"Warfarin",b:"Enoxaparina",risk:"alto",reason:"↑ sanguinamento",premium:true},
+{a:"ASA",b:"Clopidogrel",risk:"alto",reason:"↑ sanguinamento"},
+{a:"Fentanil",b:"Midazolam",risk:"alto",reason:"depressione respiratoria"},
+{a:"Morfina",b:"Diazepam",risk:"alto",reason:"depressione respiratoria",premium:true},
+{a:"Ramipril",b:"Spironolattone",risk:"medio",reason:"↑ K → aritmie"},
+{a:"Losartan",b:"Spironolattone",risk:"medio",reason:"↑ K → aritmie",premium:true},
+];
+
+function getSmartSuggestionsHybrid(firstDrug: string, premium: boolean){
+  if(!firstDrug) return [];
+  return INTERACTIONS_SMART
+    .filter(x => (x.a === firstDrug || x.b === firstDrug))
+    .filter(x => premium ? true : !x.premium)
+    .sort((a,b)=> a.risk === "alto" ? -1 : 1);
+}
+
+/* UI hook ready: show after first drug selection */
+
