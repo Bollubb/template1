@@ -1228,7 +1228,7 @@ const step1Suggestions = useMemo(() => {
   };
 
   const out: { e: Entry; sev: Severity; why: string; monitor: string[]; tags: { id: "qt" | "rene" | "bleed" | "snc"; label: string; icon: string }[] }[] = [];
-  for (const e of entries) {
+  for (const e of DB) {
     if (e.id === a.id) continue;
     const r1 = match(a, e);
     const r2 = match(e, a);
@@ -1246,7 +1246,7 @@ const step1Suggestions = useMemo(() => {
   const rank = (s: Severity) => (s === "avoid" ? 2 : s === "caution" ? 1 : 0);
   out.sort((x, y) => rank(y.sev) - rank(x.sev) || x.e.name.localeCompare(y.e.name));
   return out.slice(0, 12);
-}, [a?.id, byId, entries, focusTag]);
+}, [a?.id, byId, DB, focusTag]);
 
 const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
   const results2 = useMemo(() => searchDrugs(selectable, q2), [selectable, q2]);
