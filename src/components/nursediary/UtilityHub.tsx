@@ -2404,7 +2404,6 @@ const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <>
       <div
   style={{
     borderRadius: 24,
@@ -3352,7 +3351,6 @@ function CalcOut({ out, onToast }: { out: string; onToast: (msg: string, type?: 
         </button>
       </div>
       <div style={{ marginTop: 6, fontSize: 16, fontWeight: 950 }}>{out || "—"}</div>
-      </>
     </div>
   );
 }
