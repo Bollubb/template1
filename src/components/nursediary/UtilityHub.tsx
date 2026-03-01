@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useToast } from "./Toast";
 import { isPremium } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
