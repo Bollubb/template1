@@ -19,34 +19,6 @@ const LS = {
 
 type SectionId = "interactions" | "infusion" | "calculators" | "scales" | "checklists";
 type CalcToolId = "mlh" | "gtt" | "mgkgmin" | "map" | "bmi" | "diuresi";
-
-// ---- Tool renderer (router) ----
-const ToolRenderer = ({
-  id,
-  last,
-  onSave,
-  onToast,
-}: {
-  id: CalcToolId;
-  last: UtilityHistoryItem | null;
-  onSave: (item: UtilityHistoryItem) => void;
-  onToast: (msg: string, type?: "info" | "ok" | "warn" | "err") => void;
-}) => {
-  if (id === "mlh") return <ToolMlH last={last} onSave={onSave} onToast={onToast} />;
-  if (id === "gtt") return <ToolGtt last={last} onSave={onSave} onToast={onToast} />;
-  if (id === "mgkgmin") return <ToolMgKgMin last={last} onSave={onSave} onToast={onToast} />;
-  if (id === "map") return <ToolMAP last={last} onSave={onSave} onToast={onToast} />;
-  if (id === "bmi") return <ToolBMI last={last} onSave={onSave} onToast={onToast} />;
-  if (id === "diuresi") return <ToolDiuresi last={last} onSave={onSave} onToast={onToast} />;
-
-  return (
-    <div style={{ padding: 14, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
-      <div style={{ fontWeight: 950 }}>Tool non disponibile</div>
-      <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>Seleziona un calcolatore dall’elenco.</div>
-    </div>
-  );
-};
-
 type ScaleToolId = "news2" | "gcs";
 
 type UtilityHistoryItem = {
@@ -381,6 +353,33 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   }, [query]);
 
   // NOTE: Nessuna utility genera XP (evita spam classifica)
+
+
+const ToolRenderer = ({
+  id,
+  last,
+  onSave,
+  onToast,
+}: {
+  id: CalcToolId;
+  last: UtilityHistoryItem | null;
+  onSave: (item: UtilityHistoryItem) => void;
+  onToast: (msg: string, type?: "info" | "ok" | "warn" | "err") => void;
+}) => {
+  if (id === "mlh") return <ToolMlH last={last} onSave={onSave} onToast={onToast} />;
+  if (id === "gtt") return <ToolGtt last={last} onSave={onSave} onToast={onToast} />;
+  if (id === "mgkgmin") return <ToolMgKgMin last={last} onSave={onSave} onToast={onToast} />;
+  if (id === "map") return <ToolMAP last={last} onSave={onSave} onToast={onToast} />;
+  if (id === "bmi") return <ToolBMI last={last} onSave={onSave} onToast={onToast} />;
+  if (id === "diuresi") return <ToolDiuresi last={last} onSave={onSave} onToast={onToast} />;
+  if (id === "interactions") return <ToolInteractions last={last} onSave={onSave} onToast={onToast} />;
+  return (
+    <div style={{ padding: 14, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+      <div style={{ fontWeight: 950 }}>Tool non disponibile</div>
+      <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>Seleziona uno strumento dall’elenco.</div>
+    </div>
+  );
+};
 
   return (
     <div>
@@ -3093,7 +3092,7 @@ function copyTextToClipboard(text: string): boolean {
   return false;
 }
 
-function _ToolRenderer({
+function ToolRenderer({
   id,
   last,
   onSave,
