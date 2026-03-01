@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import React, { useMemo, useState } from "react";
 import { useToast } from "./Toast";
 import { isPremium } from "@/features/profile/premium";
