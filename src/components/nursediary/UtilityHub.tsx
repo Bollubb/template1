@@ -354,8 +354,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   // NOTE: Nessuna utility genera XP (evita spam classifica)
 
   
-  const stepSubtitle = limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`;
-return (
+  return (
     <div>
       {!section && (
         <div>
@@ -1169,6 +1168,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   ];
 
   const limit = useDailyLimit(LS.interactionsDaily, 3);
+  const stepSubtitle = limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`;
   const toast = useToast();
 
   type FavPair = { a: string; b: string; ts: number };
