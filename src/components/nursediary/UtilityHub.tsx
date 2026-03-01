@@ -2438,7 +2438,7 @@ const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
             whiteSpace: "nowrap",
           }}
         >
-          1️⃣ {a.name}
+          Farmaco 1: {a.name}
         </span>
       )}
       {b && (
@@ -2453,7 +2453,7 @@ const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
             whiteSpace: "nowrap",
           }}
         >
-          2️⃣ {b.name}
+          Farmaco 2: {b.name}
         </span>
       )}
     </div>
@@ -2483,13 +2483,14 @@ const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
 </div>
 
       {step === 1 && (
-        <StepPick
+            {!a ? (
+      <StepPick
           title="Step 1 — Seleziona farmaco 1"
           query={q1}
           setQuery={setQ1}
           results={results1}
           onPick={(e) => { setA(e); setQ1(e.name); setQ2(""); setB(null); /* stay on Step 1 to show AI suggestions */ }}
-        
+
 footer={
   <>
     {a && (
@@ -2624,7 +2625,77 @@ footer={
 
   return (
     <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-      {hero ? <Card c={hero} big /> : null}
+      {hero ? <Card c={hero} big />
+    ) : (
+      <div
+        style={{
+          borderRadius: 22,
+          padding: 16,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "linear-gradient(180deg, rgba(120,200,255,0.10), rgba(255,255,255,0.04))",
+          boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 12, opacity: 0.8, fontWeight: 900 }}>Farmaco 1 selezionato</div>
+            <div style={{ fontSize: 16, fontWeight: 950, marginTop: 4 }}>{a.name}</div>
+            <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>{a.group}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setA(null);
+              setB(null);
+              setQ1("");
+              setQ2("");
+              setStep(1);
+              setFocusTag(null);
+            }}
+            style={{
+              borderRadius: 999,
+              padding: "10px 12px",
+              border: "1px solid rgba(255,255,255,0.16)",
+              background: "rgba(255,255,255,0.06)",
+              color: "rgba(255,255,255,0.92)",
+              fontWeight: 950,
+              cursor: "pointer",
+            }}
+            className="nd-press"
+          >
+            Cambia
+          </button>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => setStep(2)} style={primaryBtn(false)} className="nd-press">
+            Ricerca manuale 2° farmaco →
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              // keep guided in step 1, just scroll to suggestions
+              const el = isBrowser() ? document.getElementById("nd-suggest-anchor") : null;
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+            style={{
+              borderRadius: 999,
+              padding: "10px 12px",
+              border: "1px solid rgba(255,255,255,0.16)",
+              background: "rgba(255,255,255,0.06)",
+              color: "rgba(255,255,255,0.92)",
+              fontWeight: 950,
+              cursor: "pointer",
+            }}
+            className="nd-press"
+          >
+            Suggerimenti rapidi ↓
+          </button>
+        </div>
+      </div>
+    )}
+ : null}
 
       {rest.length > 0 && (
         <div style={{ marginTop: 6 }}>
