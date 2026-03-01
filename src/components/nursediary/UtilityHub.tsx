@@ -2560,7 +2560,8 @@ footer={
         {step1Suggestions.length === 0 ? (
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.78 }}>Nessun suggerimento “ad alto rischio” trovato per questo farmaco nel database locale.</div>
         ) : (
-          {(() => {
+          <>
+            {(() => {
   const list = step1Suggestions.slice(0, 8);
   const hero = list.find((x) => x.sev === "avoid") || list[0];
   const rest = list.filter((x) => x !== hero);
@@ -2640,6 +2641,7 @@ footer={
     </div>
   );
 })()}
+          </>
 
         )}
       </div>
