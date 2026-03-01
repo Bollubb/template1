@@ -1274,6 +1274,32 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
       .filter((r) => (focusTags.length ? focusTags.some((t) => normalize(r.key) === normalize(t)) : true))
       .slice(0, 40);
 
+const suggestionCards = useMemo(() => {
+  if (!a) return [] as { e: Entry; sev: Severity; why: string }[];
+
+  const get = (e: Entry) => {
+    const r = matchRule(a, e) || matchRule(e, a);
+    const sev: Severity = (r?.sev as Severity) || "ok";
+    const why = (r?.why || "").trim();
+    return { e, sev, why: why || (sev === "avoid" ? "Rischio clinico elevato" : sev === "caution" ? "Possibile rischio clinico" : "Nessuna criticità rilevante") };
+  };
+
+  return step1Suggestions.map(get).sort((x, y) => {
+    const rank = (s: Severity) => (s === "avoid" ? 0 : s === "caution" ? 1 : 2);
+    return rank(x.sev) - rank(y.sev);
+  });
+}, [a, step1Suggestions]);
+useEffect(() => {
+  if (step !== 1) return;
+  if (!a) return;
+  if (!isBrowser()) return;
+  // bring suggestions into view (mobile friendly)
+  const el = document.getElementById("nd-suggest-anchor");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}, [a?.id, step]);
+
+
+
     const out: Entry[] = [];
     const push = (e?: Entry | null) => {
       if (!e) return;
@@ -1471,6 +1497,8 @@ return (
           )}
 
           {a && (
+            <div id="nd-suggest-anchor" />
+
             <div
               style={{
                 marginTop: 10,
@@ -1514,36 +1542,88 @@ return (
                 ))}
               </div>
 
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-                {step1Suggestions.slice(0, 10).map((e) => (
-                  <button
-                    key={e.id}
-                    type="button"
-                    onClick={() => {
-                      setB(e);
-                      bumpUse(e.id);
-                      setQ2(e.name);
-                      setStep(2);
-                    }}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      background: "rgba(255,255,255,0.06)",
-                      fontSize: 12,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {e.name}
-                  </button>
-                ))}
+              <div
+  style={{
+    position: "sticky",
+    bottom: 12,
+    marginTop: 12,
+    borderRadius: 22,
+    padding: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(8,10,16,0.72)",
+    backdropFilter: "blur(10px)",
+    boxShadow: "0 14px 34px rgba(0,0,0,0.40)",
+  }}
+>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 950 }}>🎯 Scegli il 2° farmaco (consigliato)</div>
+      <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
+        1 tap su una card = selezione automatica + verifica immediata.
+      </div>
+    </div>
+    <button type="button" onClick={() => setStep(2)} style={primaryBtn(false)}>
+      Cerca manualmente →
+    </button>
+  </div>
 
-                {step1Suggestions.length === 0 && (
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>
-                    Nessun suggerimento rapido per questo farmaco (per ora). Puoi comunque continuare.
-                  </div>
-                )}
-              </div>
+  <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+    {suggestionCards.slice(0, 6).map(({ e, sev, why }) => (
+      <button
+        key={e.id}
+        type="button"
+        onClick={() => {
+          setB(e);
+          bumpUse(e.id);
+          setQ2(e.name);
+          // guided: go straight to result
+          setStep(3);
+        }}
+        style={{
+          width: "100%",
+          textAlign: "left",
+          padding: 12,
+          borderRadius: 18,
+          border: "1px solid rgba(255,255,255,0.12)",
+          background: "rgba(255,255,255,0.06)",
+          cursor: "pointer",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ fontSize: 14, fontWeight: 950 }}>{e.name}</div>
+          <span
+            style={{
+              padding: "6px 10px",
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: 950,
+              border: "1px solid rgba(255,255,255,0.14)",
+              background:
+                sev === "avoid"
+                  ? "rgba(255,80,80,0.18)"
+                  : sev === "caution"
+                  ? "rgba(255,200,80,0.16)"
+                  : "rgba(120,255,200,0.10)",
+            }}
+          >
+            {sev === "avoid" ? "Da evitare" : sev === "caution" ? "Cautela" : "Ok"}
+          </span>
+        </div>
+        <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>{e.group}</div>
+        <div style={{ fontSize: 12, opacity: 0.88, marginTop: 8 }}>
+          <span style={{ fontWeight: 950 }}>Perché:</span> {why.length > 90 ? why.slice(0, 90) + "…" : why}
+        </div>
+      </button>
+    ))}
+
+    {suggestionCards.length === 0 && (
+      <div style={{ fontSize: 12, opacity: 0.8 }}>
+        Nessun suggerimento rapido per questo farmaco (per ora). Usa “Cerca manualmente” per lo step 2.
+      </div>
+    )}
+  </div>
+</div>
+
             </div>
           )}
         </>
