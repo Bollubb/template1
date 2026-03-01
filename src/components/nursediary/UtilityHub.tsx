@@ -164,10 +164,16 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   const toast = useToast();
 
   type FavPair = { a: string; b: string; ts: number };
-  const [favPairs, setFavPairs] = useState<FavPair[]>(() => safeJson<FavPair[]>(localStorage.getItem(LS.interactionsPairs as any), []));
+  const [favPairs, setFavPairs] = useState<FavPair[]>(() => {
+    if (!isBrowser()) return [];
+    return safeJson<FavPair[]>(localStorage.getItem(LS.interactionsPairs as any), []);
+  });
   const writeFavPairs = (next: FavPair[]) => {
     setFavPairs(next);
-    try { localStorage.setItem(LS.interactionsPairs as any, JSON.stringify(next.slice(0, 30))); } catch {}
+    if (!isBrowser()) return;
+    try {
+      localStorage.setItem(LS.interactionsPairs as any, JSON.stringify(next.slice(0, 30)));
+    } catch {}
   };
   const pairKey = (x: string, y: string) => (x < y ? `${x}__${y}` : `${y}__${x}`);
   const hasPair = (x: string, y: string) => favPairs.some((p) => pairKey(p.a, p.b) === pairKey(x, y));
@@ -347,8 +353,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
   }, [query]);
 
   // NOTE: Nessuna utility genera XP (evita spam classifica)
-
-  return (
+return (
     <div>
       {!section && (
         <div>
@@ -826,7 +831,7 @@ function ToolSkeleton({
           }}
         />
       </div>
-      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
         <div className="nd-skel" style={{ height: 14, borderRadius: 10, background: "rgba(255,255,255,0.06)" }} />
         <div className="nd-skel" style={{ height: 14, borderRadius: 10, width: "92%", background: "rgba(255,255,255,0.06)" }} />
         <div className="nd-skel" style={{ height: 14, borderRadius: 10, width: "84%", background: "rgba(255,255,255,0.06)" }} />
@@ -1165,10 +1170,16 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   const toast = useToast();
 
   type FavPair = { a: string; b: string; ts: number };
-  const [favPairs, setFavPairs] = useState<FavPair[]>(() => safeJson<FavPair[]>(localStorage.getItem(LS.interactionsPairs as any), []));
+  const [favPairs, setFavPairs] = useState<FavPair[]>(() => {
+    if (!isBrowser()) return [];
+    return safeJson<FavPair[]>(localStorage.getItem(LS.interactionsPairs as any), []);
+  });
   const writeFavPairs = (next: FavPair[]) => {
     setFavPairs(next);
-    try { localStorage.setItem(LS.interactionsPairs as any, JSON.stringify(next.slice(0, 30))); } catch {}
+    if (!isBrowser()) return;
+    try {
+      localStorage.setItem(LS.interactionsPairs as any, JSON.stringify(next.slice(0, 30)));
+    } catch {}
   };
   const pairKey = (x: string, y: string) => (x < y ? `${x}__${y}` : `${y}__${x}`);
   const hasPair = (x: string, y: string) => favPairs.some((p) => pairKey(p.a, p.b) === pairKey(x, y));
@@ -1197,6 +1208,138 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   const [b, setB] = useState<Entry | null>(null);
   const [focusTag, setFocusTag] = useState<null | "qt" | "rene" | "bleed" | "snc">(null);
 
+  // local-only usage tracking (privacy: nothing leaves device)
+  const LS_DRUG_USE = "nd_ih_drug_use_v1";
+
+  const bumpUse = (id: string) => {
+    if (!isBrowser()) return;
+    try {
+      const raw = localStorage.getItem(LS_DRUG_USE);
+      const data = raw ? (JSON.parse(raw) as Record<string, number>) : {};
+      data[id] = (data[id] || 0) + 1;
+      localStorage.setItem(LS_DRUG_USE, JSON.stringify(data));
+    } catch {}
+  };
+
+  const topUsedEntries = useMemo(() => {
+    if (!isBrowser()) return [] as Entry[];
+    try {
+      const raw = localStorage.getItem(LS_DRUG_USE);
+      if (!raw) return [] as Entry[];
+      const data = JSON.parse(raw) as Record<string, number>;
+      return Object.keys(data)
+        .sort((a, b) => (data[b] || 0) - (data[a] || 0))
+        .map((id) => byId.get(id))
+        .filter(Boolean) as Entry[];
+    } catch {
+      return [] as Entry[];
+    }
+  }, [byId]);
+
+  // Shared matcher (used for both suggestions + final outcome) to avoid discrepancies
+  const matchRule = (x: Entry, y: Entry) => {
+    const keys = new Set<string>([y.id, normalize(y.group)]);
+    const also = (y.also || []).map((s) => normalize(s));
+    for (const s of also) keys.add(s);
+
+    const hasTag = (tag: string) => (y.interactions || []).some((rr) => normalize(rr.key) === normalize(tag));
+
+    for (const r of x.interactions || []) {
+      if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
+
+      const ry = byId.get(r.key);
+      if (ry) {
+        if (ry.id === y.id || normalize(ry.name) === normalize(y.name)) return r;
+        if (ry.group === "GRP" && (hasTag(ry.id) || keys.has(ry.id) || keys.has(normalize(ry.id)))) return r;
+      }
+      if (hasTag(r.key)) return r;
+    }
+    return null;
+  };
+
+  const step1Suggestions = useMemo(() => {
+    if (!a) return [] as Entry[];
+
+    const tagForFocus: Record<string, string[]> = {
+      qt: ["qt"],
+      rene: ["nefro", "rene", "k"],
+      bleed: ["antiagg", "anticoag", "fans", "warfarin"],
+      snc: ["cns", "oppioidi", "benzodiazepine"],
+    };
+
+    const focusTags = focusTag ? tagForFocus[focusTag] || [] : [];
+
+    const severeRules = (a.interactions || [])
+      .filter((r) => (r.sev === "avoid" || r.sev === "caution"))
+      .filter((r) => (focusTags.length ? focusTags.some((t) => normalize(r.key) === normalize(t)) : true))
+      .slice(0, 40);
+
+
+const riskIcon = (why: string) => {
+  const w = normalize(why);
+  if (w.includes("qt") || w.includes("torsad") || w.includes("aritm")) return "❤️‍🩹";
+  if (w.includes("emor") || w.includes("sang") || w.includes("anticoag") || w.includes("antiagg")) return "🩸";
+  if (w.includes("rene") || w.includes("nefro") || w.includes("creatin") || w.includes("k+")) return "🧪";
+  if (w.includes("snc") || w.includes("sedaz") || w.includes("depress") || w.includes("confus")) return "🧠";
+  return "⚠️";
+};
+
+const suggestionCards = useMemo(() => {
+  if (!a) return [] as { e: Entry; sev: Severity; why: string }[];
+
+  const get = (e: Entry) => {
+    const r = matchRule(a, e) || matchRule(e, a);
+    const sev: Severity = (r?.sev as Severity) || "ok";
+    const why = (r?.why || "").trim();
+    return { e, sev, why: why || (sev === "avoid" ? "Rischio clinico elevato" : sev === "caution" ? "Possibile rischio clinico" : "Nessuna criticità rilevante") };
+  };
+
+  return step1Suggestions.map(get).sort((x, y) => {
+    const rank = (s: Severity) => (s === "avoid" ? 0 : s === "caution" ? 1 : 2);
+    return rank(x.sev) - rank(y.sev);
+  });
+}, [a, step1Suggestions]);
+useEffect(() => {
+  if (step !== 1) return;
+  if (!a) return;
+  if (!isBrowser()) return;
+  // bring suggestions into view (mobile friendly)
+  const el = document.getElementById("nd-suggest-anchor");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+}, [a?.id, step]);
+
+
+
+    const out: Entry[] = [];
+    const push = (e?: Entry | null) => {
+      if (!e) return;
+      if (e.id === a.id) return;
+      if (out.some((x) => x.id === e.id)) return;
+      out.push(e);
+    };
+
+    // direct targets + tag expansions
+    for (const r of severeRules) {
+      const direct = byId.get(r.key);
+      if (direct && direct.group !== "GRP") {
+        push(direct);
+        continue;
+      }
+      const tagId = direct?.group === "GRP" ? direct.id : r.key;
+      const tagged = DB.filter((e) => (e.interactions || []).some((rr) => normalize(rr.key) === normalize(tagId)))
+        .filter((e) => e.group !== "GRP")
+        .slice(0, 8);
+      for (const e of tagged) push(e);
+    }
+
+    // fallback: show some top used if no matches
+    if (out.length === 0) {
+      for (const e of topUsedEntries.slice(0, 8)) push(e);
+    }
+
+    return out.slice(0, 10);
+  }, [a, byId, focusTag, topUsedEntries]);
+
   const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
   const results2 = useMemo(() => searchDrugs(selectable, q2), [selectable, q2]);
 
@@ -1204,19 +1347,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
     if (!a || !b) return null;
 
     // match rules either direction
-    const match = (x: Entry, y: Entry) => {
-      const keys = new Set<string>([y.id, normalize(y.group)]);
-      const also = (y.also || []).map((s) => normalize(s));
-      for (const s of also) keys.add(s);
-
-      for (const r of x.interactions) {
-        if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
-        // allow group keys like "beta", "qt" etc: match by group name too
-        const ry = byId.get(r.key);
-        if (ry && (ry.id === y.id || normalize(ry.name) === normalize(y.name))) return r;
-      }
-      return null;
-    };
+    const match = matchRule;
 
     const r1 = match(a, b);
     const r2 = match(b, a);
@@ -1307,27 +1438,238 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
 
     setStep(3);
   }
-
-  return (
+return (
     <div style={{ display: "grid", gap: 12 }}>
       <div style={{ borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
         <div style={{ fontSize: 14, fontWeight: 900 }}>Modalità guidata</div>
-        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
+        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "Premium" : String(limit.usedLeft()) + "/3 ricerche disponibili oggi"}</div>
       </div>
 
       {step === 1 && (
-        <StepPick
-          title="Step 1 — Seleziona farmaco 1"
-          query={q1}
-          setQuery={setQ1}
-          results={results1}
-          onPick={(e) => {
-            setA(e);
-            setStep(2);
-            setQ2("");
-            setB(null);
+        <>
+          <StepPick
+            title="Step 1 — Seleziona farmaco 1"
+            query={q1}
+            setQuery={setQ1}
+            results={results1}
+            onPick={(e) => {
+              setA(e);
+              bumpUse(e.id);
+              // stay on step 1 to show suggestions
+              setQ2("");
+              setB(null);
+            }}
+          />
+
+          {/* Step 1 suggested: most used by you (local, private) */}
+          {!q1.trim() && (
+            <div
+              style={{
+                marginTop: 10,
+                borderRadius: 18,
+                padding: 14,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 8 }}>⭐ Più usati da te</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {topUsedEntries.slice(0, 10).map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => {
+                      setA(e);
+                      bumpUse(e.id);
+                      setQ1(e.name);
+                      setQ2("");
+                      setB(null);
+                    }}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      background: "rgba(255,255,255,0.06)",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {e.name}
+                  </button>
+                ))}
+                {topUsedEntries.length === 0 && (
+                  <div style={{ fontSize: 12, opacity: 0.7 }}>
+                    Inizia a usare lo strumento e qui compariranno i tuoi farmaci più usati.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {a && (
+            <div id="nd-suggest-anchor" />
+
+            <div
+              style={{
+                marginTop: 10,
+                borderRadius: 18,
+                padding: 14,
+                border: "1px solid rgba(255,255,255,0.10)",
+                background: "rgba(255,255,255,0.03)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 900 }}>🧠 Suggerimenti automatici</div>
+                  <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+                    Basati su rischio clinico. Seleziona un filtro per rendere i suggerimenti più mirati.
+                  </div>
+                </div>
+
+                <button type="button" onClick={() => setStep(2)} style={primaryBtn(false)}>
+                  Continua →
+                </button>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                {(["qt", "bleed", "rene", "snc"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setFocusTag((prev) => (prev === t ? null : t))}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.14)",
+                      background: focusTag === t ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.06)",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      fontWeight: 900,
+                    }}
+                  >
+                    {t === "qt" ? "QT" : t === "bleed" ? "Sanguin." : t === "rene" ? "Rene" : "SNC"}
+                  </button>
+                ))}
+              </div>
+
+              <div
+  style={{
+    position: "sticky",
+    bottom: 0,
+    marginTop: 12,
+    borderRadius: 22,
+    padding: 14,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(8,10,16,0.84)",
+    backdropFilter: "blur(10px)",
+    boxShadow: "0 14px 34px rgba(0,0,0,0.40)",
+  }}
+>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 950 }}>🎯 Scegli il 2° farmaco</div>
+      <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
+        1 tap = verifica immediata.
+      </div>
+    </div>
+    <button type="button" onClick={() => setStep(2)} style={primaryBtn(false)}>
+      Ricerca manuale →
+    </button>
+  </div>
+
+  <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+    {(() => {
+      const cards = suggestionCards.slice(0, 10);
+      const hero = cards.find((c) => c.sev === "avoid") || cards[0];
+      const rest = cards.filter((c) => c !== hero).slice(0, 6);
+
+      const CardBtn = ({ e, sev, why, big }: { e: Entry; sev: Severity; why: string; big?: boolean }) => (
+        <button
+          key={e.id}
+          type="button"
+          onClick={() => {
+            setB(e);
+            bumpUse(e.id);
+            setQ2(e.name);
+            setStep(3);
           }}
-        />
+          className="nd-press"
+          style={{
+            width: "100%",
+            textAlign: "left",
+            padding: big ? 14 : 12,
+            borderRadius: big ? 22 : 18,
+            border: "1px solid rgba(255,255,255,0.14)",
+            background:
+              sev === "avoid"
+                ? "rgba(255,80,80,0.14)"
+                : sev === "caution"
+                ? "rgba(255,200,80,0.12)"
+                : "rgba(255,255,255,0.06)",
+            cursor: "pointer",
+            boxShadow: big ? "0 14px 28px rgba(0,0,0,0.35)" : "none",
+            transition: "transform 120ms ease, background 120ms ease, border 120ms ease",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: big ? 18 : 16 }}>{riskIcon(why)}</span>
+              <div>
+                <div style={{ fontSize: big ? 15 : 14, fontWeight: 950 }}>{e.name}</div>
+                <div style={{ fontSize: 12, opacity: 0.78, marginTop: 2 }}>{e.group}</div>
+              </div>
+            </div>
+            <span
+              style={{
+                padding: big ? "7px 12px" : "6px 10px",
+                borderRadius: 999,
+                fontSize: 12,
+                fontWeight: 950,
+                border: "1px solid rgba(255,255,255,0.16)",
+                background:
+                  sev === "avoid"
+                    ? "rgba(255,80,80,0.22)"
+                    : sev === "caution"
+                    ? "rgba(255,200,80,0.18)"
+                    : "rgba(120,255,200,0.12)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {sev === "avoid" ? "DA EVITARE" : sev === "caution" ? "CAUTELA" : "OK"}
+            </span>
+          </div>
+
+          <div style={{ fontSize: 12, opacity: 0.90, marginTop: big ? 10 : 8 }}>
+            <span style={{ fontWeight: 950 }}>Perché:</span>{" "}
+            {why.length > (big ? 120 : 90) ? why.slice(0, big ? 120 : 90) + "…" : why}
+          </div>
+        </button>
+      );
+
+      return (
+        <>
+          {hero ? <CardBtn e={hero.e} sev={hero.sev} why={hero.why} big /> : null}
+          <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+            {rest.map((c) => (
+              <CardBtn key={c.e.id} e={c.e} sev={c.sev} why={c.why} />
+            ))}
+          </div>
+        </>
+      );
+    })()}
+
+
+    {suggestionCards.length === 0 && (
+      <div style={{ fontSize: 12, opacity: 0.8 }}>
+        Nessun suggerimento rapido per questo farmaco (per ora). Usa “Cerca manualmente” per lo step 2.
+      </div>
+    )}
+  </div>
+</div>
+
+            </div>
+          )}
+        </>
       )}
 
       {step === 2 && (
@@ -1394,7 +1736,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
             </div>
           )}
 
-          <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9, lineHeight: 1.35 }}>{outcome.why}</div>
+          <div style={{ marginTop: 10, fontSize: 13, opacity: 0.9, lineHeight: 1.35 }}>{outcome.why}</div>
 
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>Monitoraggio consigliato</div>
@@ -1456,6 +1798,9 @@ function StepPick({
   results,
   onPick,
   footer,
+  collapsed,
+  selected,
+  onClear,
 }: {
   title: string;
   query: string;
@@ -1463,15 +1808,45 @@ function StepPick({
   results: { e: any; label: string }[];
   onPick: (e: any) => void;
   footer?: React.ReactNode;
+  collapsed?: boolean;
+  selected?: { name: string; group?: string } | null;
+  onClear?: () => void;
 }) {
   return (
     <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
-      <div style={{ fontSize: 14, fontWeight: 900 }}>{title}</div>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+    <div style={{ fontSize: 14, fontWeight: 900 }}>{title}</div>
+    {selected && (
+      <button
+        type="button"
+        onClick={onClear}
+        style={{
+          padding: "8px 12px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.08)",
+          fontWeight: 950,
+          cursor: "pointer",
+        }}
+      >
+        Cambia
+      </button>
+    )}
+  </div>
+
+  {selected && (
+    <div style={{ marginTop: 10, borderRadius: 14, padding: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+      <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 900 }}>Selezionato</div>
+      <div style={{ fontSize: 15, fontWeight: 950, marginTop: 2 }}>{selected.name}</div>
+      {selected.group && <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>{selected.group}</div>}
+    </div>
+  )}
+
 
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Cerca farmaco…"
+        placeholder={collapsed ? "Cerca per cambiare farmaco…" : "Cerca farmaco…"}
         style={{
           width: "100%",
           marginTop: 10,
@@ -1483,7 +1858,7 @@ function StepPick({
         }}
       />
 
-      <div style={{ marginTop: 10, display: "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
+      <div style={{ marginTop: collapsed ? 0 : 10, display: collapsed ? "none" : "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
         {results.slice(0, 20).map((r, i) => (
           <button
             key={i}
@@ -1520,7 +1895,7 @@ function trigramSimilarity(a: string, b: string) {
   const A = trigramSet(a);
   const B = trigramSet(b);
   let inter = 0;
-  for (const t of A) if (B.has(t)) inter++;
+  A.forEach((t) => { if (B.has(t)) inter++; });
   const union = A.size + B.size - inter;
   return union ? inter / union : 0;
 }
@@ -1875,7 +2250,7 @@ function CalcShell({ title, subtitle, children, onSave }: { title: string; subti
 
       <div style={{ marginTop: 12 }}>{children}</div>
 
-      <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
         <button type="button" onClick={onSave} style={primaryBtn(false)}>
           Salva
         </button>
@@ -1925,7 +2300,7 @@ function NumRow({
 function CalcOut({ out, onToast }: { out: string; onToast: (msg: string, type?: any) => void }) {
   const canCopy = !!out;
   return (
-    <div style={{ marginTop: 12, borderRadius: 14, padding: 12, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.12)" }}>
+    <div style={{ marginTop: 10, borderRadius: 14, padding: 12, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.12)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 900 }}>Risultato</div>
         <button
@@ -1978,4 +2353,54 @@ function selectStyle(): React.CSSProperties {
     outline: "none",
     fontWeight: 850,
   };
+}
+
+
+/* ===== PATCH 1 – Clinical interactions engine ===== */
+
+type Drug = {
+  name: string;
+  tags: string[];
+  qt?: boolean;
+  renal?: boolean;
+  bleeding?: boolean;
+};
+
+type Interaction = {
+  a: string;
+  b: string;
+  risk: "alto" | "medio";
+  reason: string;
+};
+
+const DRUGS: Drug[] = [
+  { name: "Amiodarone", tags: ["aritmie"], qt: true },
+  { name: "Levofloxacina", tags: ["antibiotico"], qt: true },
+  { name: "Warfarin", tags: ["anticoagulante"], bleeding: true },
+  { name: "ASA", tags: ["antiaggregante"], bleeding: true },
+  { name: "Eparina", tags: ["anticoagulante"], bleeding: true },
+  { name: "Sertralina", tags: ["ssri"], bleeding: true },
+  { name: "Furosemide", tags: ["diuretico"], renal: true },
+  { name: "Digossina", tags: ["aritmie"], renal: true },
+  { name: "Morfina", tags: ["oppioide"] },
+  { name: "Midazolam", tags: ["sedativo"] },
+];
+
+const INTERACTIONS: Interaction[] = [
+  { a: "Amiodarone", b: "Levofloxacina", risk: "alto", reason: "↑ QT → torsioni" },
+  { a: "Warfarin", b: "ASA", risk: "alto", reason: "↑ sanguinamento" },
+  { a: "Eparina", b: "ASA", risk: "alto", reason: "↑ sanguinamento" },
+  { a: "Warfarin", b: "Sertralina", risk: "medio", reason: "↑ sanguinamento" },
+  { a: "Digossina", b: "Furosemide", risk: "medio", reason: "↓ K → tossicità" },
+  { a: "Morfina", b: "Midazolam", risk: "alto", reason: "depressione respiratoria" },
+];
+
+function findInteractions(drug: string) {
+  return INTERACTIONS.filter(
+    (x) => x.a === drug || x.b === drug
+  );
+}
+
+export function suggestSecondDrug(first: string): Interaction[] {
+  return findInteractions(first);
 }
