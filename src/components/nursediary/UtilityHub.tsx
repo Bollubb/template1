@@ -32,7 +32,6 @@ type UtilityToolId = "INTERACTIONS" | "INFUSION" | "NEWS2" | "GCS";
 type RecentItem = { tool: UtilityToolId; ts: number };
 
 const UTILITY_TOOLS: UtilityToolId[] = ["INTERACTIONS", "INFUSION", "NEWS2", "GCS"];
-
 function isUtilityToolId(x: any): x is UtilityToolId {
   return UTILITY_TOOLS.includes(x as UtilityToolId);
 }
@@ -354,7 +353,9 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
 
   // NOTE: Nessuna utility genera XP (evita spam classifica)
 
-  return (
+  
+  const stepSubtitle = limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`;
+return (
     <div>
       {!section && (
         <div>
@@ -1165,85 +1166,7 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
     { id: "cns", name: "Depressori SNC (gruppo)", group: "GRP", interactions: [] },
 
     { id: "linezolid", name: "Linezolid", group: "Antibiotici", interactions: [] },
-    // ===== DB expansion (brand + molecule, high-yield) =====
-    { id: "paracetamolo", name: "Paracetamolo", group: "Analgesici/Antipiretici", also: ["Tachipirina", "Efferalgan"], interactions: [] },
-    { id: "ibuprofene", name: "Ibuprofene", group: "FANS", also: ["Brufen", "Nurofen", "Moment"], interactions: [] },
-    { id: "ketorolac", name: "Ketorolac", group: "FANS", also: ["Toradol"], interactions: [] },
-    { id: "diclofenac", name: "Diclofenac", group: "FANS", also: ["Voltaren"], interactions: [] },
-    { id: "naprossene", name: "Naproxene", group: "FANS", also: ["Naprosyn"], interactions: [] },
-    { id: "celecoxib", name: "Celecoxib", group: "FANS", also: ["Celebrex"], interactions: [] },
-    { id: "omeprazolo", name: "Omeprazolo", group: "IPP", also: ["Losec"], interactions: [] },
-    { id: "pantoprazolo", name: "Pantoprazolo", group: "IPP", also: ["Pantorc"], interactions: [] },
-    { id: "esomeprazolo", name: "Esomeprazolo", group: "IPP", also: ["Nexium"], interactions: [] },
-    { id: "lansoprazolo", name: "Lansoprazolo", group: "IPP", also: ["Limpidex"], interactions: [] },
-    { id: "metformina", name: "Metformina", group: "Antidiabetici", also: ["Metforal", "Glucophage"], interactions: [] },
-    { id: "insulina_rapida", name: "Insulina rapida", group: "Antidiabetici", also: ["Humalog", "Novorapid", "Apidra"], interactions: [] },
-    { id: "insulina_basale", name: "Insulina basale", group: "Antidiabetici", also: ["Lantus", "Toujeo", "Tresiba"], interactions: [] },
-    { id: "fentanil", name: "Fentanil", group: "Oppioidi", also: ["Durogesic"], interactions: [] },
-    { id: "morfina", name: "Morfina", group: "Oppioidi", also: ["Morphine"], interactions: [] },
-    { id: "ossicodone", name: "Ossicodone", group: "Oppioidi", also: ["OxyContin"], interactions: [] },
-    { id: "tramadolo", name: "Tramadolo", group: "Oppioidi", also: ["Contramal"], interactions: [] },
-    { id: "lorazepam", name: "Lorazepam", group: "Benzodiazepine", also: ["Tavor"], interactions: [] },
-    { id: "diazepam", name: "Diazepam", group: "Benzodiazepine", also: ["Valium"], interactions: [] },
-    { id: "midazolam", name: "Midazolam", group: "Benzodiazepine", also: ["Ipnovel"], interactions: [] },
-    { id: "alprazolam", name: "Alprazolam", group: "Benzodiazepine", also: ["Xanax"], interactions: [] },
-    { id: "quetiapina", name: "Quetiapina", group: "Antipsicotici", also: ["Seroquel"], interactions: [] },
-    { id: "olanzapina", name: "Olanzapina", group: "Antipsicotici", also: ["Zyprexa"], interactions: [] },
-    { id: "aloperidolo", name: "Aloperidolo", group: "Antipsicotici", also: ["Haldol"], interactions: [] },
-    { id: "sertralina", name: "Sertralina", group: "SSRI", also: ["Zoloft"], interactions: [] },
-    { id: "citalopram", name: "Citalopram", group: "SSRI", also: ["Seropram"], interactions: [] },
-    { id: "escitalopram", name: "Escitalopram", group: "SSRI", also: ["Cipralex"], interactions: [] },
-    { id: "fluoxetina", name: "Fluoxetina", group: "SSRI", also: ["Prozac"], interactions: [] },
-    { id: "venlafaxina", name: "Venlafaxina", group: "SNRI", also: ["Efexor"], interactions: [] },
-    { id: "duloxetina", name: "Duloxetina", group: "SNRI", also: ["Cymbalta"], interactions: [] },
-    { id: "atorvastatina", name: "Atorvastatina", group: "Statine", also: ["Torvast", "Lipitor"], interactions: [] },
-    { id: "rosuvastatina", name: "Rosuvastatina", group: "Statine", also: ["Crestor"], interactions: [] },
-    { id: "simvastatina", name: "Simvastatina", group: "Statine", also: ["Zocor"], interactions: [] },
-    { id: "amlodipina", name: "Amlodipina", group: "Calcio-antagonisti", also: ["Norvasc"], interactions: [] },
-    { id: "ramipril", name: "Ramipril", group: "ACE-inibitori", also: ["Triatec"], interactions: [] },
-    { id: "enalapril", name: "Enalapril", group: "ACE-inibitori", also: ["Renitec"], interactions: [] },
-    { id: "lisinopril", name: "Lisinopril", group: "ACE-inibitori", also: ["Zestril"], interactions: [] },
-    { id: "losartan", name: "Losartan", group: "Sartani", also: ["Cozaar"], interactions: [] },
-    { id: "valsartan", name: "Valsartan", group: "Sartani", also: ["Diovan"], interactions: [] },
-    { id: "furosemide", name: "Furosemide", group: "Diuretici", also: ["Lasix"], interactions: [] },
-    { id: "spironolattone", name: "Spironolattone", group: "Diuretici", also: ["Aldactone"], interactions: [] },
-    { id: "torasemide", name: "Torasemide", group: "Diuretici", also: ["Torem"], interactions: [] },
-    { id: "metoprololo", name: "Metoprololo", group: "Beta-bloccanti", also: ["Seloken"], interactions: [] },
-    { id: "bisoprololo", name: "Bisoprololo", group: "Beta-bloccanti", also: ["Congescor"], interactions: [] },
-    { id: "carvedilolo", name: "Carvedilolo", group: "Beta-bloccanti", also: ["Dilatrend"], interactions: [] },
-    { id: "diltiazem", name: "Diltiazem", group: "Calcio-antagonisti", also: ["Cardizem"], interactions: [] },
-    { id: "verapamil", name: "Verapamil", group: "Calcio-antagonisti", also: ["Isoptin"], interactions: [] },
-    { id: "prednisone", name: "Prednisone", group: "Corticosteroidi", also: ["Deltacortene"], interactions: [] },
-    { id: "metilprednisolone", name: "Metilprednisolone", group: "Corticosteroidi", also: ["Urbason", "Solu-Medrol"], interactions: [] },
-    { id: "desametasone", name: "Desametasone", group: "Corticosteroidi", also: ["Decadron"], interactions: [] },
-    { id: "ondansetron", name: "Ondansetron", group: "Antiemetici", also: ["Zofran"], interactions: [] },
-    { id: "metoclopramide", name: "Metoclopramide", group: "Antiemetici", also: ["Plasil"], interactions: [] },
-    { id: "domperidone", name: "Domperidone", group: "Antiemetici", also: ["Motilium"], interactions: [] },
-    { id: "levetiracetam", name: "Levetiracetam", group: "Antiepilettici", also: ["Keppra"], interactions: [] },
-    { id: "valproato", name: "Acido valproico", group: "Antiepilettici", also: ["Depakin"], interactions: [] },
-    { id: "carbamazepina", name: "Carbamazepina", group: "Antiepilettici", also: ["Tegretol"], interactions: [] },
-    { id: "lamotrigina", name: "Lamotrigina", group: "Antiepilettici", also: ["Lamictal"], interactions: [] },
-    { id: "piperacillina_tazobactam", name: "Piperacillina/Tazobactam", group: "Antibiotici", also: ["Tazocin"], interactions: [] },
-    { id: "amoxicillina_acclav", name: "Amoxicillina/Ac. clavulanico", group: "Antibiotici", also: ["Augmentin"], interactions: [] },
-    { id: "ceftriaxone", name: "Ceftriaxone", group: "Cefalosporine", also: ["Rocefin"], interactions: [] },
-    { id: "cefuroxime", name: "Cefuroxime", group: "Cefalosporine", also: ["Zinnat"], interactions: [] },
-    { id: "cefepime", name: "Cefepime", group: "Cefalosporine", also: ["Maxipime"], interactions: [] },
-    { id: "meropenem", name: "Meropenem", group: "Carbapenemi", also: ["Merrem"], interactions: [] },
-    { id: "imipenem_cilastatina", name: "Imipenem/Cilastatina", group: "Carbapenemi", also: ["Tienam"], interactions: [] },
-    { id: "linezolid", name: "Linezolid", group: "Antibiotici", also: ["Zyvoxid"], interactions: [] },
-    { id: "daptomicina", name: "Daptomicina", group: "Antibiotici", also: ["Cubicin"], interactions: [] },
-    { id: "fluconazolo", name: "Fluconazolo", group: "Azoli", also: ["Diflucan"], interactions: [] },
-    { id: "itraconazolo", name: "Itraconazolo", group: "Azoli", also: ["Sporanox"], interactions: [] },
-    { id: "voriconazolo", name: "Voriconazolo", group: "Azoli", also: ["Vfend"], interactions: [] },
-    { id: "posaconazolo", name: "Posaconazolo", group: "Azoli", also: ["Noxafil"], interactions: [] },
-    { id: "aciclovir", name: "Aciclovir", group: "Antivirali", also: ["Zovirax"], interactions: [] },
-    { id: "oseltamivir", name: "Oseltamivir", group: "Antivirali", also: ["Tamiflu"], interactions: [] },
-    { id: "levotiroxina", name: "Levotiroxina", group: "Ormoni", also: ["Eutirox"], interactions: [] },
-    { id: "salbutamolo", name: "Salbutamolo", group: "Broncodilatatori", also: ["Ventolin"], interactions: [] },
-    { id: "budesonide", name: "Budesonide", group: "Corticosteroidi inalatori", also: ["Pulmicort"], interactions: [] },
-    { id: "tiotropio", name: "Tiotropio", group: "Broncodilatatori", also: ["Spiriva"], interactions: [] },
-
-  ;
+  ];
 
   const limit = useDailyLimit(LS.interactionsDaily, 3);
   const toast = useToast();
@@ -1289,47 +1212,6 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
 
   const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
   const results2 = useMemo(() => searchDrugs(selectable, q2), [selectable, q2]);
-
-const step1Suggestions = useMemo(() => {
-  if (!a) return [] as { e: Entry; sev: Severity; why: string; tags: { id: "qt" | "rene" | "bleed" | "snc"; label: string; icon: string }[] }[];
-
-  const mkTags = (why: string) => {
-    const w = normalize(why);
-    const tags: { id: "qt" | "rene" | "bleed" | "snc"; label: string; icon: string }[] = [];
-    if (w.includes("qt") || w.includes("tors") || w.includes("aritm")) tags.push({ id: "qt", label: "QT", icon: "⚡" });
-    if (w.includes("rene") || w.includes("creatin") || w.includes("gfr") || w.includes("clearance")) tags.push({ id: "rene", label: "Rene", icon: "🧪" });
-    if (w.includes("sangu") || w.includes("emorrag") || w.includes("inr") || w.includes("piastrin")) tags.push({ id: "bleed", label: "Sanguin.", icon: "🩸" });
-    if (w.includes("snc") || w.includes("sed") || w.includes("confus") || w.includes("delir") || w.includes("seiz")) tags.push({ id: "snc", label: "SNC", icon: "🧠" });
-    return tags;
-  };
-
-  const match = (x: Entry, y: Entry) => {
-    const keys = new Set<string>([y.id, normalize(y.group)]);
-    const also = (y.also || []).map((s) => normalize(s));
-    for (let i = 0; i < also.length; i++) keys.add(also[i]);
-    for (const r of x.interactions) {
-      if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
-      const ry = byId.get(r.key);
-      if (ry && (ry.id === y.id || normalize(ry.name) === normalize(y.name))) return r;
-    }
-    return null;
-  };
-
-  const out: { e: Entry; sev: Severity; why: string; tags: { id: "qt" | "rene" | "bleed" | "snc"; label: string; icon: string }[] }[] = [];
-  for (const e of selectable) {
-    if (e.id === a.id) continue;
-    const r1 = match(a, e);
-    const r2 = match(e, a);
-    const worst = pickWorst(r1, r2);
-    if (!worst) continue;
-    if (worst.sev === "ok") continue;
-    const why = worst.why || "Interazione potenzialmente rilevante";
-    out.push({ e, sev: worst.sev as Severity, why, tags: mkTags(why) });
-  }
-  out.sort((x, y) => (x.sev === y.sev ? 0 : x.sev === "avoid" ? -1 : 1));
-  return out;
-}, [a, selectable, byId]);
-
 
   const outcome = useMemo(() => {
     if (!a || !b) return null;
@@ -1443,13 +1325,11 @@ const step1Suggestions = useMemo(() => {
     <div style={{ display: "grid", gap: 12 }}>
       <div style={{ borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
         <div style={{ fontSize: 14, fontWeight: 900 }}>Modalità guidata</div>
-        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
+        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {stepSubtitle}</div>
       </div>
 
       {step === 1 && (
-  <>
-    {!a ? (
-      <StepPick
+        <StepPick
           title="Step 1 — Seleziona farmaco 1"
           query={q1}
           setQuery={setQ1}
@@ -1461,165 +1341,7 @@ const step1Suggestions = useMemo(() => {
             setB(null);
           }}
         />
-    ) : (
-      <div
-        style={{
-          borderRadius: 22,
-          padding: 16,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "linear-gradient(180deg, rgba(120,200,255,0.10), rgba(255,255,255,0.04))",
-          boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <div>
-            <div style={{ fontSize: 12, opacity: 0.8, fontWeight: 900 }}>Farmaco 1 selezionato</div>
-            <div style={{ fontSize: 16, fontWeight: 950, marginTop: 4 }}>{a.name}</div>
-            <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>{a.group}</div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setA(null);
-              setB(null);
-              setQ1("");
-              setQ2("");
-              setStep(1);
-              setFocusTag(null);
-            }}
-            style={{
-              borderRadius: 999,
-              padding: "10px 12px",
-              border: "1px solid rgba(255,255,255,0.16)",
-              background: "rgba(255,255,255,0.06)",
-              color: "rgba(255,255,255,0.92)",
-              fontWeight: 950,
-              cursor: "pointer",
-            }}
-            className="nd-press"
-          >
-            Cambia
-          </button>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-          <button type="button" onClick={() => setStep(2)} style={primaryBtn(false)} className="nd-press">
-            Ricerca manuale 2° farmaco →
-          </button>
-        </div>
-      </div>
-    )}
-
-    {a && (
-      <div id="nd-suggest-anchor" style={{ marginTop: 10 }}>
-        <div style={{ marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 950 }}>✨ Suggerimenti rapidi</div>
-          <div style={{ fontSize: 12, opacity: 0.78 }}>1 tap = risultato</div>
-        </div>
-
-        {step1Suggestions.length === 0 ? (
-          <div style={{ fontSize: 12, opacity: 0.78 }}>
-            Nessun suggerimento “ad alto rischio” trovato per questo farmaco nel database locale.
-          </div>
-        ) : (
-          <>
-            {(() => {
-              const list = step1Suggestions.slice(0, 8);
-              const hero = list.find((x) => x.sev === "avoid") || list[0];
-              const rest = list.filter((x) => x !== hero);
-
-              const Card = ({ c, big }: { c: any; big?: boolean }) => (
-                <button
-                  key={c.e.id}
-                  type="button"
-                  onClick={() => {
-                    setB(c.e);
-                    setQ2(c.e.name);
-                    setStep(3);
-                  }}
-                  className="nd-press"
-                  style={{
-                    width: "100%",
-                    textAlign: "left",
-                    padding: big ? 14 : 12,
-                    borderRadius: big ? 22 : 18,
-                    border: "1px solid rgba(255,255,255,0.16)",
-                    background:
-                      c.sev === "avoid"
-                        ? "linear-gradient(180deg, rgba(255,80,80,0.20), rgba(255,80,80,0.10))"
-                        : "linear-gradient(180deg, rgba(255,200,80,0.18), rgba(255,200,80,0.08))",
-                    boxShadow: big ? "0 18px 36px rgba(0,0,0,0.40)" : "none",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                    <div>
-                      <div style={{ fontSize: big ? 15 : 14, fontWeight: 950 }}>
-                        {big && c.sev === "avoid" ? "Più rischioso: " : ""}
-                        {c.e.name}
-                      </div>
-                      <div style={{ fontSize: 12, opacity: 0.82, marginTop: 2 }}>{c.e.group}</div>
-                    </div>
-                    <span
-                      style={{
-                        padding: big ? "7px 12px" : "6px 10px",
-                        borderRadius: 999,
-                        fontSize: 12,
-                        fontWeight: 950,
-                        border: "1px solid rgba(255,255,255,0.18)",
-                        background: c.sev === "avoid" ? "rgba(255,80,80,0.26)" : "rgba(255,200,80,0.22)",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {c.sev === "avoid" ? "DA EVITARE" : "CAUTELA"}
-                    </span>
-                  </div>
-
-                  <div style={{ fontSize: 12, opacity: 0.92, marginTop: big ? 10 : 8 }}>
-                    <span style={{ fontWeight: 950 }}>Perché:</span>{" "}
-                    {c.why.length > (big ? 140 : 110) ? c.why.slice(0, big ? 140 : 110) + "…" : c.why}
-                  </div>
-
-                  {c.tags?.length ? (
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: big ? 10 : 8 }}>
-                      {c.tags.slice(0, 3).map((t: any) => (
-                        <span
-                          key={t.id}
-                          style={{
-                            padding: "6px 10px",
-                            borderRadius: 999,
-                            border: "1px solid rgba(255,255,255,0.14)",
-                            background: "rgba(255,255,255,0.06)",
-                            fontSize: 12,
-                            fontWeight: 900,
-                          }}
-                        >
-                          {t.icon} {t.label}
-                        </span>
-                      ))}
-                    </div>
-                  ) : null}
-                </button>
-              );
-
-              return (
-                <div style={{ display: "grid", gap: 10 }}>
-                  {hero ? <Card c={hero} big /> : null}
-                  {rest.length > 0 && (
-                    <div style={{ marginTop: 6 }}>
-                      <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.85, marginBottom: 8 }}>Alternative</div>
-                      <div style={{ display: "grid", gap: 10 }}>{rest.slice(0, 4).map((c) => <Card key={c.e.id} c={c} />)}</div>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-          </>
-        )}
-      </div>
-    )}
-  </>
-)}
+      )}
 
       {step === 2 && (
         <StepPick
@@ -1811,7 +1533,7 @@ function trigramSimilarity(a: string, b: string) {
   const A = trigramSet(a);
   const B = trigramSet(b);
   let inter = 0;
-  for (const t of A) if (B.has(t)) inter++;
+  A.forEach((t) => { if (B.has(t)) inter++; });
   const union = A.size + B.size - inter;
   return union ? inter / union : 0;
 }
@@ -2269,4 +1991,54 @@ function selectStyle(): React.CSSProperties {
     outline: "none",
     fontWeight: 850,
   };
+}
+
+
+/* ===== PATCH 1 – Clinical interactions engine ===== */
+
+type Drug = {
+  name: string;
+  tags: string[];
+  qt?: boolean;
+  renal?: boolean;
+  bleeding?: boolean;
+};
+
+type Interaction = {
+  a: string;
+  b: string;
+  risk: "alto" | "medio";
+  reason: string;
+};
+
+const DRUGS: Drug[] = [
+  { name: "Amiodarone", tags: ["aritmie"], qt: true },
+  { name: "Levofloxacina", tags: ["antibiotico"], qt: true },
+  { name: "Warfarin", tags: ["anticoagulante"], bleeding: true },
+  { name: "ASA", tags: ["antiaggregante"], bleeding: true },
+  { name: "Eparina", tags: ["anticoagulante"], bleeding: true },
+  { name: "Sertralina", tags: ["ssri"], bleeding: true },
+  { name: "Furosemide", tags: ["diuretico"], renal: true },
+  { name: "Digossina", tags: ["aritmie"], renal: true },
+  { name: "Morfina", tags: ["oppioide"] },
+  { name: "Midazolam", tags: ["sedativo"] },
+];
+
+const INTERACTIONS: Interaction[] = [
+  { a: "Amiodarone", b: "Levofloxacina", risk: "alto", reason: "↑ QT → torsioni" },
+  { a: "Warfarin", b: "ASA", risk: "alto", reason: "↑ sanguinamento" },
+  { a: "Eparina", b: "ASA", risk: "alto", reason: "↑ sanguinamento" },
+  { a: "Warfarin", b: "Sertralina", risk: "medio", reason: "↑ sanguinamento" },
+  { a: "Digossina", b: "Furosemide", risk: "medio", reason: "↓ K → tossicità" },
+  { a: "Morfina", b: "Midazolam", risk: "alto", reason: "depressione respiratoria" },
+];
+
+function findInteractions(drug: string) {
+  return INTERACTIONS.filter(
+    (x) => x.a === drug || x.b === drug
+  );
+}
+
+export function suggestSecondDrug(first: string): Interaction[] {
+  return findInteractions(first);
 }
