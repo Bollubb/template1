@@ -503,7 +503,29 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                       if (!m) return null;
                       const canUp = favs.indexOf(id) > 0;
                       const canDown = favs.indexOf(id) < favs.length - 1;
-                      return (
+                      
+
+// Tool router (kept minimal to avoid build regressions)
+const ToolRenderer = ({
+  id,
+  last,
+  onSave,
+  onToast,
+}: {
+  id: CalcToolId;
+  last: UtilityHistoryItem | null;
+  onSave: (item: UtilityHistoryItem) => void;
+  onToast: (msg: string, type?: "info" | "ok" | "warn" | "err") => void;
+}) => {
+  if (id === "interactions") return <ToolInteractions last={last} onSave={onSave} onToast={onToast} />;
+  return (
+    <div style={{ padding: 14, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+      <div style={{ fontWeight: 950 }}>Strumento in aggiornamento</div>
+      <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>Seleziona “Interazioni” per continuare.</div>
+    </div>
+  );
+};
+return (
                         <div key={id} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                           <button
                             type="button"
@@ -3065,7 +3087,7 @@ function copyTextToClipboard(text: string): boolean {
   return false;
 }
 
-function ToolRenderer({
+function _ToolRendererLegacy({
   id,
   last,
   onSave,
