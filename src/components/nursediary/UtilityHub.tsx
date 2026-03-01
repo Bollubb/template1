@@ -1209,7 +1209,46 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   const [b, setB] = useState<Entry | null>(null);
   const [focusTag, setFocusTag] = useState<null | "qt" | "rene" | "bleed" | "snc">(null);
 
-  const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
+  
+
+// ===== Guided AI suggestions (Step 1) =====
+const step1Suggestions = useMemo(() => {
+  if (!a) return [] as { e: Entry; sev: Severity; why: string; monitor: string[]; tags: { id: "qt" | "rene" | "bleed" | "snc"; label: string; icon: string }[] }[];
+
+  const match = (x: Entry, y: Entry) => {
+    const keys = new Set<string>([y.id, normalize(y.group)]);
+    const also = (y.also || []).map((s) => normalize(s));
+    also.forEach((s) => keys.add(s));
+    for (const r of x.interactions) {
+      if (keys.has(r.key) || keys.has(normalize(r.key))) return r;
+      const ry = byId.get(r.key);
+      if (ry && (ry.id === y.id || normalize(ry.name) === normalize(y.name))) return r;
+    }
+    return null;
+  };
+
+  const out: { e: Entry; sev: Severity; why: string; monitor: string[]; tags: { id: "qt" | "rene" | "bleed" | "snc"; label: string; icon: string }[] }[] = [];
+  for (const e of entries) {
+    if (e.id === a.id) continue;
+    const r1 = match(a, e);
+    const r2 = match(e, a);
+    const worst = pickWorst(r1, r2);
+    if (!worst) continue;
+    const sev: Severity = worst.sev || "ok";
+    if (sev === "ok") continue; // keep only clinically relevant suggestions
+    const why = worst.why || "Interazione potenzialmente rilevante.";
+    const monitor = worst.monitor?.length ? worst.monitor : [];
+    const tags = inferTags(`${a.name} ${e.name}`, why, monitor as any);
+    if (focusTag && !tags.find((t) => t.id === focusTag)) continue;
+    out.push({ e, sev, why, monitor, tags });
+  }
+
+  const rank = (s: Severity) => (s === "avoid" ? 2 : s === "caution" ? 1 : 0);
+  out.sort((x, y) => rank(y.sev) - rank(x.sev) || x.e.name.localeCompare(y.e.name));
+  return out.slice(0, 12);
+}, [a?.id, byId, entries, focusTag]);
+
+const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
   const results2 = useMemo(() => searchDrugs(selectable, q2), [selectable, q2]);
 
   const outcome = useMemo(() => {
@@ -1333,13 +1372,123 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
           query={q1}
           setQuery={setQ1}
           results={results1}
-          onPick={(e) => {
-            setA(e);
-            setStep(2);
-            setQ2("");
-            setB(null);
-          }}
-        />
+          onPick={(e) => { setA(e); setQ1(e.name); setQ2(""); setB(null); /* stay on Step 1 to show AI suggestions */ }}
+        
+footer={
+  <>
+    {a && (
+      <div style={{ marginTop: 12, borderRadius: 16, padding: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.03)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ fontSize: 12, opacity: 0.78 }}>Selezionato</div>
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            className="nd-btn nd-press"
+            style={{ padding: "10px 14px", borderRadius: 999, fontWeight: 950 }}
+          >
+            Continua →
+          </button>
+        </div>
+        <div style={{ fontSize: 14, fontWeight: 950, marginTop: 6 }}>{a.name}</div>
+        <div style={{ fontSize: 12, opacity: 0.78, marginTop: 2 }}>{a.group}</div>
+      </div>
+    )}
+
+    {a && (
+      <div style={{ marginTop: 12, borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(8,10,16,0.82)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 950 }}>🤖 Suggerimenti automatici</div>
+            <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>1 tap su una card = selezione del 2° farmaco + verifica.</div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+          {([
+            { id: null, label: "Tutti" },
+            { id: "qt", label: "QT" },
+            { id: "bleed", label: "Sanguin." },
+            { id: "rene", label: "Rene" },
+            { id: "snc", label: "SNC" },
+          ] as any[]).map((t) => (
+            <button
+              key={String(t.id)}
+              type="button"
+              onClick={() => setFocusTag(t.id)}
+              style={{
+                padding: "7px 10px",
+                borderRadius: 999,
+                border: "1px solid rgba(255,255,255,0.14)",
+                background: (focusTag ?? null) === (t.id ?? null) ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.06)",
+                fontSize: 12,
+                fontWeight: 950,
+                cursor: "pointer",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {step1Suggestions.length === 0 ? (
+          <div style={{ marginTop: 10, fontSize: 12, opacity: 0.78 }}>Nessun suggerimento “ad alto rischio” trovato per questo farmaco nel database locale.</div>
+        ) : (
+          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+            {step1Suggestions.slice(0, 6).map((c) => (
+              <button
+                key={c.e.id}
+                type="button"
+                onClick={() => {
+                  setB(c.e);
+                  setQ2(c.e.name);
+                  setStep(3);
+                }}
+                className="nd-press"
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  padding: 12,
+                  borderRadius: 18,
+                  border: "1px solid rgba(255,255,255,0.14)",
+                  background: c.sev === "avoid" ? "rgba(255,80,80,0.14)" : "rgba(255,200,80,0.12)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 16 }}>{riskIcon(c.why)}</span>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 950 }}>{c.e.name}</div>
+                      <div style={{ fontSize: 12, opacity: 0.78, marginTop: 2 }}>{c.e.group}</div>
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      fontSize: 12,
+                      fontWeight: 950,
+                      border: "1px solid rgba(255,255,255,0.16)",
+                      background: c.sev === "avoid" ? "rgba(255,80,80,0.22)" : "rgba(255,200,80,0.18)",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {c.sev === "avoid" ? "DA EVITARE" : "CAUTELA"}
+                  </span>
+                </div>
+
+                <div style={{ fontSize: 12, opacity: 0.9, marginTop: 8 }}>
+                  <span style={{ fontWeight: 950 }}>Perché:</span>{" "}
+                  {c.why.length > 100 ? c.why.slice(0, 100) + "…" : c.why}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+  </>
+}
+/>
       )}
 
       {step === 2 && (
