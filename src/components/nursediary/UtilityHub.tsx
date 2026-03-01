@@ -831,7 +831,7 @@ function ToolSkeleton({
           }}
         />
       </div>
-      <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+      <div style={{ marginTop: 10, display: "grid", gap: 10 }}>
         <div className="nd-skel" style={{ height: 14, borderRadius: 10, background: "rgba(255,255,255,0.06)" }} />
         <div className="nd-skel" style={{ height: 14, borderRadius: 10, width: "92%", background: "rgba(255,255,255,0.06)" }} />
         <div className="nd-skel" style={{ height: 14, borderRadius: 10, width: "84%", background: "rgba(255,255,255,0.06)" }} />
@@ -1204,7 +1204,6 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [q1, setQ1] = useState("");
   const [q2, setQ2] = useState("");
-  const [pick1Collapsed, setPick1Collapsed] = useState(false);
   const [a, setA] = useState<Entry | null>(null);
   const [b, setB] = useState<Entry | null>(null);
   const [focusTag, setFocusTag] = useState<null | "qt" | "rene" | "bleed" | "snc">(null);
@@ -1412,60 +1411,19 @@ return (
 
       {step === 1 && (
         <>
-          {!pick1Collapsed ? (
-  <StepPick
-    title="Step 1 — Seleziona farmaco 1"
-    query={q1}
-    setQuery={setQ1}
-    results={results1}
-    onPick={(e) => {
-      setA(e);
-      bumpUse(e.id);
-      setQ1(e.name);
-      setPick1Collapsed(true);
-      // stay on step 1 to show suggestions
-      setQ2("");
-      setB(null);
-    }}
-  />
-) : (
-  <div
-    style={{
-      borderRadius: 18,
-      padding: 14,
-      border: "1px solid rgba(255,255,255,0.10)",
-      background: "rgba(255,255,255,0.04)",
-    }}
-  >
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-      <div>
-        <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 900 }}>Farmaco 1 selezionato</div>
-        <div style={{ fontSize: 15, fontWeight: 950, marginTop: 2 }}>{a?.name}</div>
-        <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>{a?.group}</div>
-      </div>
-      <button
-        type="button"
-        onClick={() => {
-          setPick1Collapsed(false);
-          setA(null);
-          setQ1("");
-          setFocusTag(null);
-        }}
-        style={{
-          padding: "10px 12px",
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(255,255,255,0.08)",
-          fontWeight: 950,
-          cursor: "pointer",
-        }}
-      >
-        Cambia
-      </button>
-    </div>
-  </div>
-)}
-
+          <StepPick
+            title="Step 1 — Seleziona farmaco 1"
+            query={q1}
+            setQuery={setQ1}
+            results={results1}
+            onPick={(e) => {
+              setA(e);
+              bumpUse(e.id);
+              // stay on step 1 to show suggestions
+              setQ2("");
+              setB(null);
+            }}
+          />
 
           {/* Step 1 suggested: most used by you (local, private) */}
           {!q1.trim() && (
@@ -1488,7 +1446,6 @@ return (
                       setA(e);
                       bumpUse(e.id);
                       setQ1(e.name);
-                      setPick1Collapsed(true);
                       setQ2("");
                       setB(null);
                     }}
@@ -1516,7 +1473,7 @@ return (
           {a && (
             <div
               style={{
-                marginTop: 12,
+                marginTop: 10,
                 borderRadius: 18,
                 padding: 14,
                 border: "1px solid rgba(255,255,255,0.10)",
@@ -1656,7 +1613,7 @@ return (
             </div>
           )}
 
-          <div style={{ marginTop: 12, fontSize: 13, opacity: 0.9, lineHeight: 1.35 }}>{outcome.why}</div>
+          <div style={{ marginTop: 10, fontSize: 13, opacity: 0.9, lineHeight: 1.35 }}>{outcome.why}</div>
 
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 13, fontWeight: 900, marginBottom: 6 }}>Monitoraggio consigliato</div>
@@ -1718,6 +1675,9 @@ function StepPick({
   results,
   onPick,
   footer,
+  collapsed,
+  selected,
+  onClear,
 }: {
   title: string;
   query: string;
@@ -1725,15 +1685,45 @@ function StepPick({
   results: { e: any; label: string }[];
   onPick: (e: any) => void;
   footer?: React.ReactNode;
+  collapsed?: boolean;
+  selected?: { name: string; group?: string } | null;
+  onClear?: () => void;
 }) {
   return (
     <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
-      <div style={{ fontSize: 14, fontWeight: 900 }}>{title}</div>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+    <div style={{ fontSize: 14, fontWeight: 900 }}>{title}</div>
+    {selected && (
+      <button
+        type="button"
+        onClick={onClear}
+        style={{
+          padding: "8px 12px",
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.08)",
+          fontWeight: 950,
+          cursor: "pointer",
+        }}
+      >
+        Cambia
+      </button>
+    )}
+  </div>
+
+  {selected && (
+    <div style={{ marginTop: 10, borderRadius: 14, padding: 12, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+      <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 900 }}>Selezionato</div>
+      <div style={{ fontSize: 15, fontWeight: 950, marginTop: 2 }}>{selected.name}</div>
+      {selected.group && <div style={{ fontSize: 12, opacity: 0.75, marginTop: 2 }}>{selected.group}</div>}
+    </div>
+  )}
+
 
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Cerca farmaco…"
+        placeholder={collapsed ? "Cerca per cambiare farmaco…" : "Cerca farmaco…"}
         style={{
           width: "100%",
           marginTop: 10,
@@ -1745,7 +1735,7 @@ function StepPick({
         }}
       />
 
-      <div style={{ marginTop: 10, display: "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
+      <div style={{ marginTop: collapsed ? 0 : 10, display: collapsed ? "none" : "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
         {results.slice(0, 20).map((r, i) => (
           <button
             key={i}
@@ -2137,7 +2127,7 @@ function CalcShell({ title, subtitle, children, onSave }: { title: string; subti
 
       <div style={{ marginTop: 12 }}>{children}</div>
 
-      <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+      <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
         <button type="button" onClick={onSave} style={primaryBtn(false)}>
           Salva
         </button>
@@ -2187,7 +2177,7 @@ function NumRow({
 function CalcOut({ out, onToast }: { out: string; onToast: (msg: string, type?: any) => void }) {
   const canCopy = !!out;
   return (
-    <div style={{ marginTop: 12, borderRadius: 14, padding: 12, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.12)" }}>
+    <div style={{ marginTop: 10, borderRadius: 14, padding: 12, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(0,0,0,0.12)" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div style={{ fontSize: 12, opacity: 0.7, fontWeight: 900 }}>Risultato</div>
         <button
