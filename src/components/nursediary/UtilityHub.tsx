@@ -1991,3 +1991,22 @@ function selectStyle(): React.CSSProperties {
     fontWeight: 850,
   };
 }
+const riskLabel = (why: string) => {
+  const w = normalize(why);
+  if (w.includes("qt") || w.includes("torsad") || w.includes("aritm")) return "QT";
+  if (w.includes("emor") || w.includes("sang") || w.includes("anticoag") || w.includes("antiagg")) return "Sanguinamento";
+  if (w.includes("rene") || w.includes("nefro") || w.includes("creatin") || w.includes("k+")) return "Rene";
+  if (w.includes("snc") || w.includes("sedaz") || w.includes("depress") || w.includes("confus")) return "SNC";
+  return "Rischio";
+};
+
+const riskIcon = (why: string) => {
+  const w = normalize(why);
+  if (w.includes("qt") || w.includes("torsad") || w.includes("aritm")) return "❤️‍🩹";
+  if (w.includes("emor") || w.includes("sang") || w.includes("anticoag") || w.includes("antiagg")) return "🩸";
+  if (w.includes("rene") || w.includes("nefro") || w.includes("creatin") || w.includes("k+")) return "🧪";
+  if (w.includes("snc") || w.includes("sedaz") || w.includes("depress") || w.includes("confus")) return "🧠";
+  return "⚠️";
+};
+
+
