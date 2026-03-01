@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "es2015",
     "lib": [
       "dom",
       "dom.iterable",
@@ -50,7 +50,8 @@
       "@common/*": [
         "src/common/*"
       ]
-    }
+    },
+    "downlevelIteration": true
   },
   "extends": "./tsconfig.node.json"
 }
