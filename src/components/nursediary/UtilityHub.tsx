@@ -895,7 +895,7 @@ function CalcCard({ title, subtitle, icon, onClick }: { title: string; subtitle:
 function ComingSoon({ title, desc, onUpsell }: { title: string; desc: string; onUpsell: (t: string, d: string) => void }) {
   const premium = isPremium();
   return (
-    <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+    <div style={{ borderRadius: 22, padding: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)", boxShadow: "0 18px 40px rgba(0,0,0,0.35)" }}>
       <div style={{ fontSize: 16, fontWeight: 900 }}>{title}</div>
       <div style={{ fontSize: 13, opacity: 0.8, marginTop: 6 }}>{desc}</div>
 
@@ -2125,6 +2125,85 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
       group: "Anticoagulanti",
       interactions: [],
     },
+  
+    // ===== Massive DB expansion (Italy-friendly brand + molecule search) =====
+    { id: "paracetamolo", name: "Paracetamolo", group: "Analgesici/Antipiretici", also: ["Tachipirina", "Efferalgan"], interactions: [] },
+    { id: "ibuprofene", name: "Ibuprofene", group: "FANS", also: ["Brufen", "Nurofen", "Moment"], interactions: [] },
+    { id: "ketorolac", name: "Ketorolac", group: "FANS", also: ["Toradol"], interactions: [] },
+    { id: "diclofenac", name: "Diclofenac", group: "FANS", also: ["Voltaren"], interactions: [] },
+    { id: "naprossene", name: "Naproxene", group: "FANS", also: ["Naprosyn"], interactions: [] },
+    { id: "omeprazolo", name: "Omeprazolo", group: "IPP", also: ["Losec", "Omeprazen"], interactions: [] },
+    { id: "pantoprazolo", name: "Pantoprazolo", group: "IPP", also: ["Pantorc"], interactions: [] },
+    { id: "esomeprazolo", name: "Esomeprazolo", group: "IPP", also: ["Nexium"], interactions: [] },
+    { id: "lansoprazolo", name: "Lansoprazolo", group: "IPP", also: ["Limpidex"], interactions: [] },
+    { id: "metformina", name: "Metformina", group: "Antidiabetici", also: ["Metforal", "Glucophage"], interactions: [] },
+    { id: "insulina_rapida", name: "Insulina rapida", group: "Antidiabetici", also: ["Humalog", "Novorapid", "Apidra"], interactions: [] },
+    { id: "insulina_basale", name: "Insulina basale", group: "Antidiabetici", also: ["Lantus", "Toujeo", "Tresiba"], interactions: [] },
+    { id: "fentanil", name: "Fentanil", group: "Oppioidi", also: ["Durogesic"], interactions: [] },
+    { id: "morfina", name: "Morfina", group: "Oppioidi", also: ["Morphine"], interactions: [] },
+    { id: "ossicodone", name: "Ossicodone", group: "Oppioidi", also: ["OxyContin"], interactions: [] },
+    { id: "tramadolo", name: "Tramadolo", group: "Oppioidi", also: ["Contramal"], interactions: [] },
+    { id: "lorazepam", name: "Lorazepam", group: "Benzodiazepine", also: ["Tavor"], interactions: [] },
+    { id: "diazepam", name: "Diazepam", group: "Benzodiazepine", also: ["Valium"], interactions: [] },
+    { id: "midazolam", name: "Midazolam", group: "Benzodiazepine", also: ["Ipnovel"], interactions: [] },
+    { id: "alprazolam", name: "Alprazolam", group: "Benzodiazepine", also: ["Xanax"], interactions: [] },
+    { id: "quetiapina", name: "Quetiapina", group: "Antipsicotici", also: ["Seroquel"], interactions: [] },
+    { id: "olanzapina", name: "Olanzapina", group: "Antipsicotici", also: ["Zyprexa"], interactions: [] },
+    { id: "aloperidolo", name: "Aloperidolo", group: "Antipsicotici", also: ["Haldol"], interactions: [] },
+    { id: "sertralina", name: "Sertralina", group: "SSRI", also: ["Zoloft"], interactions: [] },
+    { id: "citalopram", name: "Citalopram", group: "SSRI", also: ["Seropram"], interactions: [] },
+    { id: "escitalopram", name: "Escitalopram", group: "SSRI", also: ["Cipralex"], interactions: [] },
+    { id: "fluoxetina", name: "Fluoxetina", group: "SSRI", also: ["Prozac"], interactions: [] },
+    { id: "venlafaxina", name: "Venlafaxina", group: "SNRI", also: ["Efexor"], interactions: [] },
+    { id: "duloxetina", name: "Duloxetina", group: "SNRI", also: ["Cymbalta"], interactions: [] },
+    { id: "atorvastatina", name: "Atorvastatina", group: "Statine", also: ["Torvast", "Lipitor"], interactions: [] },
+    { id: "rosuvastatina", name: "Rosuvastatina", group: "Statine", also: ["Crestor"], interactions: [] },
+    { id: "simvastatina", name: "Simvastatina", group: "Statine", also: ["Zocor"], interactions: [] },
+    { id: "amlodipina", name: "Amlodipina", group: "Calcio-antagonisti", also: ["Norvasc"], interactions: [] },
+    { id: "ramipril", name: "Ramipril", group: "ACE-inibitori", also: ["Triatec"], interactions: [] },
+    { id: "enalapril", name: "Enalapril", group: "ACE-inibitori", also: ["Renitec"], interactions: [] },
+    { id: "lisinopril", name: "Lisinopril", group: "ACE-inibitori", also: ["Zestril"], interactions: [] },
+    { id: "losartan", name: "Losartan", group: "Sartani", also: ["Cozaar"], interactions: [] },
+    { id: "valsartan", name: "Valsartan", group: "Sartani", also: ["Diovan"], interactions: [] },
+    { id: "furosemide_alt", name: "Furosemide (brand)", group: "Diuretici", also: ["Lasix"], interactions: [] },
+    { id: "spironolattone", name: "Spironolattone", group: "Diuretici", also: ["Aldactone"], interactions: [] },
+    { id: "torasemide", name: "Torasemide", group: "Diuretici", also: ["Torem"], interactions: [] },
+    { id: "metoprololo", name: "Metoprololo", group: "Beta-bloccanti", also: ["Seloken"], interactions: [] },
+    { id: "bisoprololo", name: "Bisoprololo", group: "Beta-bloccanti", also: ["Congescor"], interactions: [] },
+    { id: "carvedilolo", name: "Carvedilolo", group: "Beta-bloccanti", also: ["Dilatrend"], interactions: [] },
+    { id: "diltiazem", name: "Diltiazem", group: "Calcio-antagonisti", also: ["Cardizem"], interactions: [] },
+    { id: "verapamil", name: "Verapamil", group: "Calcio-antagonisti", also: ["Isoptin"], interactions: [] },
+    { id: "prednisone", name: "Prednisone", group: "Corticosteroidi", also: ["Deltacortene"], interactions: [] },
+    { id: "metilprednisolone", name: "Metilprednisolone", group: "Corticosteroidi", also: ["Urbason", "Solu-Medrol"], interactions: [] },
+    { id: "desametasone", name: "Desametasone", group: "Corticosteroidi", also: ["Decadron"], interactions: [] },
+    { id: "ondansetron", name: "Ondansetron", group: "Antiemetici", also: ["Zofran"], interactions: [] },
+    { id: "metoclopramide", name: "Metoclopramide", group: "Antiemetici", also: ["Plasil"], interactions: [] },
+    { id: "domperidone", name: "Domperidone", group: "Antiemetici", also: ["Motilium"], interactions: [] },
+    { id: "levetiracetam", name: "Levetiracetam", group: "Antiepilettici", also: ["Keppra"], interactions: [] },
+    { id: "valproato", name: "Acido valproico", group: "Antiepilettici", also: ["Depakin"], interactions: [] },
+    { id: "carbamazepina", name: "Carbamazepina", group: "Antiepilettici", also: ["Tegretol"], interactions: [] },
+    { id: "lamotrigina", name: "Lamotrigina", group: "Antiepilettici", also: ["Lamictal"], interactions: [] },
+    { id: "gentamicina_alt", name: "Gentamicina (brand)", group: "Aminoglicosidi", also: ["Gentalyn"], interactions: [] },
+    { id: "piperacillina_tazobactam", name: "Piperacillina/Tazobactam", group: "Antibiotici", also: ["Tazocin"], interactions: [] },
+    { id: "amoxicillina_acclav", name: "Amoxicillina/Ac. clavulanico", group: "Antibiotici", also: ["Augmentin"], interactions: [] },
+    { id: "ceftriaxone_alt", name: "Ceftriaxone (brand)", group: "Cefalosporine", also: ["Rocefin"], interactions: [] },
+    { id: "cefuroxime", name: "Cefuroxime", group: "Cefalosporine", also: ["Zinnat"], interactions: [] },
+    { id: "cefepime", name: "Cefepime", group: "Cefalosporine", also: ["Maxipime"], interactions: [] },
+    { id: "meropenem_alt", name: "Meropenem (brand)", group: "Carbapenemi", also: ["Merrem"], interactions: [] },
+    { id: "imipenem_cilastatina", name: "Imipenem/Cilastatina", group: "Carbapenemi", also: ["Tienam"], interactions: [] },
+    { id: "linezolid", name: "Linezolid", group: "Antibiotici", also: ["Zyvoxid"], interactions: [] },
+    { id: "daptomicina", name: "Daptomicina", group: "Antibiotici", also: ["Cubicin"], interactions: [] },
+    { id: "fluconazolo", name: "Fluconazolo", group: "Azoli", also: ["Diflucan"], interactions: [] },
+    { id: "itraconazolo", name: "Itraconazolo", group: "Azoli", also: ["Sporanox"], interactions: [] },
+    { id: "voriconazolo", name: "Voriconazolo", group: "Azoli", also: ["Vfend"], interactions: [] },
+    { id: "posaconazolo", name: "Posaconazolo", group: "Azoli", also: ["Noxafil"], interactions: [] },
+    { id: "aciclovir", name: "Aciclovir", group: "Antivirali", also: ["Zovirax"], interactions: [] },
+    { id: "oseltamivir", name: "Oseltamivir", group: "Antivirali", also: ["Tamiflu"], interactions: [] },
+    { id: "levotiroxina", name: "Levotiroxina", group: "Ormoni", also: ["Eutirox"], interactions: [] },
+    { id: "salbutamolo", name: "Salbutamolo", group: "Broncodilatatori", also: ["Ventolin"], interactions: [] },
+    { id: "budesonide", name: "Budesonide", group: "Corticosteroidi inalatori", also: ["Pulmicort"], interactions: [] },
+    { id: "tiotropio", name: "Tiotropio", group: "Broncodilatatori", also: ["Spiriva"], interactions: [] },
+
   ];
 
   const DB: Entry[] = [...DB_BASE, ...DB_EXTRA];
@@ -2590,7 +2669,7 @@ function StepPick({
   footer?: React.ReactNode;
 }) {
   return (
-    <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+    <div style={{ borderRadius: 22, padding: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)", boxShadow: "0 18px 40px rgba(0,0,0,0.35)" }}>
       <div style={{ fontSize: 14, fontWeight: 900 }}>{title}</div>
 
       <input
@@ -2608,19 +2687,27 @@ function StepPick({
         }}
       />
 
+      <div style={{ marginTop: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ fontSize: 12, opacity: 0.75 }}>Risultati: {Math.min(80, results.length)} / {results.length}</div>
+        {results.length > 80 && <div style={{ fontSize: 12, opacity: 0.75 }}>Affina la ricerca per vedere gli altri</div>}
+      </div>
+
       <div style={{ marginTop: 10, display: "grid", gap: 8, maxHeight: 320, overflow: "auto" }}>
-        {results.slice(0, 20).map((r, i) => (
+        {results.slice(0, 80).map((r, i) => (
           <button
             key={i}
             type="button"
             onClick={() => onPick(r.e)}
+            onMouseEnter={(ev) => ((ev.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)")}
+            onMouseLeave={(ev) => ((ev.currentTarget as HTMLButtonElement).style.transform = "translateY(0px)")}
             style={{
               textAlign: "left",
-              borderRadius: 14,
-              padding: 12,
-              border: "1px solid rgba(255,255,255,0.08)",
-              background: "rgba(255,255,255,0.02)",
+              borderRadius: 18,
+              padding: 14,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(255,255,255,0.04)",
               cursor: "pointer",
+              transition: "transform 120ms ease, background 120ms ease, border 120ms ease",
             }}>
             <div style={{ fontWeight: 900, fontSize: 13 }}>{r.e.name}</div>
             <div style={{ opacity: 0.75, fontSize: 12, marginTop: 3 }}>{r.label}</div>
@@ -2994,7 +3081,7 @@ function ToolDiuresi({ last, onSave, onToast }: { last: UtilityHistoryItem | nul
 
 function CalcShell({ title, subtitle, children, onSave }: { title: string; subtitle: string; children: React.ReactNode; onSave: () => void }) {
   return (
-    <div style={{ borderRadius: 18, padding: 16, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+    <div style={{ borderRadius: 22, padding: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.05)", boxShadow: "0 18px 40px rgba(0,0,0,0.35)" }}>
       <div style={{ fontWeight: 950, fontSize: 15 }}>{title}</div>
       <div style={{ opacity: 0.75, fontSize: 13, marginTop: 4 }}>{subtitle}</div>
 
