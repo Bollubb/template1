@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import React, { useMemo, useState } from "react";
 import { useToast } from "./Toast";
 import { isPremium } from "@/features/profile/premium";
@@ -1498,9 +1497,10 @@ return (
           )}
 
           {a && (
-            <div id="nd-suggest-anchor" />
+            <>
+              <div id="nd-suggest-anchor" />
 
-            <div
+              <div
               style={{
                 marginTop: 10,
                 borderRadius: 18,
@@ -1626,6 +1626,8 @@ return (
 </div>
 
             </div>
+            </>
+
           )}
         </>
       )}
