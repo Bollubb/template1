@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import { useToast } from "./Toast";
 import { isPremium } from "@/features/profile/premium";
 import PremiumUpsellModal from "./PremiumUpsellModal";
@@ -713,9 +713,7 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                 background: "linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025))",
                 fontWeight: 850,
                 cursor: "pointer",
-              }},
-                        transition: "transform 120ms ease, background 120ms ease, border 120ms ease",
-                      }}>
+              }}>
               ← Indietro
             </button>
           </div>
@@ -1312,51 +1310,10 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ borderRadius: 20, padding: 16, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-    <div>
-      <div style={{ fontSize: 14, fontWeight: 950, letterSpacing: 0.2 }}>Assistente clinico</div>
-      <div style={{ fontSize: 12, opacity: 0.78, marginTop: 4 }}>
-        Step {step} di 3 • {limit.premium ? "Premium" : String(limit.usedLeft()) + "/3 oggi"}
+      <div style={{ borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
+        <div style={{ fontSize: 14, fontWeight: 900 }}>Modalità guidata</div>
+        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
       </div>
-    </div>
-    {primaryRisk && (
-      <div
-        style={{
-          padding: "8px 12px",
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.14)",
-          background: "rgba(255,255,255,0.08)",
-          fontSize: 12,
-          fontWeight: 950,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          whiteSpace: "nowrap",
-        }}
-      >
-        <span style={{ fontSize: 14 }}>{primaryRisk.icon}</span> Focus: {primaryRisk.label}
-      </div>
-    )}
-  </div>
-
-  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-    {[1, 2, 3].map((n) => (
-      <div
-        key={n}
-        style={{
-          flex: 1,
-          height: 8,
-          borderRadius: 999,
-          border: "1px solid rgba(255,255,255,0.10)",
-          background: n <= step ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)",
-          transition: "all 160ms ease",
-        }}
-      />
-    ))}
-  </div>
-</div>
-
 
       {step === 1 && (
         <StepPick
