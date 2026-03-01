@@ -781,7 +781,14 @@ export default function UtilityHub({ onBack }: { onBack: () => void }) {
                   <CalcCard title="Diuresi" subtitle="ml/kg/h" icon="🚰" onClick={() => setActiveCalc("diuresi")} />
                 </div>
               ) : (
-                <ToolRenderer id={activeCalc} last={lastByTool[activeCalc] ?? null} onSave={pushHistory} onToast={toast.push} />
+                {(activeCalc as any) === "interactions" ? (
+                  <ToolInteractions last={lastByTool[activeCalc] ?? null} onSave={pushHistory} onToast={toast.push} />
+                ) : (
+                  <div style={{ padding: 14, borderRadius: 18, border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.04)" }}>
+                    <div style={{ fontWeight: 950 }}>Strumento in aggiornamento</div>
+                    <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6 }}>Seleziona “Interazioni” per continuare.</div>
+                  </div>
+                )}
               )}
             </>
           )}
