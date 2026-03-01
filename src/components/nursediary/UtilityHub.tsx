@@ -1497,10 +1497,9 @@ return (
           )}
 
           {a && (
-            <>
-              <div id="nd-suggest-anchor" />
+            <div id="nd-suggest-anchor" />
 
-              <div
+            <div
               style={{
                 marginTop: 10,
                 borderRadius: 18,
@@ -1626,8 +1625,6 @@ return (
 </div>
 
             </div>
-            </>
-
           )}
         </>
       )}
