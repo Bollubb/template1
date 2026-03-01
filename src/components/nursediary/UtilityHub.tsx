@@ -2404,10 +2404,83 @@ const results1 = useMemo(() => searchDrugs(selectable, q1), [selectable, q1]);
 
   return (
     <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ borderRadius: 18, padding: 14, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)" }}>
-        <div style={{ fontSize: 14, fontWeight: 900 }}>Modalità guidata</div>
-        <div style={{ fontSize: 13, opacity: 0.8, marginTop: 4 }}>Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 ricerche disponibili oggi`}</div>
+      <div
+  style={{
+    borderRadius: 24,
+    padding: 16,
+    border: "1px solid rgba(255,255,255,0.14)",
+    background: "linear-gradient(180deg, rgba(120,200,255,0.10), rgba(255,255,255,0.04))",
+    boxShadow: "0 20px 46px rgba(0,0,0,0.42)",
+    position: "sticky",
+    top: 10,
+    zIndex: 5,
+    backdropFilter: "blur(10px)",
+  }}
+>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+    <div>
+      <div style={{ fontSize: 14, fontWeight: 950, letterSpacing: 0.2 }}>Assistente clinico</div>
+      <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
+        Step {step} di 3 • {limit.premium ? "Premium" : `${limit.usedLeft()}/3 oggi`}
       </div>
+    </div>
+
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+      {a && (
+        <span
+          style={{
+            padding: "7px 10px",
+            borderRadius: 999,
+            border: "1px solid rgba(120,255,200,0.28)",
+            background: "rgba(120,255,200,0.10)",
+            fontSize: 12,
+            fontWeight: 950,
+            whiteSpace: "nowrap",
+          }}
+        >
+          1️⃣ {a.name}
+        </span>
+      )}
+      {b && (
+        <span
+          style={{
+            padding: "7px 10px",
+            borderRadius: 999,
+            border: "1px solid rgba(255,200,80,0.28)",
+            background: "rgba(255,200,80,0.10)",
+            fontSize: 12,
+            fontWeight: 950,
+            whiteSpace: "nowrap",
+          }}
+        >
+          2️⃣ {b.name}
+        </span>
+      )}
+    </div>
+  </div>
+
+  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+    {[1, 2, 3].map((n) => (
+      <div
+        key={n}
+        style={{
+          flex: 1,
+          height: 10,
+          borderRadius: 999,
+          border: "1px solid rgba(255,255,255,0.10)",
+          background:
+            n <= step
+              ? n === 3
+                ? "rgba(120,255,200,0.18)"
+                : "rgba(120,200,255,0.18)"
+              : "rgba(255,255,255,0.06)",
+          boxShadow: n <= step ? "0 10px 18px rgba(0,0,0,0.22)" : "none",
+          transition: "all 160ms ease",
+        }}
+      />
+    ))}
+  </div>
+</div>
 
       {step === 1 && (
         <StepPick
@@ -2462,7 +2535,18 @@ footer={
                 padding: "7px 10px",
                 borderRadius: 999,
                 border: "1px solid rgba(255,255,255,0.14)",
-                background: (focusTag ?? null) === (t.id ?? null) ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.06)",
+                background:
+                  (focusTag ?? null) === (t.id ?? null)
+                    ? t.id === "qt"
+                      ? "rgba(120,200,255,0.18)"
+                      : t.id === "bleed"
+                      ? "rgba(255,80,80,0.18)"
+                      : t.id === "rene"
+                      ? "rgba(180,120,255,0.16)"
+                      : t.id === "snc"
+                      ? "rgba(255,200,80,0.18)"
+                      : "rgba(255,255,255,0.14)"
+                    : "rgba(255,255,255,0.06)",
                 fontSize: 12,
                 fontWeight: 950,
                 cursor: "pointer",
@@ -2476,56 +2560,87 @@ footer={
         {step1Suggestions.length === 0 ? (
           <div style={{ marginTop: 10, fontSize: 12, opacity: 0.78 }}>Nessun suggerimento “ad alto rischio” trovato per questo farmaco nel database locale.</div>
         ) : (
-          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-            {step1Suggestions.slice(0, 6).map((c) => (
-              <button
-                key={c.e.id}
-                type="button"
-                onClick={() => {
-                  setB(c.e);
-                  setQ2(c.e.name);
-                  setStep(3);
-                }}
-                className="nd-press"
-                style={{
-                  width: "100%",
-                  textAlign: "left",
-                  padding: 12,
-                  borderRadius: 18,
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  background: c.sev === "avoid" ? "rgba(255,80,80,0.14)" : "rgba(255,200,80,0.12)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontSize: 16 }}>{riskIcon(c.why)}</span>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 950 }}>{c.e.name}</div>
-                      <div style={{ fontSize: 12, opacity: 0.78, marginTop: 2 }}>{c.e.group}</div>
-                    </div>
-                  </div>
-                  <span
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      fontSize: 12,
-                      fontWeight: 950,
-                      border: "1px solid rgba(255,255,255,0.16)",
-                      background: c.sev === "avoid" ? "rgba(255,80,80,0.22)" : "rgba(255,200,80,0.18)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {c.sev === "avoid" ? "DA EVITARE" : "CAUTELA"}
-                  </span>
-                </div>
+          {(() => {
+  const list = step1Suggestions.slice(0, 8);
+  const hero = list.find((x) => x.sev === "avoid") || list[0];
+  const rest = list.filter((x) => x !== hero);
 
-                <div style={{ fontSize: 12, opacity: 0.9, marginTop: 8 }}>
-                  <span style={{ fontWeight: 950 }}>Perché:</span>{" "}
-                  {c.why.length > 100 ? c.why.slice(0, 100) + "…" : c.why}
-                </div>
-              </button>
+  const Card = ({ c, big }: { c: any; big?: boolean }) => (
+    <button
+      key={c.e.id}
+      type="button"
+      onClick={() => {
+        setB(c.e);
+        setQ2(c.e.name);
+        setStep(3);
+      }}
+      className="nd-press"
+      style={{
+        width: "100%",
+        textAlign: "left",
+        padding: big ? 14 : 12,
+        borderRadius: big ? 22 : 18,
+        border: "1px solid rgba(255,255,255,0.16)",
+        background:
+          c.sev === "avoid"
+            ? "linear-gradient(180deg, rgba(255,80,80,0.20), rgba(255,80,80,0.10))"
+            : "linear-gradient(180deg, rgba(255,200,80,0.18), rgba(255,200,80,0.08))",
+        boxShadow: big ? "0 18px 36px rgba(0,0,0,0.40)" : "none",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: big ? 18 : 16 }}>{riskIcon(c.why)}</span>
+          <div>
+            <div style={{ fontSize: big ? 15 : 14, fontWeight: 950 }}>
+              {big && c.sev === "avoid" ? "Più rischioso: " : ""}
+              {c.e.name}
+            </div>
+            <div style={{ fontSize: 12, opacity: 0.82, marginTop: 2 }}>{c.e.group}</div>
+          </div>
+        </div>
+        <span
+          style={{
+            padding: big ? "7px 12px" : "6px 10px",
+            borderRadius: 999,
+            fontSize: 12,
+            fontWeight: 950,
+            border: "1px solid rgba(255,255,255,0.18)",
+            background: c.sev === "avoid" ? "rgba(255,80,80,0.26)" : "rgba(255,200,80,0.22)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {c.sev === "avoid" ? "DA EVITARE" : "CAUTELA"}
+        </span>
+      </div>
+
+      <div style={{ fontSize: 12, opacity: 0.92, marginTop: big ? 10 : 8 }}>
+        <span style={{ fontWeight: 950 }}>Perché:</span>{" "}
+        {c.why.length > (big ? 140 : 110) ? c.why.slice(0, big ? 140 : 110) + "…" : c.why}
+      </div>
+    </button>
+  );
+
+  return (
+    <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+      {hero ? <Card c={hero} big /> : null}
+
+      {rest.length > 0 && (
+        <div style={{ marginTop: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 950, opacity: 0.85, marginBottom: 8 }}>
+            Alternative (tap per verificare)
+          </div>
+          <div style={{ display: "grid", gap: 10 }}>
+            {rest.slice(0, 4).map((c) => (
+              <Card key={c.e.id} c={c} />
             ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+})()}
+
         )}
       </div>
     )}
