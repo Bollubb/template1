@@ -1165,7 +1165,6 @@ function ToolInteractions({ onSave, onUpsell }: { onSave: (item: UtilityHistoryI
     { id: "cns", name: "Depressori SNC (gruppo)", group: "GRP", interactions: [] },
 
     { id: "linezolid", name: "Linezolid", group: "Antibiotici", interactions: [] },
-  ]
     // ===== DB expansion (brand + molecule, high-yield) =====
     { id: "paracetamolo", name: "Paracetamolo", group: "Analgesici/Antipiretici", also: ["Tachipirina", "Efferalgan"], interactions: [] },
     { id: "ibuprofene", name: "Ibuprofene", group: "FANS", also: ["Brufen", "Nurofen", "Moment"], interactions: [] },
